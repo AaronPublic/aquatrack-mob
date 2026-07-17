@@ -1,0 +1,240 @@
+import { StyleSheet } from 'react-native';
+import { theme } from '../../src/config/theme';
+
+export default StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  headerBanner: {
+    backgroundColor: theme.colors.primary,
+    padding: 20,
+    paddingTop: 48,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  greeting: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: theme.colors.white,
+  },
+  subgreeting: {
+    fontSize: 9,
+    color: theme.colors.accent,
+    marginTop: 2,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  logoutBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#ef4444',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+  },
+  logoutText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#ef4444',
+    textTransform: 'uppercase',
+  },
+  scrollView: {
+    padding: 16,
+  },
+  sectionHeader: {
+    fontSize: 10,
+    fontWeight: 'black',
+    color: theme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+    marginBottom: 10,
+    marginTop: 14,
+  },
+  // Work Order Card
+  woCard: {
+    backgroundColor: theme.colors.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  woHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  woLabel: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: theme.colors.textMuted,
+    textTransform: 'uppercase',
+  },
+  woId: {
+    fontSize: 9,
+    fontFamily: theme.fonts.mono,
+    color: theme.colors.textMuted,
+    marginTop: 2,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 99,
+    borderWidth: 1,
+  },
+  statusText: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
+  // Details list
+  woBody: {
+    padding: 14,
+    gap: 12,
+  },
+  woDetailItem: {
+    gap: 2,
+  },
+  detailLabel: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: theme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  detailValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.primary,
+  },
+  detailText: {
+    fontSize: 12,
+    color: theme.colors.textMuted,
+    lineHeight: 16,
+  },
+  instructionsBox: {
+    backgroundColor: 'rgba(0, 30, 102, 0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 30, 102, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+  },
+  instructionsTitle: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  instructionsText: {
+    fontSize: 11,
+    fontStyle: 'italic',
+    color: theme.colors.textMuted,
+    lineHeight: 15,
+  },
+  woImage: {
+    width: '100%',
+    height: 160,
+    borderRadius: 8,
+    resizeMode: 'cover',
+    marginTop: 4,
+  },
+  // Action buttons
+  actionRow: {
+    padding: 14,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
+  },
+  btnPrimary: {
+    height: 40,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnSuccess: {
+    height: 40,
+    backgroundColor: theme.colors.success,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnText: {
+    color: theme.colors.white,
+    fontSize: 12,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
+  completeBanner: {
+    height: 40,
+    backgroundColor: theme.colors.successBg,
+    borderColor: '#a7f3d0',
+    borderWidth: 1,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  completeText: {
+    fontSize: 12,
+    color: theme.colors.success,
+    fontWeight: 'bold',
+  },
+  // bulletins
+  advisoryCard: {
+    backgroundColor: theme.colors.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: 12,
+    marginBottom: 10,
+  },
+  advisoryMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  advisoryDate: {
+    fontSize: 9,
+    color: theme.colors.textMuted,
+    fontFamily: theme.fonts.mono,
+  },
+  advisoryTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+  },
+  advisoryDesc: {
+    fontSize: 11,
+    color: theme.colors.textMuted,
+    marginTop: 2,
+    lineHeight: 14,
+  },
+  emptyBox: {
+    backgroundColor: theme.colors.white,
+    padding: 24,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 12,
+    color: theme.colors.textMuted,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  }
+});
