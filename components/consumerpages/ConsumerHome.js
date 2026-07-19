@@ -75,11 +75,52 @@ export default function ConsumerHome({ navigation }) {
     fetchProfileAndAdvisories();
     
     // Refresh data when screen receives focus
-    const unsubscribe = navigation.addListener('focus', () => {
+    const unsubscribeFocus = navigation.addListener('focus', () => {
       fetchProfileAndAdvisories();
     });
+
+    let channel;
+    const setupRealtime = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        channel = supabase.channel(`home-realtime-${session.user.id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'Complaint',
+              filter: `userId=eq.${session.user.id}`
+            },
+            (payload) => {
+              console.log('Realtime complaint change on home screen:', payload);
+              fetchProfileAndAdvisories();
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'Advisory'
+            },
+            (payload) => {
+              console.log('Realtime advisory change on home screen:', payload);
+              fetchProfileAndAdvisories();
+            }
+          )
+          .subscribe();
+      }
+    };
+
+    setupRealtime();
     
-    return unsubscribe;
+    return () => {
+      unsubscribeFocus();
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
   }, [navigation]);
 
   const renderStepper = (currentStatus) => {

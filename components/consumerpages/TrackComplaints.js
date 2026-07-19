@@ -82,7 +82,7 @@ export default function TrackComplaints() {
         .channel(`resident-complaints-${session.user.id}`)
         .on(
           'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'Complaint', filter: `userId=eq.${session.user.id}` },
+          { event: '*', schema: 'public', table: 'Complaint', filter: `userId=eq.${session.user.id}` },
           (payload) => {
             console.log("Realtime ticket update:", payload);
             fetchComplaints(); // Refresh list immediately!

@@ -24,7 +24,7 @@ To support instant developer testing within the **Expo Go** application and brow
 - **Interactive Mapping**: `react-native-maps` to render interactive map canvases and draggable markers.
 
 ### Backend Integration
-- **Database & Auth Connector**: `@supabase/supabase-js` client SDK configured with a custom AsyncStorage adapter.
+- **Database & Auth Connector**: `@supabase/supabase-js` client SDK configured with a custom AsyncStorage adapter. Equipped with **Supabase Realtime WebSockets** subscriptions to auto-sync ticket states and community advisories.
 - **API Services Connection**: Fetch client configured with platform-specific host routing to Next.js API endpoints.
 - **Push Alerts**: `expo-notifications` to request permission alerts, fetch device FCM tokens, and listen for notifications.
 
@@ -131,3 +131,18 @@ We have saved step-by-step implementation plans in the project's brain artifacts
 *   Log into the app on the emulator and confirm a `Device Push Token (FCM)` is logged in the terminal.
 *   Open the Next.js Web Admin dashboard and publish a new community advisory.
 *   **Expected**: The notification slides down as a banner at the top of the emulator screen.
+
+### 3. AI-Assisted Diagnostics
+*   Open the mobile app and go to the **File Report** screen.
+*   Type a description in Tagalog/Kapampangan/English (e.g., *"Mababa ang presyon ng tubig"*) and click **Submit**.
+*   **Expected**: The app displays `Running AI diagnostics...` and loads a "Gemini AI Diagnosis" details card on the screen showing the translated text, auto-classification category, and urgency level before submitting.
+
+### 4. Supabase Storage (Image Upload)
+*   On the **File Report** screen, click **Attach Incident Photo** and select an image from the emulator gallery.
+*   Click **Submit**.
+*   **Expected**: The app logs `Uploading photo...`, uploads the image file to the `complaint-media` Supabase storage bucket, and displays the image on the **Track Tickets** history item.
+
+### 5. Supabase Realtime Synchronization
+*   Open the mobile app on the **Track Tickets** screen or **Home** dashboard.
+*   Simultaneously, open your web admin portal and change one of your user's ticket statuses (e.g. from `EVALUATING` to `DISPATCHED` or `RESOLVED`).
+*   **Expected**: The status badge and the tracker stepper dots on the emulator change instantly without requiring a page pull or swipe refresh.
