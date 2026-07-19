@@ -1,28 +1,26 @@
-import { MMKV } from 'react-native-mmkv';
-
-const storage = new MMKV({ id: 'supabase-storage' });
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const supabaseStorage = {
-  getItem: (key) => {
+  getItem: async (key) => {
     try {
-      return storage.getString(key) ?? null;
+      return await AsyncStorage.getItem(key);
     } catch (err) {
-      console.error("MMKV getItem error:", err);
+      console.error("AsyncStorage getItem error:", err);
       return null;
     }
   },
-  setItem: (key, value) => {
+  setItem: async (key, value) => {
     try {
-      storage.set(key, value);
+      await AsyncStorage.setItem(key, value);
     } catch (err) {
-      console.error("MMKV setItem error:", err);
+      console.error("AsyncStorage setItem error:", err);
     }
   },
-  removeItem: (key) => {
+  removeItem: async (key) => {
     try {
-      storage.delete(key);
+      await AsyncStorage.removeItem(key);
     } catch (err) {
-      console.error("MMKV removeItem error:", err);
+      console.error("AsyncStorage removeItem error:", err);
     }
   }
 };

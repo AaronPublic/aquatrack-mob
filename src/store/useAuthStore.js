@@ -1,22 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { MMKV } from 'react-native-mmkv';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../config/supabase';
 import { api } from '../config/api';
-
-const authStorage = new MMKV({ id: 'auth-store' });
-
-const customStorage = {
-  getItem: (name) => {
-    return authStorage.getString(name) ?? null;
-  },
-  setItem: (name, value) => {
-    authStorage.set(name, value);
-  },
-  removeItem: (name) => {
-    authStorage.delete(name);
-  },
-};
 
 export const useAuthStore = create(
   persist(
@@ -61,7 +47,7 @@ export const useAuthStore = create(
     }),
     {
       name: 'auth-storage',
-      storage: createJSONStorage(() => customStorage),
+      storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({ session: state.session, profile: state.profile }),
     }
   )

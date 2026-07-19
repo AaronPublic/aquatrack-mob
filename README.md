@@ -1,129 +1,133 @@
 # AquaTrack Mobile Application
 
-A production-ready municipal water district mobile application built for water anomalies reporting and field operations, featuring high-performance state caching, native mapping, and real-time push alerts.
+A production-ready mobile application built for water anomalies reporting and field operations, featuring persistent state caching, native mapping, and real-time push alerts.
 
-## Tech Stack
+---
+
+## 🛠️ Technology Stack (Local Development & Testing)
+
+To support instant developer testing within the **Expo Go** application and browser environments, the project uses a fully compatible testing stack:
 
 ### Frontend
-- **Framework**: React Native 0.86.0 compiled via Expo SDK 57.0.7 for native cross-platform iOS and Android user interfaces.
-- **Styling**: NativeWind v4 (Tailwind CSS utility engine for mobile layout compiling) paired with custom theme tokens.
-- **Navigation**: React Navigation v6 using `@react-navigation/native-stack` (dynamic authentication gateways) and `@react-navigation/bottom-tabs` (icon-only navigation bars).
-- **Icons**: `@expo/vector-icons` (Ionicons) for unified, system-style vector icons.
+- **Framework**: React Native 0.86.0 compiled via Expo SDK 57.0.7.
+- **Styling**: NativeWind v4 (Tailwind CSS utility engine for mobile layout compiling).
+- **Navigation**: React Navigation v6 using `@react-navigation/native-stack` and `@react-navigation/bottom-tabs`.
+- **Icons**: `@expo/vector-icons` (Ionicons).
 
 ### State Management & Storage
 - **Runtime State**: Zustand for lightweight, hook-based application global runtime state handling.
-- **Local Storage Cache**: `react-native-mmkv` for high-performance, synchronous C++ based key-value storage of sessions and profiles.
+- **Local Storage Cache**: `@react-native-async-storage/async-storage` for persistent key-value storage (supports web browser fallback).
 
 ### Hardware & Geospatial Layer
-- **Geo-Location**: `expo-location` to fetch real-time, high-accuracy physical WGS84 device coordinates.
+- **Geo-Location**: `expo-location` to fetch real-time, high-accuracy WGS84 device coordinates.
 - **Media Capture**: `expo-image-picker` to request camera/gallery permissions and capture photos.
-- **Interactive Mapping**: `react-native-maps` to render interactive municipal map canvases and draggable incident markers.
+- **Interactive Mapping**: `react-native-maps` to render interactive map canvases and draggable markers.
 
 ### Backend Integration
-- **Database & Auth Connector**: `@supabase/supabase-js` client SDK configured with a custom MMKV storage adapter for session persistence and live WebSocket channel updates.
+- **Database & Auth Connector**: `@supabase/supabase-js` client SDK configured with a custom AsyncStorage adapter.
 - **API Services Connection**: Fetch client configured with platform-specific host routing to Next.js API endpoints.
-- **Push Alerts**: Firebase Cloud Messaging (FCM) via `@react-native-firebase/app` and `@react-native-firebase/messaging` for live foreground and background notification pathways.
+- **Push Alerts**: `expo-notifications` to request permission alerts, fetch device FCM tokens, and listen for notifications.
 
 ---
 
-## Setup Instructions
+## 🚀 Setup & Launch Guide (For Team Members)
 
-### 1. Clone the repository
-Ensure you are in the workspace folder:
-```bash
-cd aquatrack-mob
-```
+Follow these exact steps to get the app running on your machine:
 
-### 2. Install dependencies
-Install standard node modules and Expo modules:
+### 1. Pre-requisites
+*   Ensure you have **Node.js** and **npm** installed.
+*   Ensure you have **Android Studio** installed (including the Android SDK Manager and a running Emulator).
+
+### 2. Clone the repository & Install Dependencies
+Open a terminal in the `aquatrack-mob` folder and run:
 ```bash
 npm install
 ```
+## Okay na ito, nalagay na
+### 3. Register your Google Services File
+Make sure you have downloaded the `google-services.json` file from your Firebase console (configured for the package name `com.aquatrack.mob`). Save it directly in the root of the `aquatrack-mob/` project directory.
 
-### 3. API Server Setup
-Verify host mappings in [src/config/api.js](file:///C:/Users/AJ/CAPSTONE/aquatrack-mob/src/config/api.js). For local emulators, the configuration maps automatically:
-*   **Android Emulator**: `http://10.0.2.2:3000`
-*   **iOS Simulator / Expo Go**: `http://localhost:3000`
+---
 
-### 4. Firebase Setup (Optional)
-To enable real push notifications on physical devices:
-1. Register your package name in the Firebase Console.
-2. Download `google-services.json` (Android) and `GoogleService-Info.plist` (iOS).
-3. Drop them into the root folder of `aquatrack-mob`.
-4. Run `npx expo prebuild` to compile native settings.
+## 🛠️ Compiling the Development Build (Android)
 
-### 5. Run local development
-Launch the Expo packager:
+Because modern Expo SDKs do not support push notification receivers inside the standard Expo Go app from the app store, you must compile a local **Development Build** to test notifications. 
+
+### Step 1: Run the Prebuild Generator
+Generates the native `android` source folders:
 ```bash
-npm run start
-```
-Scan the QR code with **Expo Go** on your physical phone, or press `a` for Android Emulator / `i` for iOS Simulator.
-
----
-
-## Mobile App Routing
-
-| Tab / Screen | Access Role | Description |
-| :--- | :--- | :--- |
-| `Login` | Logged out | Credential sign-in form with active redirect guards. |
-| `Register` | Logged out | Resident account registration with strict password checking. |
-| `ConsumerHome` | Resident | Dashboard home showing dynamic incident counters, critical alerts feed, and quick shortcuts. |
-| `FileComplaint` | Resident | Guided incident form with Mapbox coordinate picking, camera capture, and Gemini AI analysis. |
-| `TrackComplaints` | Resident | Historical complaint timeline showing active ticket status logs. |
-| `Announcements` | Resident / Sub-Admin | Public bulletins list detailing advisory events and warnings. |
-| `ContactSupport` | Resident | Water district hotline details and sub-office address information. |
-| `SubAdminHome` | Technician | Technician command center showing active work orders and crew task toggles. |
-| `SubAdminComplaints` | Technician | Interactive complaints triage registry with fly-to-marker Mapbox triggers. |
-| `SubAdminTelemetry` | Technician | Sensor Network HUD displaying real-time water quality parameter readouts. |
-
----
-
-## Authentication
-
-The mobile client leverages **Supabase Auth** integrated with **Zustand** and **MMKV** for secure, persistent session routing:
-
-1. **Persisted Storage Adapter**: We configure the Supabase client in [supabase.js](file:///C:/Users/AJ/CAPSTONE/aquatrack-mob/src/config/supabase.js) to use a custom storage adapter [supabaseStorage.js](file:///C:/Users/AJ/CAPSTONE/aquatrack-mob/src/config/supabaseStorage.js) backed by `react-native-mmkv`.
-2. **Synchronous Caching**: When a user logs in, their Supabase session and user profile (role) are updated in [useAuthStore.js](file:///C:/Users/AJ/CAPSTONE/aquatrack-mob/src/store/useAuthStore.js) and synced synchronously to MMKV storage.
-3. **Instant Auth Checks**: On app launch, [RootNavigator.js](file:///C:/Users/AJ/CAPSTONE/aquatrack-mob/src/navigation/RootNavigator.js) queries MMKV storage synchronously to route the user instantly to their portal, eliminating blank screens or loading lags.
-4. **Sign Out Pruning**: Signing out clears the Zustand store state and completely deletes the persisted MMKV files, redirecting cleanly to the `Login` screen.
-
----
-
-## Useful Operations
-
-### Run expo start
-```bash
-npm run start
+npx expo prebuild --platform android
 ```
 
-### Syntax Validation
-Verify javascript files for syntax errors using node's compiler checker:
+### Step 2: Configure Android SDK Location (`local.properties`)
+If you try to run the compile command now, Gradle will throw an error saying: `SDK location not found`.
+*   Go to your `aquatrack-mob/android/` folder.
+*   Create a new file named `local.properties`.
+*   Add the following line (replace `<Your-Username>` with your Windows account user folder name):
+    ```properties
+    sdk.dir=C:/Users/<Your-Username>/AppData/Local/Android/Sdk
+    ```
+
+### Step 3: Resolve Corrupted NDK Errors (If Gradle Fails)
+If the build fails with an NDK error like `NDK ... did not have a source.properties file`, fix it in Android Studio:
+1. Open **Android Studio**.
+2. Go to **Tools** -> **SDK Manager** (or Settings -> System Settings -> Android SDK).
+3. Select the **SDK Tools** tab.
+4. Check the **Show Package Details** box in the bottom right.
+5. Under **NDK (Side-by-side)**, locate version **`27.1.12297006`**:
+   *   Uncheck it and click **Apply** (to delete the corrupted NDK files).
+   *   Check it again and click **Apply** (to download a fresh, complete copy).
+6. Click **OK** once finished.
+
+### Step 4: Compile and Install the App
+Start your Android Emulator in Android Studio, then run:
 ```bash
-node -c C:/Users/AJ/CAPSTONE/aquatrack-mob/App.js
+npx expo run:android
 ```
+This compiles the native packages and installs a custom **AquaTrack** developer client app on your emulator screen. 
 
 ---
 
-## Feature Details, Testing & Verification
+## 💻 Daily Development Workflow
 
-### 1. Zustand & MMKV Caching
-- **Implementation**: Managed via [useAuthStore.js](file:///C:/Users/AJ/CAPSTONE/aquatrack-mob/src/store/useAuthStore.js) and [supabaseStorage.js](file:///C:/Users/AJ/CAPSTONE/aquatrack-mob/src/config/supabaseStorage.js). Caches the user session and metadata profile synchronously.
-- **Verification**:
-  1. Log into the application as a resident or technician.
-  2. Kill the application process.
-  3. Reopen the application.
-  4. **Expected**: The app bypasses the Login screen and loads the appropriate dashboard instantly.
+Once the custom developer client app is installed on your emulator, you **do not** need to re-run the 3-minute compilation command again!
 
-### 2. NativeWind (Tailwind CSS) Layout Engine
-- **Implementation**: Styled using NativeWind v4 directives in [global.css](file:///C:/Users/AJ/CAPSTONE/aquatrack-mob/global.css) and configuration files. Showcase implementation successfully refactored in [ContactSupport.js](file:///C:/Users/AJ/CAPSTONE/aquatrack-mob/components/consumerpages/ContactSupport.js).
-- **Verification**:
-  1. Navigate to the Support / Hotline screen.
-  2. **Expected**: Element margins, colors, text alignment, and borders render exactly matching the CSS-utility properties (`className`), and the layout remains fluid across screen resizing.
+For daily coding, testing, and UI updates:
+1.  Start the Next.js backend server (`npm run dev` in `aquatrack-web`).
+2.  Start the mobile packager server in your mobile terminal:
+    ```bash
+    npm run start
+    ```
+3.  Open the custom **AquaTrack** app on your emulator. It will automatically load your JavaScript bundle.
+4.  To reload changes, simply press **`r`** in the terminal where you ran `npm run start`.
 
-### 3. Firebase Cloud Messaging (FCM) Push Notifications
-- **Implementation**: Handled via [fcm.js](file:///C:/Users/AJ/CAPSTONE/aquatrack-mob/src/config/fcm.js) and Next.js backend `/api/auth/push-token` endpoints. Triggered on advisory publish.
-- **Verification**:
-  1. Log into the application and check terminal/IDE logs to confirm `FCM Authorization status` and the `Device FCM Token` generated.
-  2. Check the Next.js server console to confirm `POST /api/auth/push-token` was called with the correct `userId` and token.
-  3. Publish a new advisory using the Web Admin portal (`POST /api/advisories`).
-  4. **Expected**: Web server outputs FCM log detailing target tokens and data payload.
+---
+
+## 📲 Standalone Production Builds (Google Play / Apple App Store)
+
+When building standalone release packages (`.apk`/`.aab`) for app store release, you can restore raw Firebase native SDKs and high-performance MMKV caching.
+
+### Reference Plans for Future Production Migration:
+We have saved step-by-step implementation plans in the project's brain artifacts folder to guide you:
+
+1.  **Zustand & MMKV Integration Plan**  
+    *   **File Name**: `2026-07-19-zustand-mmkv-integration-plan.md`
+    *   **Path**: `C:\Users\AJ\.gemini\antigravity-cli\brain\a39107bf-1ac8-4d96-b7eb-20aca0c24680\2026-07-19-zustand-mmkv-integration-plan.md`
+2.  **Firebase Native SDK Integration Plan**  
+    *   **File Name**: `2026-07-19-fcm-integration-plan.md`
+    *   **Path**: `C:\Users\AJ\.gemini\antigravity-cli\brain\a39107bf-1ac8-4d96-b7eb-20aca0c24680\2026-07-19-fcm-integration-plan.md`
+
+---
+
+## 🔍 Feature Verification & Testing
+
+### 1. Zustand & AsyncStorage Caching
+*   Log into the application.
+*   Kill the application process.
+*   Reopen the application.
+*   **Expected**: The app bypasses the Login screen and opens the home dashboard instantly.
+
+### 2. Push Notifications
+*   Log into the app on the emulator and confirm a `Device Push Token (FCM)` is logged in the terminal.
+*   Open the Next.js Web Admin dashboard and publish a new community advisory.
+*   **Expected**: The notification slides down as a banner at the top of the emulator screen.
