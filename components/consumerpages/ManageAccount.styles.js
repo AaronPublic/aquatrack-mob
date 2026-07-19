@@ -1,0 +1,130 @@
+import { StyleSheet } from 'react-native';
+import { theme } from '../../src/config/theme';
+
+export default StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  scrollContainer: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  header: {
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+  },
+  subtitle: {
+    fontSize: 12,
+    color: theme.colors.textMuted,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  card: {
+    backgroundColor: theme.colors.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#0B1C3F',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: 'black',
+    color: theme.colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    paddingBottom: 6,
+  },
+  form: {
+    gap: 12,
+  },
+  inputGroup: {
+    marginBottom: 6,
+  },
+  label: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 8,
+    backgroundColor: theme.colors.card,
+    height: 44,
+    paddingHorizontal: 12,
+  },
+  inputIcon: {
+    marginRight: 8,
+  },
+  input: {
+    flex: 1,
+    fontSize: 13,
+    color: theme.colors.primary,
+    height: '100%',
+  },
+  infoHelperText: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: theme.colors.accent,
+    marginTop: 4,
+    lineHeight: 12,
+  },
+  errorText: {
+    color: theme.colors.alert,
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginVertical: 8,
+  },
+  saveBtn: {
+    height: 48,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 12,
+    shadowColor: '#0B1C3F',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  saveBtnText: {
+    color: theme.colors.white,
+    fontSize: 13,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 12,
+    color: theme.colors.textMuted,
+    fontWeight: 'bold',
+  }
+});

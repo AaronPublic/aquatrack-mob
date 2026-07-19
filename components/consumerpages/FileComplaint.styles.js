@@ -8,6 +8,7 @@ export default StyleSheet.create({
   },
   scrollContainer: {
     padding: 16,
+    paddingBottom: 110,
   },
   header: {
     marginBottom: 16,
@@ -191,10 +192,30 @@ export default StyleSheet.create({
     textAlign: 'center',
   },
   // Submit btn
+  // Submit Status Indicator
+  statusIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: theme.colors.infoBg,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    borderRadius: 10,
+    marginTop: 8,
+  },
+  statusIndicatorText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1d4ed8',
+  },
+  // Submit Button
   submitBtn: {
     height: 48,
     backgroundColor: theme.colors.primary,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     marginVertical: 16,
@@ -206,5 +227,7 @@ export default StyleSheet.create({
     color: theme.colors.white,
     fontSize: 14,
     fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   }
 });

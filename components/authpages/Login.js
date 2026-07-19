@@ -118,7 +118,7 @@ export default function Login({ navigation }) {
     <ImageBackground 
       source={require('../../assets/loginBG.png')} 
       style={styles.backgroundImage}
-      imageStyle={{ opacity: 0.12 }} // Adjusted opacity to be extremely clean and subtle
+      imageStyle={styles.backgroundImageStyle}
       resizeMode="cover"
     >
       <KeyboardAvoidingView 
@@ -185,7 +185,6 @@ export default function Login({ navigation }) {
                   <View style={styles.inputGroup}>
                     <Text style={styles.label}>Email Address</Text>
                     <View style={styles.inputWrapper}>
-                      <Text style={styles.leftIconText}>[mail]</Text>
                       <TextInput
                         id="login-email"
                         style={styles.inputField}
@@ -211,7 +210,6 @@ export default function Login({ navigation }) {
                   <View style={styles.inputGroup}>
                     <Text style={styles.label}>Password</Text>
                     <View style={styles.inputWrapper}>
-                      <Text style={styles.leftIconText}>[lock]</Text>
                       <TextInput
                         id="login-password"
                         style={styles.inputField}

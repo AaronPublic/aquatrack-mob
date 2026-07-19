@@ -9,15 +9,9 @@ export default function SubAdminHome({ navigation }) {
   const [loading, setLoading] = useState(true);
   
   // Work Order State
-  const [hasActiveJob, setHasActiveJob] = useState(true);
+  const [hasActiveJob, setHasActiveJob] = useState(false);
   const [jobStatus, setJobStatus] = useState('ASSIGNED'); // ASSIGNED, IN_PROGRESS, RESOLVED
-  const [jobDetails, setJobDetails] = useState({
-    id: "job-101",
-    location: "Main Street Valve #45",
-    description: "Pressure drop reported nearby. Suspected line breach at section B-12. Multiple consumer complaints received in surrounding barangay.",
-    instructions: "Verify pressure gauges, inspect gaskets on section B-12, document all findings with photos before proceeding with repairs.",
-    imageUrl: "https://images.unsplash.com/photo-1584267385494-9fdf97b090f5?auto=format&fit=crop&w=600&q=80"
-  });
+  const [jobDetails, setJobDetails] = useState(null);
 
   const [advisories, setAdvisories] = useState([]);
 

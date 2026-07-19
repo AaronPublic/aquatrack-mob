@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, UIManager } from 'react-native';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import MapView, { Marker, Polygon } from 'react-native-maps';
 import { api } from '../../src/config/api';
 import { supabase } from '../../src/config/supabase';
 import styles from './FileComplaint.styles';
+
+const hasNativeMap = !!(UIManager.getViewManagerConfig && UIManager.getViewManagerConfig('AIRMap'));
 
 export default function FileComplaint({ navigation }) {
   const [rawText, setRawText] = useState('');
@@ -31,6 +33,7 @@ export default function FileComplaint({ navigation }) {
   const [isTriaging, setIsTriaging] = useState(false);
 
   const [loading, setLoading] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState(''); // Progress status text shown during submit
 
   // Ask for permissions on load
   useEffect(() => {
@@ -40,8 +43,8 @@ export default function FileComplaint({ navigation }) {
     })();
   }, []);
 
-  // Locate the user automatically on click
-  const handleLocateMe = async () => {
+  // Automatically locate user — used internally by handleSubmit
+  const locateUser = async () => {
     setIsLocating(true);
     setOutOfScope(false);
     try {
@@ -49,9 +52,7 @@ export default function FileComplaint({ navigation }) {
       if (status !== 'granted') {
         const ask = await Location.requestForegroundPermissionsAsync();
         if (ask.status !== 'granted') {
-          Alert.alert("Permission Denied", "GPS location permission is required to drop an accurate complaint pin.");
-          setIsLocating(false);
-          return;
+          throw new Error('GPS location permission is required to file a complaint.');
         }
       }
 
@@ -76,14 +77,15 @@ export default function FileComplaint({ navigation }) {
       if (locData && locData.success) {
         setBarangay(locData.barangay);
         setOutOfScope(false);
+        return { coords: newCoords, barangay: locData.barangay, outOfScope: false };
       } else {
-        // If API fails to detect local barangay, it's out of scope
-        setBarangay("Unknown Area");
+        setBarangay('Unknown Area');
         setOutOfScope(true);
+        return { coords: newCoords, barangay: 'Unknown Area', outOfScope: true };
       }
     } catch (err) {
       console.error(err);
-      Alert.alert("Location Error", "Could not query GPS position. Please drag the pin manually or try again.");
+      throw new Error(err.message || 'Could not query GPS position. Please try again.');
     } finally {
       setIsLocating(false);
     }
@@ -102,12 +104,8 @@ export default function FileComplaint({ navigation }) {
     }
   };
 
-  // Run AI Diagnostics on rawText
-  const handleRunAiTriage = async () => {
-    if (!rawText.trim()) {
-      Alert.alert("Input Required", "Please describe the problem first.");
-      return;
-    }
+  // Run AI Diagnostics — used internally by handleSubmit
+  const runAiTriage = async () => {
     setIsTriaging(true);
     setAiTriage(null);
     try {
@@ -116,49 +114,62 @@ export default function FileComplaint({ navigation }) {
         setAiTriage(data.result);
         setCategory(data.result.category);
         setUrgency(data.result.urgency);
-      } else {
-        throw new Error(data.error || "Triage failed");
+        return data.result;
       }
     } catch (err) {
-      console.error(err);
-      Alert.alert("AI Service Offline", "Could not complete real-time diagnostics. Defaulting parameters.");
+      console.error('AI triage failed, using defaults:', err);
     } finally {
       setIsTriaging(false);
     }
+    return null; // Graceful fallback — submission proceeds with defaults
   };
 
-  // Submit Complaint
+  // Unified Submit — automatically locates, triages with AI, uploads photo, and submits
   const handleSubmit = async () => {
     if (!rawText.trim()) {
-      Alert.alert("Validation Error", "Please fill in the problem description.");
-      return;
-    }
-    if (!hasLocation) {
-      Alert.alert("Validation Error", "Please locate the issue on the map.");
-      return;
-    }
-    if (outOfScope) {
-      Alert.alert("Out of Service Area", "Complaints can only be filed within the valid water district service area of City of San Fernando.");
+      Alert.alert('Validation Error', 'Please fill in the problem description.');
       return;
     }
 
     setLoading(true);
+    setSubmitStatus('');
     let finalImageUrl = null;
+    let triageResult = null;
+    let resolvedLocation = null;
 
     try {
-      // 1. Upload photo to Supabase storage if selected
+      // Step 1: Get current GPS location automatically
+      setSubmitStatus('Acquiring GPS location...');
+      resolvedLocation = await locateUser();
+
+      if (resolvedLocation.outOfScope) {
+        Alert.alert(
+          'Out of Service Area',
+          'Your current location is outside the City of San Fernando water district service area. Complaints can only be filed within the valid service boundary.'
+        );
+        setLoading(false);
+        setSubmitStatus('');
+        return;
+      }
+
+      // Step 2: Run AI diagnostics on the complaint text
+      setSubmitStatus('Running AI diagnostics...');
+      triageResult = await runAiTriage();
+
+      // Step 3: Upload photo to Supabase storage if selected
       if (photoUri) {
+        setSubmitStatus('Uploading photo...');
         setIsUploading(true);
         const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
         const response = await fetch(photoUri);
         const blob = await response.blob();
-        
+
         const { error: uploadError } = await supabase.storage
           .from('complaint-media')
           .upload(filename, blob, { contentType: 'image/jpeg' });
 
         if (uploadError) {
-          throw new Error("Photo upload failed: " + uploadError.message);
+          throw new Error('Photo upload failed: ' + uploadError.message);
         }
 
         const { data } = supabase.storage.from('complaint-media').getPublicUrl(filename);
@@ -166,20 +177,20 @@ export default function FileComplaint({ navigation }) {
         setIsUploading(false);
       }
 
-      // Get user session id
+      // Step 4: Submit complaint payload
+      setSubmitStatus('Submitting complaint...');
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id || null;
 
-      // 2. Submit complaint payload
       const payload = {
         rawText,
-        latitude: location.latitude,
-        longitude: location.longitude,
+        latitude: resolvedLocation.coords.latitude,
+        longitude: resolvedLocation.coords.longitude,
         imageUrl: finalImageUrl,
-        urgency,
-        category,
-        summary: aiTriage?.summary || null,
-        translatedText: aiTriage?.translatedText || null,
+        urgency: triageResult?.urgency || urgency,
+        category: triageResult?.category || category,
+        summary: triageResult?.summary || null,
+        translatedText: triageResult?.translatedText || null,
         userId,
       };
 
@@ -187,24 +198,27 @@ export default function FileComplaint({ navigation }) {
 
       if (result && result.success) {
         Alert.alert(
-          "Ticket Submitted",
-          `Complaint registered successfully! Barangay: ${result.barangay || barangay || 'Resolved'}.`,
-          [{ text: "OK", onPress: () => navigation.navigate('TrackComplaints') }]
+          'Ticket Submitted',
+          `Complaint registered successfully! Barangay: ${result.barangay || resolvedLocation.barangay || 'Resolved'}.`,
+          [{ text: 'OK', onPress: () => navigation.navigate('TrackComplaints') }]
         );
-        // Clear Form
+        // Clear form
         setRawText('');
         setPhotoUri(null);
         setAiTriage(null);
         setHasLocation(false);
+        setBarangay(null);
+        setOutOfScope(false);
       } else {
-        throw new Error(result.error || "Submission failed");
+        throw new Error(result.error || 'Submission failed');
       }
     } catch (err) {
       console.error(err);
-      Alert.alert("Submission Error", err.message || "Failed to submit complaint. Please try again.");
+      Alert.alert('Submission Error', err.message || 'Failed to submit complaint. Please try again.');
     } finally {
       setLoading(false);
       setIsUploading(false);
+      setSubmitStatus('');
     }
   };
 
@@ -243,17 +257,6 @@ export default function FileComplaint({ navigation }) {
             <Image source={{ uri: photoUri }} style={styles.previewImage} />
           )}
 
-          <TouchableOpacity 
-            style={[styles.locationButton, { backgroundColor: '#0ea5e9' }]}
-            onPress={handleRunAiTriage}
-            disabled={isTriaging}
-          >
-            {isTriaging ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text style={styles.locationButtonText}>Get AI Diagnostics</Text>
-            )}
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -281,61 +284,62 @@ export default function FileComplaint({ navigation }) {
       )}
 
       <View style={styles.card}>
-        <Text style={styles.sectionTitle}>2. Geolocation Map</Text>
-
-        <TouchableOpacity 
-          style={[styles.locationButton, isLocating && { opacity: 0.8 }]}
-          onPress={handleLocateMe}
-          disabled={isLocating}
-        >
-          {isLocating ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text style={styles.locationButtonText}>Get Current Location</Text>
-          )}
-        </TouchableOpacity>
+        <Text style={styles.sectionTitle}>2. Location Preview</Text>
 
         <View style={styles.mapContainer}>
-          <MapView
-            style={styles.map}
-            initialRegion={{
-              latitude: location.latitude,
-              longitude: location.longitude,
-              latitudeDelta: 0.05,
-              longitudeDelta: 0.05,
-            }}
-            region={{
-              latitude: location.latitude,
-              longitude: location.longitude,
-              latitudeDelta: 0.015,
-              longitudeDelta: 0.015,
-            }}
-          >
-            {hasLocation && (
-              <Marker
-                coordinate={location}
-                draggable
-                onDragEnd={(e) => {
-                  const newCoords = e.nativeEvent.coordinate;
-                  setLocation(newCoords);
-                  // Verify new coords are inside geofence via API
-                  api.post('/api/locate-barangay', {
-                    latitude: newCoords.latitude,
-                    longitude: newCoords.longitude,
-                  }).then((locData) => {
-                    if (locData && locData.success) {
-                      setBarangay(locData.barangay);
-                      setOutOfScope(false);
-                    } else {
-                      setBarangay("Unknown Area");
-                      setOutOfScope(true);
-                    }
-                  });
-                }}
-                pinColor="red"
-              />
-            )}
-          </MapView>
+          {hasNativeMap ? (
+            <MapView
+              style={styles.map}
+              initialRegion={{
+                latitude: location.latitude,
+                longitude: location.longitude,
+                latitudeDelta: 0.05,
+                longitudeDelta: 0.05,
+              }}
+              region={{
+                latitude: location.latitude,
+                longitude: location.longitude,
+                latitudeDelta: 0.015,
+                longitudeDelta: 0.015,
+              }}
+            >
+              {hasLocation && (
+                <Marker
+                  coordinate={location}
+                  draggable
+                  onDragEnd={(e) => {
+                    const newCoords = e.nativeEvent.coordinate;
+                    setLocation(newCoords);
+                    // Verify new coords are inside geofence via API
+                    api.post('/api/locate-barangay', {
+                      latitude: newCoords.latitude,
+                      longitude: newCoords.longitude,
+                    }).then((locData) => {
+                      if (locData && locData.success) {
+                        setBarangay(locData.barangay);
+                        setOutOfScope(false);
+                      } else {
+                        setBarangay("Unknown Area");
+                        setOutOfScope(true);
+                      }
+                    });
+                  }}
+                  pinColor="red"
+                />
+              )}
+            </MapView>
+          ) : (
+            <View style={{ flex: 1, backgroundColor: '#f1f5f9', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+              <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#001e66', marginBottom: 4, textAlign: 'center' }}>
+                {hasLocation ? 'Location Acquired' : 'Awaiting Location'}
+              </Text>
+              <Text style={{ fontSize: 11, color: '#525f7f', textAlign: 'center', lineHeight: 15 }}>
+                {hasLocation
+                  ? `Your GPS coordinates have been captured. Barangay: ${barangay || 'Detecting...'}`
+                  : 'Your current location will be captured automatically when you submit your complaint.'}
+              </Text>
+            </View>
+          )}
         </View>
 
         {hasLocation && (
@@ -358,15 +362,23 @@ export default function FileComplaint({ navigation }) {
         )}
       </View>
 
+      {/* Submit Status Indicator */}
+      {loading && submitStatus ? (
+        <View style={styles.statusIndicator}>
+          <ActivityIndicator color="#001e66" size="small" />
+          <Text style={styles.statusIndicatorText}>{submitStatus}</Text>
+        </View>
+      ) : null}
+
       <TouchableOpacity 
-        style={[styles.submitBtn, (loading || outOfScope || !hasLocation) && styles.submitBtnDisabled]}
+        style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
         onPress={handleSubmit}
-        disabled={loading || outOfScope || !hasLocation}
+        disabled={loading}
       >
-        {loading || isUploading ? (
+        {loading ? (
           <ActivityIndicator color="#fff" size="small" />
         ) : (
-          <Text style={styles.submitBtnText}>Submit Complaint Ticket</Text>
+          <Text style={styles.submitBtnText}>Submit</Text>
         )}
       </TouchableOpacity>
     </ScrollView>

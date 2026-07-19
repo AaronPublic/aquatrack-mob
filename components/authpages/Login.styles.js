@@ -6,6 +6,9 @@ export default StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff02', // Keep background base white
   },
+  backgroundImageStyle: {
+    opacity: 0.32, // Restored to original opacity
+  },
   container: {
     flex: 1,
     backgroundColor: 'transparent', // Transparent container to show background image

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Text } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../config/supabase';
 import { api } from '../config/api';
 import { theme } from '../config/theme';
@@ -16,6 +17,8 @@ import FileComplaint from '../../components/consumerpages/FileComplaint';
 import TrackComplaints from '../../components/consumerpages/TrackComplaints';
 import Announcements from '../../components/consumerpages/Announcements';
 import ContactSupport from '../../components/consumerpages/ContactSupport';
+import ManageAccount from '../../components/consumerpages/ManageAccount';
+import ComplaintHistory from '../../components/consumerpages/ComplaintHistory';
 
 // Sub-Admin Screens
 import SubAdminHome from '../../components/subadminpages/SubAdminHome';
@@ -26,22 +29,27 @@ import SubAdminAdvisories from '../../components/subadminpages/SubAdminAdvisorie
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Muted Tab styles (Text-only segmented buttons matching web platform upgrades)
+// Muted Tab styles (Premium floating visual bar matching web platform upgrades)
 const getTabBarOptions = () => ({
   tabBarActiveTintColor: theme.colors.accent,
   tabBarInactiveTintColor: theme.colors.textMuted,
-  tabBarLabelStyle: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-  },
+  tabBarShowLabel: false, // Sleek modern icon-only aesthetic
   tabBarStyle: {
     backgroundColor: theme.colors.white,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    height: 60,
-    paddingBottom: 8,
-    paddingTop: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    height: 64,
+    borderRadius: 24,
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    paddingBottom: 0,
+    shadowColor: '#0B1C3F',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 8,
   },
   headerStyle: {
     backgroundColor: theme.colors.white,
@@ -51,7 +59,7 @@ const getTabBarOptions = () => ({
     shadowOpacity: 0,
   },
   headerTitleStyle: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'black',
     color: theme.colors.primary,
     textTransform: 'uppercase',
@@ -61,31 +69,60 @@ const getTabBarOptions = () => ({
 
 function ConsumerTabNavigator() {
   return (
-    <Tab.Navigator screenOptions={getTabBarOptions()}>
+    <Tab.Navigator 
+      screenOptions={({ route }) => ({
+        ...getTabBarOptions(),
+        tabBarActiveTintColor: theme.colors.accent, // Dynamic Brand Azure Blue active highlight
+        tabBarIcon: ({ color, size, focused }) => {
+          let iconName;
+          if (route.name === 'ConsumerHome') {
+            iconName = focused ? 'home' : 'home-outline';
+          } else if (route.name === 'FileComplaint') {
+            iconName = focused ? 'document-text' : 'document-text-outline';
+          } else if (route.name === 'TrackComplaints') {
+            iconName = focused ? 'ticket' : 'ticket-outline';
+          } else if (route.name === 'Announcements') {
+            iconName = focused ? 'megaphone' : 'megaphone-outline';
+          }
+          
+          return (
+            <View style={{ alignItems: 'center', justifyContent: 'center', height: '100%', paddingTop: 4 }}>
+              <Ionicons name={iconName} size={20} color={color} />
+              {focused && (
+                <View 
+                  style={{ 
+                    width: 4, 
+                    height: 4, 
+                    borderRadius: 2, 
+                    backgroundColor: color, 
+                    marginTop: 4 
+                  }} 
+                />
+              )}
+            </View>
+          );
+        },
+      })}
+    >
       <Tab.Screen 
         name="ConsumerHome" 
         component={ConsumerHome} 
-        options={{ title: 'Home', tabBarLabel: 'Home', headerTitle: 'AquaTrack Home' }} 
+        options={{ title: 'Home', headerShown: false }} 
       />
       <Tab.Screen 
         name="FileComplaint" 
         component={FileComplaint} 
-        options={{ title: 'Report', tabBarLabel: 'Report', headerTitle: 'File Ticket' }} 
+        options={{ title: 'Report', headerTitle: 'File Ticket' }} 
       />
       <Tab.Screen 
         name="TrackComplaints" 
         component={TrackComplaints} 
-        options={{ title: 'Tickets', tabBarLabel: 'Tickets', headerTitle: 'Triage History' }} 
+        options={{ title: 'Tickets', headerTitle: 'Triage History' }} 
       />
       <Tab.Screen 
         name="Announcements" 
         component={Announcements} 
-        options={{ title: 'Advisories', tabBarLabel: 'Advisories', headerTitle: 'Bulletins' }} 
-      />
-      <Tab.Screen 
-        name="ContactSupport" 
-        component={ContactSupport} 
-        options={{ title: 'Support', tabBarLabel: 'Support', headerTitle: 'CSFWD support' }} 
+        options={{ title: 'Advisories', headerTitle: 'Bulletins' }} 
       />
     </Tab.Navigator>
   );
@@ -93,26 +130,60 @@ function ConsumerTabNavigator() {
 
 function SubAdminTabNavigator() {
   return (
-    <Tab.Navigator screenOptions={getTabBarOptions()}>
+    <Tab.Navigator 
+      screenOptions={({ route }) => ({
+        ...getTabBarOptions(),
+        tabBarActiveTintColor: theme.colors.accent,
+        tabBarIcon: ({ color, size, focused }) => {
+          let iconName;
+          if (route.name === 'SubAdminHome') {
+            iconName = focused ? 'construct' : 'construct-outline';
+          } else if (route.name === 'SubAdminComplaints') {
+            iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
+          } else if (route.name === 'SubAdminTelemetry') {
+            iconName = focused ? 'pulse' : 'pulse-outline';
+          } else if (route.name === 'SubAdminAdvisories') {
+            iconName = focused ? 'notifications' : 'notifications-outline';
+          }
+          
+          return (
+            <View style={{ alignItems: 'center', justifyContent: 'center', height: '100%', paddingTop: 4 }}>
+              <Ionicons name={iconName} size={20} color={color} />
+              {focused && (
+                <View 
+                  style={{ 
+                    width: 4, 
+                    height: 4, 
+                    borderRadius: 2, 
+                    backgroundColor: color, 
+                    marginTop: 4 
+                  }} 
+                />
+              )}
+            </View>
+          );
+        },
+      })}
+    >
       <Tab.Screen 
         name="SubAdminHome" 
         component={SubAdminHome} 
-        options={{ title: 'My Job', tabBarLabel: 'My Job', headerTitle: 'Technician Command' }} 
+        options={{ title: 'My Job', headerTitle: 'Technician Command' }} 
       />
       <Tab.Screen 
         name="SubAdminComplaints" 
         component={SubAdminComplaints} 
-        options={{ title: 'Triage', tabBarLabel: 'Triage', headerTitle: 'Citizen Complaints' }} 
+        options={{ title: 'Triage', headerTitle: 'Citizen Complaints' }} 
       />
       <Tab.Screen 
         name="SubAdminTelemetry" 
         component={SubAdminTelemetry} 
-        options={{ title: 'Telemetry', tabBarLabel: 'Telemetry', headerTitle: 'Sensor Network' }} 
+        options={{ title: 'Telemetry', headerTitle: 'Sensor Network' }} 
       />
       <Tab.Screen 
         name="SubAdminAdvisories" 
         component={SubAdminAdvisories} 
-        options={{ title: 'Advisories', tabBarLabel: 'Advisories', headerTitle: 'Staff Notices' }} 
+        options={{ title: 'Advisories', headerTitle: 'Staff Notices' }} 
       />
     </Tab.Navigator>
   );
@@ -167,6 +238,39 @@ export default function RootNavigator() {
       <Stack.Screen name="Register" component={Register} />
       <Stack.Screen name="ConsumerTab" component={ConsumerTabNavigator} />
       <Stack.Screen name="SubAdminTab" component={SubAdminTabNavigator} />
+      <Stack.Screen 
+        name="ContactSupport" 
+        component={ContactSupport} 
+        options={{ 
+          headerShown: true, 
+          headerTitle: 'CONTACT SUPPORT',
+          headerTintColor: theme.colors.primary,
+          headerTitleStyle: { fontSize: 13, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 },
+          headerStyle: { backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border }
+        }} 
+      />
+      <Stack.Screen 
+        name="ManageAccount" 
+        component={ManageAccount} 
+        options={{ 
+          headerShown: true, 
+          headerTitle: 'Account Settings',
+          headerTintColor: theme.colors.primary,
+          headerTitleStyle: { fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 },
+          headerStyle: { backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border }
+        }} 
+      />
+      <Stack.Screen 
+        name="ComplaintHistory" 
+        component={ComplaintHistory} 
+        options={{ 
+          headerShown: true, 
+          headerTitle: 'Archived Tickets',
+          headerTintColor: theme.colors.primary,
+          headerTitleStyle: { fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 },
+          headerStyle: { backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border }
+        }} 
+      />
     </Stack.Navigator>
   );
 }
