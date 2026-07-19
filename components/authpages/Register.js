@@ -3,6 +3,7 @@ import { View, Text, Image, TextInput, TouchableOpacity, ActivityIndicator, Keyb
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import styles from './Register.styles';
+import { useAuthStore } from '../../src/store/useAuthStore';
 
 export default function Register({ navigation }) {
   const [name, setName] = useState('');
@@ -68,6 +69,12 @@ export default function Register({ navigation }) {
         email: email,
         fullName: name,
       });
+
+      // Synchronize session and fetch profile if logged in immediately
+      if (data.session) {
+        useAuthStore.getState().setSession(data.session);
+        await useAuthStore.getState().fetchProfile(data.user.id);
+      }
 
       setLoading(false);
       Alert.alert(

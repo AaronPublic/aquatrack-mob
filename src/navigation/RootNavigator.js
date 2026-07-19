@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { View, ActivityIndicator, Text } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, ActivityIndicator } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../config/supabase';
-import { api } from '../config/api';
 import { theme } from '../config/theme';
+import { useAuthStore } from '../store/useAuthStore';
+import { requestUserPermission, registerNotificationListeners } from '../config/fcm';
 
 // Auth Screens
 import Login from '../../components/authpages/Login';
@@ -29,11 +30,10 @@ import SubAdminAdvisories from '../../components/subadminpages/SubAdminAdvisorie
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Muted Tab styles (Premium floating visual bar matching web platform upgrades)
 const getTabBarOptions = () => ({
   tabBarActiveTintColor: theme.colors.accent,
   tabBarInactiveTintColor: theme.colors.textMuted,
-  tabBarShowLabel: false, // Sleek modern icon-only aesthetic
+  tabBarShowLabel: false,
   tabBarStyle: {
     backgroundColor: theme.colors.white,
     borderWidth: 1,
@@ -72,7 +72,7 @@ function ConsumerTabNavigator() {
     <Tab.Navigator 
       screenOptions={({ route }) => ({
         ...getTabBarOptions(),
-        tabBarActiveTintColor: theme.colors.accent, // Dynamic Brand Azure Blue active highlight
+        tabBarActiveTintColor: theme.colors.accent,
         tabBarIcon: ({ color, size, focused }) => {
           let iconName;
           if (route.name === 'ConsumerHome') {
@@ -190,41 +190,66 @@ function SubAdminTabNavigator() {
 }
 
 export default function RootNavigator() {
-  const [loading, setLoading] = useState(true);
-  const [initialRoute, setInitialRoute] = useState('Login');
+  const { session, profile, loading, setSession, fetchProfile, signOut } = useAuthStore();
 
   useEffect(() => {
-    const checkUserSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          // Verify user role
-          const profile = await api.post('/api/auth/profile', { userId: session.user.id });
-          if (profile?.role === 'ADMIN') {
-            await supabase.auth.signOut();
-            setInitialRoute('Login');
-          } else if (profile?.role === 'FIELD_ENGINEER_TECHNICIAN') {
-            setInitialRoute('SubAdminTab');
-          } else {
-            setInitialRoute('ConsumerTab');
-          }
+    // Sync initial session on mount
+    const syncSession = async () => {
+      const { data: { session: activeSession } } = await supabase.auth.getSession();
+      setSession(activeSession);
+      if (activeSession) {
+        const profileResult = await fetchProfile(activeSession.user.id);
+        if (profileResult) {
+          await requestUserPermission(activeSession.user.id);
         }
-      } catch (err) {
-        console.error("Session auto-route error:", err);
-      } finally {
-        setLoading(false);
       }
     };
-    checkUserSession();
+    
+    syncSession();
+
+    // Listen to Supabase Auth State changes and sync with Zustand
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      setSession(newSession);
+      if (newSession) {
+        const fetchedProfile = await fetchProfile(newSession.user.id);
+        if (fetchedProfile) {
+          if (fetchedProfile.role === 'ADMIN') {
+            await signOut();
+          } else {
+            await requestUserPermission(newSession.user.id);
+          }
+        }
+      } else {
+        useAuthStore.setState({ profile: null });
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  if (loading) {
+  // Notification handler setup inside navigation stack mount context
+  useEffect(() => {
+    if (session) {
+      const unsubscribe = registerNotificationListeners();
+      return unsubscribe;
+    }
+  }, [session]);
+
+  if (loading && !session) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f1f5f9' }}>
         <ActivityIndicator color="#001e66" size="large" />
       </View>
     );
   }
+
+  const initialRoute = session
+    ? profile?.role === 'FIELD_ENGINEER_TECHNICIAN'
+      ? 'SubAdminTab'
+      : 'ConsumerTab'
+    : 'Login';
 
   return (
     <Stack.Navigator 
@@ -234,43 +259,53 @@ export default function RootNavigator() {
         animation: 'slide_from_right'
       }}
     >
-      <Stack.Screen name="Login" component={Login} />
-      <Stack.Screen name="Register" component={Register} />
-      <Stack.Screen name="ConsumerTab" component={ConsumerTabNavigator} />
-      <Stack.Screen name="SubAdminTab" component={SubAdminTabNavigator} />
-      <Stack.Screen 
-        name="ContactSupport" 
-        component={ContactSupport} 
-        options={{ 
-          headerShown: true, 
-          headerTitle: 'CONTACT SUPPORT',
-          headerTintColor: theme.colors.primary,
-          headerTitleStyle: { fontSize: 13, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 },
-          headerStyle: { backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border }
-        }} 
-      />
-      <Stack.Screen 
-        name="ManageAccount" 
-        component={ManageAccount} 
-        options={{ 
-          headerShown: true, 
-          headerTitle: 'Account Settings',
-          headerTintColor: theme.colors.primary,
-          headerTitleStyle: { fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 },
-          headerStyle: { backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border }
-        }} 
-      />
-      <Stack.Screen 
-        name="ComplaintHistory" 
-        component={ComplaintHistory} 
-        options={{ 
-          headerShown: true, 
-          headerTitle: 'Archived Tickets',
-          headerTintColor: theme.colors.primary,
-          headerTitleStyle: { fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 },
-          headerStyle: { backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border }
-        }} 
-      />
+      {!session ? (
+        <>
+          <Stack.Screen name="Login" component={Login} />
+          <Stack.Screen name="Register" component={Register} />
+        </>
+      ) : (
+        <>
+          {profile?.role === 'FIELD_ENGINEER_TECHNICIAN' ? (
+            <Stack.Screen name="SubAdminTab" component={SubAdminTabNavigator} />
+          ) : (
+            <Stack.Screen name="ConsumerTab" component={ConsumerTabNavigator} />
+          )}
+          <Stack.Screen 
+            name="ContactSupport" 
+            component={ContactSupport} 
+            options={{ 
+              headerShown: true, 
+              headerTitle: 'CONTACT SUPPORT',
+              headerTintColor: theme.colors.primary,
+              headerTitleStyle: { fontSize: 13, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 },
+              headerStyle: { backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border }
+            }} 
+          />
+          <Stack.Screen 
+            name="ManageAccount" 
+            component={ManageAccount} 
+            options={{ 
+              headerShown: true, 
+              headerTitle: 'Account Settings',
+              headerTintColor: theme.colors.primary,
+              headerTitleStyle: { fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 },
+              headerStyle: { backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border }
+            }} 
+          />
+          <Stack.Screen 
+            name="ComplaintHistory" 
+            component={ComplaintHistory} 
+            options={{ 
+              headerShown: true, 
+              headerTitle: 'Archived Tickets',
+              headerTintColor: theme.colors.primary,
+              headerTitleStyle: { fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 },
+              headerStyle: { backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border }
+            }} 
+          />
+        </>
+      )}
     </Stack.Navigator>
   );
 }

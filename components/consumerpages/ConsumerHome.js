@@ -5,6 +5,7 @@ import { api } from '../../src/config/api';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import styles from './ConsumerHome.styles';
+import { useAuthStore } from '../../src/store/useAuthStore';
 
 const statusConfigs = {
   PENDING: { label: "Pending Review", text: "#b45309", bg: "#fef3c7", dot: "#f59e0b" },
@@ -129,7 +130,7 @@ export default function ConsumerHome({ navigation }) {
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
+      await useAuthStore.getState().signOut();
       navigation.reset({
         index: 0,
         routes: [{ name: 'Login' }],

@@ -3,6 +3,7 @@ import { View, Text, Image, TextInput, TouchableOpacity, ActivityIndicator, Keyb
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import styles from './Login.styles';
+import { useAuthStore } from '../../src/store/useAuthStore';
 
 export default function Login({ navigation }) {
   const [email, setEmail] = useState('');
@@ -74,12 +75,14 @@ export default function Login({ navigation }) {
         return;
       }
 
-      // Query local DB profile via API to resolve user role
-      const profile = await api.post('/api/auth/profile', { userId: data.user.id });
+      // Query local DB profile via Zustand store
+      const profile = await useAuthStore.getState().fetchProfile(data.user.id);
+      useAuthStore.getState().setSession(data.session);
 
       if (profile && profile.role) {
         if (profile.role === 'ADMIN') {
           await supabase.auth.signOut();
+          useAuthStore.getState().signOut();
           setError("Access Denied: Administrator accounts are not allowed to log in on the mobile platform. Please use the Web Dashboard.");
           setLoading(false);
           return;
@@ -95,16 +98,12 @@ export default function Login({ navigation }) {
           });
         }
       } else {
-        // Fallback default
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'ConsumerTab' }],
-        });
+        setError("User profile details could not be retrieved from the server. Contact support.");
+        setLoading(false);
       }
     } catch (err) {
       console.error(err);
-      setError("Failed to connect to the server. Please check your network and try again.");
-    } finally {
+      setError(err.message || "An unexpected login error occurred.");
       setLoading(false);
     }
   };

@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicat
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import styles from './SubAdminHome.styles';
+import { useAuthStore } from '../../src/store/useAuthStore';
 
 export default function SubAdminHome({ navigation }) {
   const [techName, setTechName] = useState('Technician');
@@ -97,7 +98,7 @@ export default function SubAdminHome({ navigation }) {
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
+      await useAuthStore.getState().signOut();
       navigation.reset({
         index: 0,
         routes: [{ name: 'Login' }],
