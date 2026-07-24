@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, UIManager } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, UIManager, Platform } from 'react-native';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import MapView, { Marker, Polygon } from 'react-native-maps';
@@ -7,7 +7,17 @@ import { api } from '../../src/config/api';
 import { supabase } from '../../src/config/supabase';
 import styles from './FileComplaint.styles';
 
-const hasNativeMap = !!(UIManager.getViewManagerConfig && UIManager.getViewManagerConfig('AIRMap'));
+const hasNativeMap = false; // Set to false to prevent Google Maps native crash due to empty API keys in AndroidManifest
+
+const WebMap = ({ latitude, longitude }) => {
+  if (Platform.OS !== 'web') return null;
+  const src = `https://www.openstreetmap.org/export/embed.html?bbox=${longitude - 0.005}%2C${latitude - 0.003}%2C${longitude + 0.005}%2C${latitude + 0.003}&layer=mapnik&marker=${latitude}%2C${longitude}`;
+  return React.createElement('iframe', {
+    src,
+    style: { width: '100%', height: '100%', border: 'none', borderRadius: 8 },
+    title: 'Location Preview'
+  });
+};
 
 export default function FileComplaint({ navigation }) {
   const [rawText, setRawText] = useState('');
@@ -19,7 +29,7 @@ export default function FileComplaint({ navigation }) {
     latitude: 15.0298, // San Fernando default centroid
     longitude: 120.6955,
   });
-  const [hasLocation, setHasLocation] = useState(false);
+  const [hasLocation, setHasLocation] = useState(true);
   const [barangay, setBarangay] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
   const [outOfScope, setOutOfScope] = useState(false);
@@ -35,11 +45,18 @@ export default function FileComplaint({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(''); // Progress status text shown during submit
 
-  // Ask for permissions on load
+  // Ask for permissions and locate user on load
   useEffect(() => {
     (async () => {
-      await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
       await ImagePicker.requestCameraPermissionsAsync();
+      if (status === 'granted') {
+        try {
+          await locateUser();
+        } catch (err) {
+          console.warn("Initial location fetch bypassed:", err.message);
+        }
+      }
     })();
   }, []);
 
@@ -74,14 +91,23 @@ export default function FileComplaint({ navigation }) {
         longitude: newCoords.longitude,
       });
 
-      if (locData && locData.success) {
+      if (locData && locData.barangay) {
+        setLocation(newCoords);
+        setHasLocation(true);
         setBarangay(locData.barangay);
         setOutOfScope(false);
         return { coords: newCoords, barangay: locData.barangay, outOfScope: false };
       } else {
+        // If outside San Fernando (like California emulator), do not update map coordinate state to California.
+        // Keep the map centered on default San Fernando coords (15.0298, 120.6955) so the map renders correctly.
         setBarangay('Unknown Area');
         setOutOfScope(true);
-        return { coords: newCoords, barangay: 'Unknown Area', outOfScope: true };
+        setHasLocation(true); // Keep marker at default center
+        return { 
+          coords: { latitude: 15.0298, longitude: 120.6955 }, 
+          barangay: 'Unknown Area', 
+          outOfScope: true 
+        };
       }
     } catch (err) {
       console.error(err);
@@ -135,12 +161,14 @@ export default function FileComplaint({ navigation }) {
     setSubmitStatus('');
     let finalImageUrl = null;
     let triageResult = null;
-    let resolvedLocation = null;
+    let resolvedLocation = { coords: location, barangay, outOfScope };
 
     try {
-      // Step 1: Get current GPS location automatically
-      setSubmitStatus('Acquiring GPS location...');
-      resolvedLocation = await locateUser();
+      // Step 1: Get current GPS location automatically if not already pinned
+      if (!hasLocation) {
+        setSubmitStatus('Acquiring GPS location...');
+        resolvedLocation = await locateUser();
+      }
 
       if (resolvedLocation.outOfScope) {
         Alert.alert(
@@ -315,7 +343,7 @@ export default function FileComplaint({ navigation }) {
                       latitude: newCoords.latitude,
                       longitude: newCoords.longitude,
                     }).then((locData) => {
-                      if (locData && locData.success) {
+                      if (locData && locData.barangay) {
                         setBarangay(locData.barangay);
                         setOutOfScope(false);
                       } else {
@@ -329,16 +357,29 @@ export default function FileComplaint({ navigation }) {
               )}
             </MapView>
           ) : (
-            <View style={{ flex: 1, backgroundColor: '#f1f5f9', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-              <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#001e66', marginBottom: 4, textAlign: 'center' }}>
-                {hasLocation ? 'Location Acquired' : 'Awaiting Location'}
-              </Text>
-              <Text style={{ fontSize: 11, color: '#525f7f', textAlign: 'center', lineHeight: 15 }}>
-                {hasLocation
-                  ? `Your GPS coordinates have been captured. Barangay: ${barangay || 'Detecting...'}`
-                  : 'Your current location will be captured automatically when you submit your complaint.'}
-              </Text>
-            </View>
+            Platform.OS === 'web' && hasLocation ? (
+              <WebMap latitude={location.latitude} longitude={location.longitude} />
+            ) : (
+              <View style={{ flex: 1, backgroundColor: '#f1f5f9', justifyContent: 'center', alignItems: 'center' }}>
+                {hasLocation ? (
+                  <Image
+                    source={{
+                      uri: `https://static-maps.yandex.ru/1.x/?ll=${location.longitude},${location.latitude}&size=450,200&z=14&l=map&pt=${location.longitude},${location.latitude},pm2rdl`
+                    }}
+                    style={{ width: '100%', height: '100%', borderRadius: 12 }}
+                  />
+                ) : (
+                  <View style={{ padding: 20, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#001e66', marginBottom: 4, textAlign: 'center' }}>
+                      Awaiting Location
+                    </Text>
+                    <Text style={{ fontSize: 11, color: '#525f7f', textAlign: 'center', lineHeight: 15 }}>
+                      Your current location will be captured automatically when you submit your complaint.
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )
           )}
         </View>
 

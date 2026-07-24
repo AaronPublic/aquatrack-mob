@@ -1,9 +1,9 @@
 import { Platform } from 'react-native';
 
-// Standard fallback to host machine for Android emulator (10.0.2.2) and iOS/Web (localhost)
+// Pointing to host machine local IP address so both physical devices and emulators on the same Wi-Fi can connect
 export const API_BASE_URL = Platform.select({
-  android: 'http://10.0.2.2:3000',
-  default: 'http://localhost:3000',
+  android: 'http://192.168.100.64:3000',
+  default: 'http://192.168.100.64:3000',
 });
 
 export const api = {

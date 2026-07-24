@@ -109,8 +109,8 @@ export default function Login({ navigation }) {
   };
 
   const getButtonText = () => {
-    if (authMethod === 'BILLING') return '[send] Sign In with Billing ID';
-    return '[send] Sign In with Credentials';
+    if (authMethod === 'BILLING') return 'Sign In';
+    return 'Sign In';
   };
 
   return (
@@ -237,7 +237,7 @@ export default function Login({ navigation }) {
                   <View style={styles.inputGroup}>
                     <Text style={styles.label}>Billing ID</Text>
                     <View style={styles.inputWrapper}>
-                      <Text style={styles.leftIconText}>[card]</Text>
+                      <Text style={styles.leftIconText}></Text>
                       <TextInput
                         id="login-billing-id"
                         style={styles.inputField}
@@ -262,7 +262,7 @@ export default function Login({ navigation }) {
                       {isScanning ? (
                         <ActivityIndicator color="#fff" size="small" />
                       ) : (
-                        <Text style={styles.qrScanButtonText}>[QR Scan] Scan Statement QR Code</Text>
+                        <Text style={styles.qrScanButtonText}>QR Scan</Text>
                       )}
                     </TouchableOpacity>
                   </View>

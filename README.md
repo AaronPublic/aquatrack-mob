@@ -88,6 +88,69 @@ This compiles the native packages and installs a custom **AquaTrack** developer 
 
 ---
 
+## 📦 Generating a Standalone APK for Physical Devices
+
+If you want to compile an installer file (`.apk`) to install and run the app directly on a physical Android phone:
+
+### 1. Configure the Backend API (Wi-Fi local IP)
+Because a physical phone cannot connect to `localhost`, you must update the mobile API base URL to your computer's local Wi-Fi IP address:
+*   Find your computer's local IP (open Command Prompt and type `ipconfig`, look for the `IPv4 Address` under your active Wi-Fi connection, e.g. `192.168.100.64`).
+*   Open the mobile API configuration file: [api.js](file:///C:/Users/AJ/CAPSTONE/aquatrack-mob/src/config/api.js) and update the IP:
+    ```javascript
+    export const API_BASE_URL = Platform.select({
+      android: 'http://192.168.100.64:3000', // Replace with your actual local IPv4 address
+      default: 'http://192.168.100.64:3000',
+    });
+    ```
+*   Make sure both your phone and your computer are connected to the **same Wi-Fi network**.
+*   Start your Next.js web server bound to all local network interfaces so your phone can reach it:
+    ```bash
+    npm run dev -- -H 0.0.0.0
+    ```
+
+---
+
+### Option A: Standalone Release APK (No Packager Required)
+Use this option if you want to distribute the app to your groupmates or test independently from your computer. The JavaScript code is compiled inside the APK.
+*   **Compile command**:
+    ```bash
+    cd android
+    ./gradlew assembleRelease
+    ```
+*   **Installer location**:
+    `C:\Users\AJ\CAPSTONE\aquatrack-mob\android\app\build\outputs\apk\release\app-release.apk`
+*   **Do I need to rebuild for every change?**
+    **Yes.** Because the code is packaged inside the app, any updates you write in your JavaScript files will require you to rebuild (`./gradlew assembleRelease`) and reinstall the APK.
+
+---
+
+### Option B: Debug APK + USB Port Forwarding (Recommended for Active Coding)
+Use this option during active development to get **instant hot-reloading on your physical phone** without ever rebuilding the APK.
+1.  **Compile command**:
+    ```bash
+    cd android
+    ./gradlew clean
+    ./gradlew assembleDebug
+    ```
+2.  **Installer location**:
+    `C:\Users\AJ\CAPSTONE\aquatrack-mob\android\app\build\outputs\apk\debug\app-debug.apk` (Install this on your phone).
+3.  **Set up Port Forwarding (Bypasses "Unable to load script" error)**:
+    *   Connect your phone to your PC via a USB cable.
+    *   Enable **USB Debugging** on your phone (inside Settings -> Developer Options).
+    *   Open a terminal on your computer and run this command:
+        ```bash
+        adb reverse tcp:8081 tcp:8081
+        ```
+        *(This forces your phone to route all React Native packager requests back to your PC over the USB cable).*
+4.  **Run the packager**:
+    ```bash
+    npm run start
+    ```
+5.  **Do I need to rebuild for every change?**
+    **No!** Open the app on your phone. Any changes you save on your PC will automatically hot-reload on your phone instantly over USB.
+
+---
+
 ## 💻 Daily Development Workflow
 
 Once the custom developer client app is installed on your emulator, you **do not** need to re-run the 3-minute compilation command again!
@@ -128,9 +191,12 @@ We have saved step-by-step implementation plans in the project's brain artifacts
 *   **Expected**: The app bypasses the Login screen and opens the home dashboard instantly.
 
 ### 2. Push Notifications
-*   Log into the app on the emulator and confirm a `Device Push Token (FCM)` is logged in the terminal.
-*   Open the Next.js Web Admin dashboard and publish a new community advisory.
-*   **Expected**: The notification slides down as a banner at the top of the emulator screen.
+*   **Community Advisories**: Log into the mobile app, open the Web Admin dashboard, and publish a new community advisory.
+    *   **Expected**: A push notification banner slides down at the top of your phone/emulator screen immediately.
+*   **Ticket Status Updates**: Submit a complaint in the mobile app. Log into the Web Admin dashboard and change the status of that complaint (e.g. from `PENDING` to `ONGOING` or `RESOLVED`).
+    *   **Expected**: Your phone receives a push notification saying: *"Complaint Status Updated: Your ticket regarding '[Ticket Title]' is now 'ONGOING'"*.
+*   **Technician Job Assignments**: Log into the Web Admin dashboard, select a complaint, and assign it to a technician account (e.g., `tech@aquatrack.com`).
+    *   **Expected**: The technician's phone receives a push notification saying: *"New Work Order Assigned: You have been assigned a new job: '[Ticket Title]'"*.
 
 ### 3. AI-Assisted Diagnostics
 *   Open the mobile app and go to the **File Report** screen.
