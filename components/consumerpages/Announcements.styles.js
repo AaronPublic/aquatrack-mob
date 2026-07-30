@@ -24,8 +24,8 @@ export default StyleSheet.create({
   // Segment Tabs
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#DFE7F2',
-    borderRadius: 12,
+    backgroundColor: '#E6ECF5',
+    borderRadius: 14,
     padding: 4,
     marginHorizontal: 16,
     marginBottom: 8,
@@ -33,24 +33,24 @@ export default StyleSheet.create({
   tabButton: {
     flex: 1,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   tabButtonActive: {
     backgroundColor: theme.colors.primary,
     shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   tabText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 'bold',
-    color: '#001e6699',
+    color: '#627D98',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   tabTextActive: {
     color: theme.colors.white,
@@ -65,21 +65,21 @@ export default StyleSheet.create({
   // Announcement Card
   card: {
     backgroundColor: theme.colors.white,
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: theme.colors.border,
     padding: 16,
-    shadowColor: '#0B1C3F',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
+    shadowColor: '#0B2240',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
     elevation: 2,
   },
   cardExpanded: {
-    borderColor: '#bdcddc',
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    elevation: 4,
+    borderColor: '#D0D7E2',
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 3,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -113,14 +113,14 @@ export default StyleSheet.create({
     textTransform: 'uppercase',
   },
   cardTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 'bold',
-    color: '#0B1C3F',
+    color: theme.colors.primary,
     marginBottom: 6,
   },
   cardText: {
-    fontSize: 11,
-    color: '#525f7f',
+    fontSize: 12,
+    color: theme.colors.textMuted,
     lineHeight: 16,
   },
 
@@ -131,7 +131,7 @@ export default StyleSheet.create({
     marginTop: 12,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    borderTopColor: '#F0F4F8',
   },
   expandToggle: {
     flexDirection: 'row',
@@ -141,7 +141,7 @@ export default StyleSheet.create({
     marginTop: 12,
   },
   expandToggleText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 'bold',
     color: '#8E8E93',
   },
@@ -156,7 +156,7 @@ export default StyleSheet.create({
   emptyTitle: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#0B1C3F',
+    color: theme.colors.primary,
     marginBottom: 4,
   },
   emptySubtitle: {

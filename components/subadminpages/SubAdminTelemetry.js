@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import styles from './SubAdminTelemetry.styles';
@@ -129,29 +129,33 @@ export default function SubAdminTelemetry() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>IoT Telemetry Nodes</Text>
-        <Text style={styles.subtitle}>Real-time sensor monitors for ph, turbidity, pressure, and TDS</Text>
-      </View>
-
-      {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator color="#001e66" size="large" />
+      <ScrollView 
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#001e66" />
+        }
+        contentContainerStyle={{ paddingBottom: 110 }}
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>IoT Telemetry Nodes</Text>
+          <Text style={styles.subtitle}>Real-time sensor monitors for ph, turbidity, pressure, and TDS</Text>
         </View>
-      ) : (
-        <FlatList
-          data={nodes}
-          keyExtractor={(item) => item.id}
-          renderItem={renderNodeItem}
-          contentContainerStyle={styles.listContainer}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#001e66" />
-          }
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>No telemetry nodes active.</Text>
-          }
-        />
-      )}
+
+        {loading ? (
+          <View style={{ marginTop: 40, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator color="#001e66" size="large" />
+          </View>
+        ) : nodes.length > 0 ? (
+          <View style={styles.listContainer}>
+            {nodes.map((node) => (
+              <React.Fragment key={node.id}>
+                {renderNodeItem({ item: node })}
+              </React.Fragment>
+            ))}
+          </View>
+        ) : (
+          <Text style={styles.emptyText}>No telemetry nodes active.</Text>
+        )}
+      </ScrollView>
     </View>
   );
 }

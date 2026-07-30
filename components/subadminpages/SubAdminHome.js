@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, Modal } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,11 @@ import { useAuthStore } from '../../src/store/useAuthStore';
 export default function SubAdminHome({ navigation }) {
   const [techName, setTechName] = useState('Technician');
   const [loading, setLoading] = useState(true);
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
+
+  const handleProfilePress = () => {
+    setProfileModalVisible(true);
+  };
   
   // Work Order State
   const [hasActiveJob, setHasActiveJob] = useState(false);
@@ -178,9 +183,17 @@ export default function SubAdminHome({ navigation }) {
             <Text style={styles.greetingText}>Welcome,</Text>
             <Text style={styles.techNameTitle}>FT-{techName.split(' ')[0]}</Text>
           </View>
-          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
-            <Ionicons name="log-out-outline" size={14} color="#FF3B30" />
-            <Text style={styles.logoutText}>Logout</Text>
+          {/* Right: Profile Pill */}
+          <TouchableOpacity 
+            style={styles.profilePill}
+            onPress={handleProfilePress}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.profileName} numberOfLines={1}>{techName}</Text>
+            <View style={styles.avatarContainer}>
+              <Ionicons name="person" size={14} color="#ffffff" />
+              <View style={styles.activeDot} />
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -341,6 +354,72 @@ export default function SubAdminHome({ navigation }) {
           </View>
         </View>
       </ScrollView>
+
+      {/* Profile actions Modal overlay */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={profileModalVisible}
+        onRequestClose={() => setProfileModalVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setProfileModalVisible(false)}
+        >
+          <TouchableOpacity 
+            style={styles.modalContent}
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()} // Prevent close action from backdrop triggers
+          >
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Technician Options</Text>
+              <TouchableOpacity onPress={() => setProfileModalVisible(false)}>
+                <Ionicons name="close" size={20} color="#0B1C3F" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Profile Info Row */}
+            <View style={styles.modalUserSection}>
+              <View style={styles.modalAvatarLarge}>
+                <Ionicons name="person" size={20} color="#ffffff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalUserName}>{techName}</Text>
+                <Text style={styles.modalUserRole}>Field Technician</Text>
+              </View>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.modalActions}>
+              {/* Manage Account */}
+              <TouchableOpacity 
+                style={styles.modalBtnPrimary}
+                onPress={() => {
+                  setProfileModalVisible(false);
+                  navigation.navigate('ManageAccount');
+                }}
+              >
+                <Ionicons name="settings-outline" size={15} color="#ffffff" style={{ marginRight: 6 }} />
+                <Text style={styles.modalBtnPrimaryText}>Manage Account</Text>
+              </TouchableOpacity>
+
+              {/* Log Out */}
+              <TouchableOpacity 
+                style={styles.modalBtnDanger}
+                onPress={async () => {
+                  setProfileModalVisible(false);
+                  await handleLogout();
+                }}
+              >
+                <Ionicons name="log-out-outline" size={15} color="#FF3B30" style={{ marginRight: 6 }} />
+                <Text style={styles.modalBtnDangerText}>Log Out Account</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }

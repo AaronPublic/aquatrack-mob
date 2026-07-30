@@ -4,22 +4,21 @@ import { theme } from '../../src/config/theme';
 export default StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F4F7FA', // Main background: Very light grey/blue
+    backgroundColor: theme.colors.background,
   },
   
   // A. Header Card Component
   headerCard: {
-    backgroundColor: '#185de7ff', // Deep Navy Blue
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    paddingTop: 48, // Safe area boundary buffer
-    paddingBottom: 24,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    paddingTop: 54, 
+    paddingBottom: 28,
     paddingHorizontal: 20,
-    shadowColor: '#0B1C3F',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    
+    shadowColor: '#0B2240',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 6,
   },
   
   // Brand Row
@@ -27,49 +26,49 @@ export default StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   logoContainer: {
     justifyContent: 'center',
     alignItems: 'center',
   },
   logoImage: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     resizeMode: 'contain',
-    tintColor: '#ffffff', // Force monochrome white color for the logo
+    tintColor: '#ffffff',
   },
   brandTextContainer: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 10,
   },
   brandTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   brandAqua: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '900',
-    color: '#ffffff', // Clean white brand header
+    color: '#ffffff',
     letterSpacing: 0.5,
   },
   brandT: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '900',
-    color: '#00aeef', // Accent azure blue T
+    color: '#00D1FF', // Bright Cyan/Azure
     letterSpacing: 0.5,
   },
   brandRack: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '900',
-    color: '#ffffff', // Clean white brand header
+    color: '#ffffff',
     letterSpacing: 0.5,
   },
   brandSubtitle: {
     fontSize: 8,
     fontWeight: '800',
-    color: 'rgba(255, 255, 255, 0.4)', // Muted white subtitle
-    letterSpacing: 1.5,
+    color: 'rgba(255, 255, 255, 0.45)',
+    letterSpacing: 1.8,
     marginTop: 2,
     textTransform: 'uppercase',
   },
@@ -78,33 +77,27 @@ export default StyleSheet.create({
   profilePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)', // Frosted glassmorphism background
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
     borderRadius: 20,
-    paddingVertical: 4,
+    paddingVertical: 5,
     paddingLeft: 12,
     paddingRight: 6,
   },
   profileName: {
-    fontSize: 11,
-    fontWeight: 'bold',
+    fontSize: 12,
+    fontWeight: '700',
     color: '#ffffff',
-    marginRight: 8,
+    marginRight: 6,
     maxWidth: 70,
   },
   avatarContainer: {
     position: 'relative',
-    width: 24,
-    height: 24,
+    width: 22,
+    height: 22,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  avatarImage: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   activeDot: {
     position: 'absolute',
@@ -113,17 +106,17 @@ export default StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#10b981', // Dynamic emerald status green
+    backgroundColor: '#10B981',
     borderWidth: 1.5,
-    borderColor: '#0B1C3F', // Border matching main header background
+    borderColor: '#0B2240',
   },
   
   // Metrics Counter Banner
   metricsBanner: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)', // Unified frosted banner backdrop
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 16,
+    borderRadius: 18,
     paddingVertical: 14,
     flexDirection: 'row',
     alignItems: 'center',
@@ -137,8 +130,8 @@ export default StyleSheet.create({
   metricLabel: {
     fontSize: 8,
     fontWeight: '800',
-    color: 'rgba(255, 255, 255, 0.4)', // Cohesive muted labeling
-    letterSpacing: 0.8,
+    color: 'rgba(255, 255, 255, 0.45)',
+    letterSpacing: 1,
     marginBottom: 4,
   },
   metricNumber: {
@@ -157,29 +150,29 @@ export default StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
+    padding: 16,
     paddingBottom: 110,
   },
   
   // Alert Feed Banner
   alertBanner: {
-    backgroundColor: '#fef2f2',
-    borderColor: '#fee2e2',
+    backgroundColor: theme.colors.alertBg,
+    borderColor: '#FEC2C2',
     borderWidth: 1,
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
+    padding: 14,
+    marginBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
   },
   alertTitle: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#970006',
+    color: theme.colors.alert,
   },
   alertText: {
     fontSize: 11,
-    color: '#525f7f',
+    color: theme.colors.textMuted,
     marginTop: 2,
   },
 
@@ -187,14 +180,14 @@ export default StyleSheet.create({
   sectionHeader: {
     fontSize: 10,
     fontWeight: '900',
-    color: '#8E8E93', // Muted grey section header
+    color: '#829AB1',
     letterSpacing: 2.0,
     marginBottom: 12,
     textTransform: 'uppercase',
   },
   gridContainer: {
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   gridRow: {
     flexDirection: 'row',
@@ -202,16 +195,16 @@ export default StyleSheet.create({
   },
   gridCard: {
     flex: 1,
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
+    backgroundColor: theme.colors.white,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#e2e8f0', // Crisp defined border matching other components
+    borderColor: theme.colors.border,
     padding: 16,
-    minHeight: 124,
-    shadowColor: '#0B1C3F',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
+    minHeight: 120,
+    shadowColor: '#0B2240',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
     elevation: 2,
     position: 'relative',
   },
@@ -222,14 +215,14 @@ export default StyleSheet.create({
     marginBottom: 12,
   },
   iconWrapper: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
   badgeContainer: {
-    backgroundColor: '#00D1FF', // Bright Sky Blue badge
+    backgroundColor: theme.colors.accent,
     borderRadius: 10,
     minWidth: 18,
     height: 18,
@@ -240,33 +233,33 @@ export default StyleSheet.create({
   badgeText: {
     fontSize: 9,
     fontWeight: '900',
-    color: '#0B1C3F', // Contrast deep navy text inside badge
+    color: theme.colors.white,
   },
   cardTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 'bold',
-    color: '#0B1C3F', // Deep Navy
+    color: theme.colors.primary,
     marginBottom: 4,
   },
   cardDesc: {
-    fontSize: 10,
-    color: '#525f7f',
-    lineHeight: 13,
+    fontSize: 11,
+    color: theme.colors.textMuted,
+    lineHeight: 14,
   },
 
   // C. Water Health Consumer Index Card
   indexCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.white,
     borderWidth: 1,
-    borderColor: '#e2e8f0', // Crisp clean border, replacing heavy solid border
-    borderRadius: 20,
+    borderColor: theme.colors.border,
+    borderRadius: 18,
     padding: 16,
     marginBottom: 20,
-    shadowColor: '#0B1C3F',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 3,
+    shadowColor: '#0B2240',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 2,
   },
   indexCardHeader: {
     flexDirection: 'row',
@@ -281,14 +274,14 @@ export default StyleSheet.create({
   indexHeaderTitle: {
     fontSize: 10,
     fontWeight: '900',
-    color: '#0B1C3F',
+    color: theme.colors.primary,
     letterSpacing: 0.5,
   },
   indexHeaderRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 122, 255, 0.05)',
-    borderRadius: 8,
+    backgroundColor: 'rgba(0, 159, 222, 0.06)',
+    borderRadius: 6,
     paddingVertical: 3,
     paddingHorizontal: 6,
   },
@@ -296,27 +289,27 @@ export default StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#007AFF', // System Blue live indicator
+    backgroundColor: theme.colors.accent,
     marginRight: 4,
   },
   liveLabel: {
     fontSize: 8,
     fontWeight: '800',
-    color: '#007AFF', // System Blue live label text
+    color: theme.colors.accent,
   },
   indexInnerPanel: {
-    backgroundColor: '#E6F4FE', // Soft brand azure water theme
-    borderRadius: 14,
-    padding: 14,
+    backgroundColor: '#F0F8FF', // Ice-blue panel backdrop
+    borderRadius: 12,
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
   },
   progressRing: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     borderWidth: 4,
-    borderColor: '#007AFF', // System Blue WQI circular tracker ring
+    borderColor: theme.colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#ffffff',
@@ -324,25 +317,25 @@ export default StyleSheet.create({
   progressNumber: {
     fontSize: 16,
     fontWeight: '900',
-    color: '#0B1C3F',
+    color: theme.colors.primary,
   },
   progressUnit: {
-    fontSize: 7,
+    fontSize: 8,
     fontWeight: '700',
-    color: '#525f7f',
+    color: theme.colors.textMuted,
     marginTop: -2,
   },
   indexInfoBlock: {
     flex: 1,
-    marginLeft: 14,
+    marginLeft: 12,
   },
   statusPill: {
-    backgroundColor: '#007AFF', // System Blue status pill
+    backgroundColor: theme.colors.accent,
     borderRadius: 6,
     alignSelf: 'flex-start',
     paddingVertical: 2,
     paddingHorizontal: 8,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   statusPillText: {
     fontSize: 8,
@@ -351,9 +344,9 @@ export default StyleSheet.create({
     letterSpacing: 0.5,
   },
   indexDescription: {
-    fontSize: 10,
-    color: '#525f7f',
-    lineHeight: 14,
+    fontSize: 11,
+    color: theme.colors.textMuted,
+    lineHeight: 15,
   },
 
   // Logout Button
@@ -362,23 +355,18 @@ export default StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     marginTop: 8,
     marginBottom: 16,
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.white,
     width: '100%',
     alignItems: 'center',
-    shadowColor: '#0B1C3F',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.02,
-    shadowRadius: 8,
-    elevation: 1,
   },
   logoutText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '900',
-    color: '#FF3B30', // Red logout text
+    color: theme.colors.alert,
     letterSpacing: 1,
   },
   
@@ -388,16 +376,16 @@ export default StyleSheet.create({
     marginBottom: 20,
   },
   activityCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.white,
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#0B1C3F',
+    shadowColor: '#0B2240',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
+    shadowOpacity: 0.02,
     shadowRadius: 8,
     elevation: 2,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: theme.colors.border,
   },
   activityHeader: {
     flexDirection: 'row',
@@ -432,49 +420,49 @@ export default StyleSheet.create({
   activityTitle: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#0B1C3F',
+    color: theme.colors.primary,
     marginBottom: 4,
   },
   activityDesc: {
-    fontSize: 10,
-    color: '#525f7f',
-    lineHeight: 14,
+    fontSize: 11,
+    color: theme.colors.textMuted,
+    lineHeight: 15,
   },
   emptyActivityCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.white,
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: theme.colors.border,
     borderStyle: 'dashed',
   },
   emptyActivityTitle: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 'bold',
-    color: '#0B1C3F',
+    color: theme.colors.primary,
     marginBottom: 4,
   },
   emptyActivityDesc: {
-    fontSize: 10,
-    color: '#8E8E93',
+    fontSize: 11,
+    color: theme.colors.textMuted,
     textAlign: 'center',
-    lineHeight: 14,
+    lineHeight: 15,
     maxWidth: '80%',
   },
 
   // Latest Ticket Tracker styles
   trackerCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.white,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    paddingVertical: 12,
+    borderColor: theme.colors.border,
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    shadowColor: '#0B1C3F',
+    shadowColor: '#0B2240',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
+    shadowOpacity: 0.02,
     shadowRadius: 8,
     elevation: 2,
   },
@@ -486,7 +474,7 @@ export default StyleSheet.create({
   trackerTitle: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#0B1C3F',
+    color: theme.colors.primary,
   },
 
   // Stepper layout styles inside the tracker card
@@ -494,7 +482,7 @@ export default StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
   },
   stepWrapper: {
     alignItems: 'center',
@@ -502,29 +490,29 @@ export default StyleSheet.create({
     width: 60,
   },
   stepDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.white,
   },
   stepDotActive: {
     borderColor: theme.colors.accent,
     backgroundColor: theme.colors.accent,
   },
   stepDotInactive: {
-    borderColor: '#cbd5e1',
+    borderColor: '#CBD5E1',
   },
   stepDotInner: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.white,
   },
   stepLabel: {
-    fontSize: 7,
+    fontSize: 8,
     fontWeight: '800',
     textAlign: 'center',
     textTransform: 'uppercase',
@@ -533,37 +521,37 @@ export default StyleSheet.create({
     color: theme.colors.primary,
   },
   stepLabelInactive: {
-    color: '#94a3b8',
+    color: '#94A3B8',
   },
   stepLine: {
     flex: 1,
     height: 2,
-    marginTop: -10, // Centers line alignment with dot
+    marginTop: -12, 
   },
   stepLineActive: {
     backgroundColor: theme.colors.accent,
   },
   stepLineInactive: {
-    backgroundColor: '#e2e8f0',
+    backgroundColor: '#E2E8F5',
   },
 
   // Profile Modal Overlay
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(11, 28, 63, 0.5)',
+    backgroundColor: 'rgba(11, 34, 64, 0.4)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.white,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
     paddingBottom: 36,
-    shadowColor: '#0B1C3F',
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.12,
+    shadowColor: '#0B2240',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.08,
     shadowRadius: 16,
-    elevation: 10,
+    elevation: 8,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -574,9 +562,9 @@ export default StyleSheet.create({
   modalTitle: {
     fontSize: 14,
     fontWeight: '900',
-    color: '#0B1C3F',
+    color: theme.colors.primary,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   modalUserSection: {
     flexDirection: 'row',
@@ -585,25 +573,25 @@ export default StyleSheet.create({
     marginBottom: 24,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: theme.colors.border,
   },
   modalAvatarLarge: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#001e66',
+    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalUserName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#0B1C3F',
+    color: theme.colors.primary,
   },
   modalUserRole: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#8E8E93',
+    color: theme.colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginTop: 2,
@@ -613,36 +601,36 @@ export default StyleSheet.create({
   },
   modalBtnPrimary: {
     height: 48,
-    backgroundColor: '#001e66',
+    backgroundColor: theme.colors.primary,
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalBtnPrimaryText: {
-    color: '#ffffff',
+    color: theme.colors.white,
     fontSize: 13,
     fontWeight: 'bold',
   },
   modalBtnDanger: {
     height: 48,
-    backgroundColor: '#fef2f2',
+    backgroundColor: theme.colors.alertBg,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#fca5a5',
+    borderColor: '#FEC2C2',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalBtnDangerText: {
-    color: '#FF3B30',
+    color: theme.colors.alert,
     fontSize: 13,
     fontWeight: 'bold',
   },
   modalBtnSecondary: {
     height: 48,
-    backgroundColor: '#EBF3FC',
-    borderColor: '#00aeef44',
+    backgroundColor: '#EFF6FF',
+    borderColor: 'rgba(0, 159, 222, 0.15)',
     borderWidth: 1,
     borderRadius: 12,
     flexDirection: 'row',
@@ -650,7 +638,7 @@ export default StyleSheet.create({
     justifyContent: 'center',
   },
   modalBtnSecondaryText: {
-    color: '#001e66',
+    color: theme.colors.primary,
     fontSize: 13,
     fontWeight: 'bold',
   },

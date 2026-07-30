@@ -26,14 +26,14 @@ export default StyleSheet.create({
   },
   card: {
     backgroundColor: theme.colors.white,
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: theme.colors.border,
     padding: 16,
-    shadowColor: '#0B1C3F',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
+    shadowColor: '#0B2240',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
     elevation: 2,
   },
   cardHeader: {
@@ -50,13 +50,13 @@ export default StyleSheet.create({
   },
   badge: {
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingVertical: 3,
+    borderRadius: 6,
     borderWidth: 1,
   },
   badgeText: {
     fontSize: 8,
-    fontWeight: 'bold',
+    fontWeight: '900',
     textTransform: 'uppercase',
   },
   cardTitle: {
@@ -76,7 +76,7 @@ export default StyleSheet.create({
     justifyContent: 'center',
   },
   emptyText: {
-    fontSize: 13,
+    fontSize: 12,
     color: theme.colors.textMuted,
     textAlign: 'center',
     fontStyle: 'italic',
