@@ -26,10 +26,15 @@ export default StyleSheet.create({
   },
   card: {
     backgroundColor: theme.colors.white,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: theme.colors.border,
     padding: 16,
+    shadowColor: '#0B1C3F',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
   },
   cardHeader: {
     flexDirection: 'row',

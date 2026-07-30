@@ -257,7 +257,6 @@ export default StyleSheet.create({
     borderRadius: 6,
     paddingVertical: 3,
     paddingHorizontal: 8,
-    borderWidth: 1,
   },
   statusDotSmall: {
     width: 5,
@@ -269,59 +268,5 @@ export default StyleSheet.create({
     fontSize: 8,
     fontWeight: '900',
     textTransform: 'uppercase',
-  },
-
-  // Work Order details (merged from SubAdminHome)
-  woBody: {
-    paddingVertical: 12,
-    gap: 12,
-  },
-  woDetailItem: {
-    gap: 2,
-  },
-  detailLabel: {
-    fontSize: 9,
-    fontWeight: 'bold',
-    color: theme.colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  detailValue: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: theme.colors.primary,
-  },
-  detailText: {
-    fontSize: 12,
-    color: theme.colors.textMuted,
-    lineHeight: 16,
-  },
-  instructionsBox: {
-    backgroundColor: 'rgba(0, 30, 102, 0.03)',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 30, 102, 0.1)',
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 4,
-  },
-  instructionsTitle: {
-    fontSize: 9,
-    fontWeight: 'bold',
-    color: theme.colors.primary,
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  instructionsText: {
-    fontSize: 11,
-    fontStyle: 'italic',
-    color: theme.colors.textMuted,
-    lineHeight: 15,
-  },
-  woImage: {
-    width: '100%',
-    height: 160,
-    borderRadius: 8,
-    resizeMode: 'cover',
-    marginTop: 4,
   },
 });

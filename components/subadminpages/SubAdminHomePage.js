@@ -4,16 +4,15 @@ import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import styles from './SubAdminHome.styles';
-import { useAuthStore } from '../../src/store/useAuthStore';
+import styles from './SubAdminHomePage.styles';
 
-export default function SubAdminHome({ navigation }) {
+export default function SubAdminHomePage({ navigation }) {
   const [techName, setTechName] = useState('Technician');
   const [loading, setLoading] = useState(true);
   
   // Work Order State
   const [hasActiveJob, setHasActiveJob] = useState(false);
-  const [jobStatus, setJobStatus] = useState('ASSIGNED'); // ASSIGNED, IN_PROGRESS, RESOLVED
+  const [jobStatus, setJobStatus] = useState('ASSIGNED');
   const [jobDetails, setJobDetails] = useState(null);
 
   // Dashboard Metrics
@@ -27,7 +26,7 @@ export default function SubAdminHome({ navigation }) {
       const profile = await api.post('/api/auth/profile', { userId: session.user.id });
       if (profile?.name) setTechName(profile.name);
 
-      // 1. Fetch active work order assigned to this engineer
+      // 1. Fetch active work order
       const { data: workOrders, error: woError } = await supabase
         .from('WorkOrder')
         .select('*, alert(*)')
@@ -41,9 +40,8 @@ export default function SubAdminHome({ navigation }) {
         setJobDetails({
           id: wo.id,
           location: wo.alert?.nodeId ? `Telemetry Node ID: ${wo.alert.nodeId}` : "Assigned Field Site",
-          description: wo.notes || "Investigate clustered consumer complaints and diagnostic telemetry anomalies.",
-          instructions: "Inspect pipeline structures, take photos of repairs, and log notes before resolving.",
-          imageUrl: null // Supabase storage image would map here if available
+          description: wo.notes || "Investigate telemetry anomalies and reports.",
+          instructions: "Verify gauges, check sections, and take photos of repairs.",
         });
         setHasActiveJob(true);
       } else {
@@ -131,26 +129,13 @@ export default function SubAdminHome({ navigation }) {
 
   const handleLogout = async () => {
     try {
-      await useAuthStore.getState().signOut();
+      await supabase.auth.signOut();
       navigation.reset({
         index: 0,
         routes: [{ name: 'Login' }],
       });
     } catch (err) {
       Alert.alert("Logout Error", err.message);
-    }
-  };
-
-  const getStatusConfig = (status) => {
-    switch (status) {
-      case 'ASSIGNED':
-        return { label: 'Assigned', text: '#b45309', bg: '#fef3c7', border: '#fde68a' };
-      case 'IN_PROGRESS':
-        return { label: 'In Progress', text: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' };
-      case 'RESOLVED':
-        return { label: 'Resolved', text: '#047857', bg: '#ecfdf5', border: '#a7f3d0' };
-      default:
-        return { label: 'Unknown', text: '#525f7f', bg: '#f1f5f9', border: '#e2e8f0' };
     }
   };
 
@@ -161,8 +146,6 @@ export default function SubAdminHome({ navigation }) {
       </View>
     );
   }
-
-  const currentStatusCfg = getStatusConfig(jobStatus);
 
   return (
     <View style={styles.container}>
@@ -179,7 +162,7 @@ export default function SubAdminHome({ navigation }) {
             <Text style={styles.techNameTitle}>FT-{techName.split(' ')[0]}</Text>
           </View>
           <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
-            <Ionicons name="log-out-outline" size={14} color="#FF3B30" />
+            <Ionicons name="log-out-outline" size={16} color="#FF3B30" />
             <Text style={styles.logoutText}>Logout</Text>
           </TouchableOpacity>
         </View>
@@ -210,42 +193,27 @@ export default function SubAdminHome({ navigation }) {
         {hasActiveJob && jobDetails ? (
           <View style={{ marginBottom: 20 }}>
             <Text style={styles.sectionHeader}>Latest Assignment</Text>
-            <View style={styles.trackerCard}>
+            <TouchableOpacity 
+              style={styles.trackerCard}
+              onPress={() => navigation.navigate('SubAdminHomeDetail')}
+              activeOpacity={0.9}
+            >
               <View style={styles.trackerHeader}>
                 <View style={{ flex: 1, marginRight: 8 }}>
-                  <Text style={styles.trackerLabel}>Incident ID</Text>
-                  <Text style={styles.trackerTitle}>{jobDetails.id}</Text>
+                  <Text style={styles.trackerLabel}>Location</Text>
+                  <Text style={styles.trackerTitle} numberOfLines={1}>{jobDetails.location}</Text>
                 </View>
-                <View style={[styles.statusBadgeSmall, { backgroundColor: currentStatusCfg.bg, borderColor: currentStatusCfg.border }]}>
-                  <Text style={[styles.statusTextSmall, { color: currentStatusCfg.text }]}>
-                    {currentStatusCfg.label}
+                <View style={[styles.statusBadgeSmall, { backgroundColor: jobStatus === 'ASSIGNED' ? '#fef3c7' : '#eff6ff' }]}>
+                  <View style={[styles.statusDotSmall, { backgroundColor: jobStatus === 'ASSIGNED' ? '#f59e0b' : '#3b82f6' }]} />
+                  <Text style={[styles.statusTextSmall, { color: jobStatus === 'ASSIGNED' ? '#b45309' : '#1d4ed8' }]}>
+                    {jobStatus === 'ASSIGNED' ? 'Assigned' : 'In Progress'}
                   </Text>
                 </View>
               </View>
 
-              <View style={styles.woBody}>
-                <View style={styles.woDetailItem}>
-                  <Text style={styles.detailLabel}>Location</Text>
-                  <Text style={styles.detailValue}>{jobDetails.location}</Text>
-                </View>
-
-                {jobDetails.imageUrl && (
-                  <View style={styles.woDetailItem}>
-                    <Text style={styles.detailLabel}>Incident Photo</Text>
-                    <Image source={{ uri: jobDetails.imageUrl }} style={styles.woImage} />
-                  </View>
-                )}
-
-                <View style={styles.woDetailItem}>
-                  <Text style={styles.detailLabel}>Diagnostic Details</Text>
-                  <Text style={styles.detailText}>{jobDetails.description}</Text>
-                </View>
-
-                <View style={styles.instructionsBox}>
-                  <Text style={styles.instructionsTitle}>Recommended Instructions</Text>
-                  <Text style={styles.instructionsText}>"{jobDetails.instructions}"</Text>
-                </View>
-              </View>
+              <Text style={styles.trackerDesc} numberOfLines={2}>
+                {jobDetails.description}
+              </Text>
 
               <View style={styles.trackerActions}>
                 {jobStatus === 'ASSIGNED' ? (
@@ -258,7 +226,7 @@ export default function SubAdminHome({ navigation }) {
                   </TouchableOpacity>
                 )}
               </View>
-            </View>
+            </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.emptyTrackerBox}>
