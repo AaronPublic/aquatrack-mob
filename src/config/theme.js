@@ -19,8 +19,12 @@ export const theme = {
     infoText: '#3B82F6'      // Modern Info Blue
   },
   fonts: {
-    regular: 'System',
-    mono: 'System'
+    regular: 'PlusJakartaSans_400Regular',
+    semiBold: 'PlusJakartaSans_600SemiBold',
+    bold: 'PlusJakartaSans_700Bold',
+    extraBold: 'PlusJakartaSans_800ExtraBold',
+    mono: 'GeistMono-Regular',
+    monoBold: 'GeistMono-Bold'
   }
 };
 

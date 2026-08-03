@@ -112,17 +112,17 @@ function ConsumerTabNavigator() {
       <Tab.Screen 
         name="FileComplaint" 
         component={FileComplaint} 
-        options={{ title: 'Report', headerTitle: 'File Ticket' }} 
+        options={{ title: 'Report', headerShown: false }} 
       />
       <Tab.Screen 
         name="TrackComplaints" 
         component={TrackComplaints} 
-        options={{ title: 'Tickets', headerTitle: 'Triage History' }} 
+        options={{ title: 'Tickets', headerShown: false }} 
       />
       <Tab.Screen 
         name="Announcements" 
         component={Announcements} 
-        options={{ title: 'Advisories', headerTitle: 'Bulletins' }} 
+        options={{ title: 'Advisories', headerShown: false }} 
       />
     </Tab.Navigator>
   );

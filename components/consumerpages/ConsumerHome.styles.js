@@ -36,7 +36,6 @@ export default StyleSheet.create({
     width: 36,
     height: 36,
     resizeMode: 'contain',
-    tintColor: '#ffffff',
   },
   brandTextContainer: {
     flex: 1,

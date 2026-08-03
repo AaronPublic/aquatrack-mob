@@ -5,6 +5,8 @@ import { api } from '../../src/config/api';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import styles from './ConsumerHome.styles';
+import { theme } from '../../src/config/theme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../../src/store/useAuthStore';
 
 const statusConfigs = {
@@ -15,15 +17,55 @@ const statusConfigs = {
   RESOLVED: { label: "Resolved", text: "#047857", bg: "#ecfdf5", dot: "#10b981" },
 };
 
+const categoryIconConfigs = {
+  WATER_QUALITY: { name: 'flask', color: '#0284c7', bg: '#e0f2fe' },
+  LEAKAGE: { name: 'water', color: '#0ea5e9', bg: '#e0f2fe' },
+  PIPE_BURST: { name: 'build', color: '#ef4444', bg: '#fee2e2' },
+  LOW_PRESSURE: { name: 'speedometer', color: '#f59e0b', bg: '#fef3c7' },
+  NO_WATER: { name: 'close-circle', color: '#dc2626', bg: '#fee2e2' },
+  BILLING_ISSUE: { name: 'cash', color: '#10b981', bg: '#d1fae5' },
+  default: { name: 'document-text', color: '#64748b', bg: '#f1f5f9' }
+};
+
+const statusIconConfigs = {
+  PENDING: { name: 'time-outline' },
+  EVALUATING: { name: 'search-outline' },
+  DISPATCHED: { name: 'paper-plane-outline' },
+  ONGOING: { name: 'build-outline' },
+  RESOLVED: { name: 'checkmark-circle-outline' },
+};
+
+const formatCategory = (cat) => {
+  if (!cat) return 'Unclassified';
+  return cat
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
+};
+
 export default function ConsumerHome({ navigation }) {
   const [userName, setUserName] = useState('Pedro'); // Default fallback to "Pedro" per spec
   const [advisories, setAdvisories] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [recentComplaints, setRecentComplaints] = useState([]);
   const [profileModalVisible, setProfileModalVisible] = useState(false);
+  const [dismissedAlerts, setDismissedAlerts] = useState([]);
   
-  // Metrics banner state (defaults to spec layout metrics, synced dynamically on mount)
   const [metrics, setMetrics] = useState({ total: 25, pending: 9, active: 8, resolved: 8 });
+
+  useEffect(() => {
+    const loadDismissed = async () => {
+      try {
+        const saved = await AsyncStorage.getItem('dismissed_alerts');
+        if (saved) {
+          setDismissedAlerts(JSON.parse(saved));
+        }
+      } catch (err) {
+        console.error("Failed to load dismissed alerts:", err);
+      }
+    };
+    loadDismissed();
+  }, []);
 
   useEffect(() => {
     const fetchProfileAndAdvisories = async () => {
@@ -49,9 +91,7 @@ export default function ConsumerHome({ navigation }) {
             const resolved = userComplaints.filter(c => c.status === 'RESOLVED').length;
             
             // Sync with dynamic numbers only if user has logged complaints, preserving spec defaults otherwise
-            if (total > 0) {
-              setMetrics({ total, pending, active, resolved });
-            }
+            setMetrics({ total, pending, active, resolved });
             setRecentComplaints(userComplaints.slice(0, 3));
           }
         }
@@ -60,7 +100,7 @@ export default function ConsumerHome({ navigation }) {
         const advisoriesData = await api.get('/api/advisories');
         if (advisoriesData?.success) {
           const publicAdvisories = advisoriesData.advisories.filter(
-            (ad) => ad.targetRole === 'broadcast' || !ad.targetRole
+            (ad) => ad.targetRole === 'broadcast' || ad.targetRole === 'consumers' || !ad.targetRole
           );
           setAdvisories(publicAdvisories);
 
@@ -181,6 +221,18 @@ export default function ConsumerHome({ navigation }) {
     }
   };
 
+  const handleDismissAlert = async (id) => {
+    try {
+      const updated = [...dismissedAlerts, id];
+      setDismissedAlerts(updated);
+      await AsyncStorage.setItem('dismissed_alerts', JSON.stringify(updated));
+    } catch (err) {
+      console.error("Failed to save dismissed alert:", err);
+    }
+  };
+
+  const activeAlerts = alerts.filter(ad => !dismissedAlerts.includes(ad.id));
+
   return (
     <View style={styles.container}>
       {/* A. Header Card Component */}
@@ -195,7 +247,7 @@ export default function ConsumerHome({ navigation }) {
           {/* Left: Brand Logo */}
           <View style={styles.logoContainer}>
             <Image 
-              source={require('../../assets/Logo.png')}
+              source={require('../../assets/LOGO3.png')}
               style={styles.logoImage}
             />
           </View>
@@ -203,11 +255,13 @@ export default function ConsumerHome({ navigation }) {
           {/* Middle: Brand Text */}
           <View style={styles.brandTextContainer}>
             <View style={styles.brandTitleRow}>
-              <Text style={styles.brandAqua}>AQUA</Text>
-              <Text style={styles.brandT}>T</Text>
+              <Text style={styles.brandAqua}>AQ</Text>
+              <Text style={[styles.brandAqua, { color: '#ffd800' }]}>U</Text>
+              <Text style={[styles.brandAqua, { color: '#970006' }]}>A</Text>
+              <Text style={styles.brandRack}>T</Text>
               <Text style={styles.brandRack}>RACK</Text>
             </View>
-            <Text style={styles.brandSubtitle}>BF CITIZEN PORTAL</Text>
+            <Text style={styles.brandSubtitle}>CONSUMER PORTAL</Text>
           </View>
 
           {/* Right: User Profile Pill */}
@@ -254,14 +308,31 @@ export default function ConsumerHome({ navigation }) {
       {/* Main Scroll Content */}
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Critical System Alert Banner (conditional based on warnings) */}
-        {alerts.length > 0 && (
-          <View style={styles.alertBanner}>
-            <Ionicons name="warning" size={18} color="#FFCC00" style={{ marginRight: 8 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.alertTitle}>CRITICAL SYSTEM ALARM</Text>
-              <Text style={styles.alertText}>{alerts[0].title}: {alerts[0].text}</Text>
+        {activeAlerts.length > 0 && (
+          <TouchableOpacity 
+            onPress={() => {
+              const targetAlertId = activeAlerts[0].id;
+              handleDismissAlert(targetAlertId);
+              navigation.navigate('Announcements', { highlightAdvisoryId: targetAlertId });
+            }}
+            activeOpacity={0.9}
+            className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-4 shadow-sm active:scale-[0.99] flex-row items-start animate-bounce"
+          >
+            {/* Left: Warning Icon Container */}
+            <View className="bg-red-100 p-2 rounded-xl mr-3 items-center justify-center">
+              <Ionicons name="warning" size={18} color="#EF4444" />
             </View>
-          </View>
+
+            {/* Right: Alert text details */}
+            <View className="flex-1">
+              <View className="flex-row items-center justify-between">
+                <Text className="text-[#EF4444] font-black text-[10px] uppercase tracking-widest">CRITICAL SYSTEM ALARM</Text>
+                <View className="w-1.5 h-1.5 rounded-full bg-[#EF4444]" />
+              </View>
+              <Text className="text-[#0B2240] font-black text-sm mt-1.5 leading-snug">{activeAlerts[0].title}</Text>
+              <Text className="text-[#627D98] font-semibold text-xs mt-0.5 leading-relaxed">{activeAlerts[0].text}</Text>
+            </View>
+          </TouchableOpacity>
         )}
 
         {/* Latest Ticket Tracker Card */}
@@ -395,6 +466,7 @@ export default function ConsumerHome({ navigation }) {
           {recentComplaints.length > 0 ? (
             recentComplaints.map((item) => {
               const statusCfg = statusConfigs[item.status] || { label: item.status, text: '#525f7f', bg: '#f1f5f9', dot: '#525f7f' };
+              const catCfg = categoryIconConfigs[item.category] || categoryIconConfigs.default;
               const formattedDate = new Date(item.createdAt).toLocaleDateString(undefined, {
                 month: 'short',
                 day: 'numeric',
@@ -404,19 +476,45 @@ export default function ConsumerHome({ navigation }) {
               return (
                 <TouchableOpacity 
                   key={item.id}
-                  style={styles.activityCard}
                   onPress={() => navigation.navigate('TrackComplaints')}
-                  activeOpacity={0.85}
+                  activeOpacity={0.8}
+                  className="bg-white border border-[#E2E8F5] rounded-2xl p-4 mb-3 shadow-sm active:scale-[0.99]"
                 >
-                  <View style={styles.activityHeader}>
-                    <Text style={styles.activityDate}>{formattedDate}</Text>
-                    <View style={[styles.statusBadgeSmall, { backgroundColor: statusCfg.bg }]}>
-                      <View style={[styles.statusDotSmall, { backgroundColor: statusCfg.dot }]} />
-                      <Text style={[styles.statusTextSmall, { color: statusCfg.text }]}>{statusCfg.label}</Text>
+                  <View className="flex-row items-center justify-between mb-2.5">
+                    <View className="flex-row items-center">
+                      <Text className="text-[#0B2240] font-black text-[10px] font-mono tracking-wider mr-2">
+                        AQ-{item.id.slice(0, 8).toUpperCase()}
+                      </Text>
+                      <Text className="text-[#475569] font-extrabold text-[10px] uppercase tracking-wider font-mono">
+                        •  {formattedDate}
+                      </Text>
+                    </View>
+                    {/* Status Badge */}
+                    <View 
+                      style={{ backgroundColor: statusCfg.bg, borderColor: statusCfg.text }}
+                      className="flex-row items-center rounded-full py-1 px-2.5 border"
+                    >
+                      <Ionicons 
+                        name={statusIconConfigs[item.status]?.name || 'alert-circle-outline'} 
+                        size={11} 
+                        color={statusCfg.text} 
+                        style={{ marginRight: 4 }}
+                      />
+                      <Text style={{ color: statusCfg.text }} className="text-[9px] font-black uppercase tracking-wider">{statusCfg.label}</Text>
                     </View>
                   </View>
-                  <Text style={styles.activityTitle}>{item.summary || item.category?.replace(/_/g, ' ') || 'Water Utility Report'}</Text>
-                  <Text style={styles.activityDesc} numberOfLines={2}>{item.rawText}</Text>
+                  
+                  {/* Category Classification */}
+                  <Text className="text-[#009FDE] font-extrabold text-[9px] uppercase tracking-wider mb-1">
+                    {formatCategory(item.category)}
+                  </Text>
+                  
+                  <Text className="text-[#0B2240] font-black text-sm leading-snug">
+                    {item.summary || item.category?.replace(/_/g, ' ') || 'Water Utility Report'}
+                  </Text>
+                  <Text className="text-[#627D98] font-semibold text-xs mt-1.5 leading-relaxed italic" numberOfLines={2} ellipsizeMode="tail">
+                    {item.rawText}
+                  </Text>
                 </TouchableOpacity>
               );
             })

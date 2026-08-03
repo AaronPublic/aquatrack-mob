@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, UIManager, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, UIManager, Platform, Modal } from 'react-native';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import MapView, { Marker, Polygon } from 'react-native-maps';
 import { api } from '../../src/config/api';
 import { supabase } from '../../src/config/supabase';
+import { Ionicons } from '@expo/vector-icons';
 import styles from './FileComplaint.styles';
+import homeStyles from './ConsumerHome.styles';
 
 const hasNativeMap = false; // Set to false to prevent Google Maps native crash due to empty API keys in AndroidManifest
 
@@ -44,6 +47,13 @@ export default function FileComplaint({ navigation }) {
 
   const [loading, setLoading] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(''); // Progress status text shown during submit
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [successTicketDetails, setSuccessTicketDetails] = useState({
+    ticketId: '',
+    barangay: ''
+  });
+  const [userName, setUserName] = useState('Pedro');
+  const [metrics, setMetrics] = useState({ total: 25, pending: 9, active: 8, resolved: 8 });
 
   // Ask for permissions and locate user on load
   useEffect(() => {
@@ -58,7 +68,50 @@ export default function FileComplaint({ navigation }) {
         }
       }
     })();
-  }, []);
+
+    const fetchProfileAndMetrics = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          // Fetch profile
+          const profile = await api.post('/api/auth/profile', { userId: session.user.id });
+          if (profile?.name) {
+            setUserName(profile.name);
+          }
+
+          // Fetch complaint counts
+          const { data: userComplaints, error: compError } = await supabase
+            .from('Complaint')
+            .select('id, status')
+            .eq('userId', session.user.id);
+
+          if (!compError && userComplaints) {
+            const total = userComplaints.length;
+            const pending = userComplaints.filter(c => c.status === 'PENDING').length;
+            const active = userComplaints.filter(c => c.status === 'EVALUATING' || c.status === 'DISPATCHED' || c.status === 'ONGOING').length;
+            const resolved = userComplaints.filter(c => c.status === 'RESOLVED').length;
+
+            if (total > 0) {
+              setMetrics({ total, pending, active, resolved });
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to load header profile/metrics:", err);
+      }
+    };
+
+    fetchProfileAndMetrics();
+
+    // Refresh when focused
+    const unsubscribeFocus = navigation.addListener('focus', () => {
+      fetchProfileAndMetrics();
+    });
+
+    return () => {
+      unsubscribeFocus();
+    };
+  }, [navigation]);
 
   // Automatically locate user — used internally by handleSubmit
   const locateUser = async () => {
@@ -225,11 +278,11 @@ export default function FileComplaint({ navigation }) {
       const result = await api.post('/api/complaints', payload);
 
       if (result && result.success) {
-        Alert.alert(
-          'Ticket Submitted',
-          `Complaint registered successfully! Barangay: ${result.barangay || resolvedLocation.barangay || 'Resolved'}.`,
-          [{ text: 'OK', onPress: () => navigation.navigate('TrackComplaints') }]
-        );
+        setSuccessTicketDetails({
+          ticketId: `AQ-${result.id?.slice(0, 8).toUpperCase() || 'RESOLVED'}`,
+          barangay: result.barangay || resolvedLocation.barangay || 'City Center'
+        });
+        setSuccessModalVisible(true);
         // Clear form
         setRawText('');
         setPhotoUri(null);
@@ -251,177 +304,348 @@ export default function FileComplaint({ navigation }) {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContainer}>
-      <View style={styles.header}>
-        <Text style={styles.title}>File a Complaint</Text>
-        <Text style={styles.subtitle}>Report utility anomalies to the City Water District command center</Text>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>1. Incident Details</Text>
-        
-        <View style={styles.form}>
-          <Text style={styles.label}>Problem Description</Text>
-          <TextInput
-            style={styles.textArea}
-            multiline
-            numberOfLines={4}
-            placeholder="Type your issue. You can write in English, Tagalog, Taglish, or Kapampangan..."
-            placeholderTextColor="#94a3b8"
-            value={rawText}
-            onChangeText={setRawText}
-          />
-
-          <TouchableOpacity 
-            style={[styles.imagePickerBtn, photoUri && { borderColor: '#10b981', backgroundColor: '#ecfdf5' }]} 
-            onPress={handlePickPhoto}
-          >
-            <Text style={[styles.imagePickerText, photoUri && { color: '#10b981' }]}>
-              {photoUri ? "Photo Attached" : "Attach Incident Photo"}
-            </Text>
-          </TouchableOpacity>
-
-          {photoUri && (
-            <Image source={{ uri: photoUri }} style={styles.previewImage} />
-          )}
-
-        </View>
-      </View>
-
-      {/* AI Diagnostic Results Card */}
-      {aiTriage && (
-        <View style={styles.aiCard}>
-          <Text style={styles.aiTitle}>Gemini AI Diagnosis</Text>
-          <View style={styles.aiDetailRow}>
-            <Text style={styles.aiDetailLabel}>Translation:</Text>
-            <Text style={styles.aiDetailValue}>"{aiTriage.translatedText}"</Text>
-          </View>
-          <View style={styles.aiDetailRow}>
-            <Text style={styles.aiDetailLabel}>Category:</Text>
-            <Text style={styles.aiDetailValue}>{aiTriage.category}</Text>
-          </View>
-          <View style={styles.aiDetailRow}>
-            <Text style={styles.aiDetailLabel}>Urgency:</Text>
-            <Text style={styles.aiDetailValue}>{aiTriage.urgency}</Text>
-          </View>
-          <View style={styles.aiDetailRow}>
-            <Text style={styles.aiDetailLabel}>Summary:</Text>
-            <Text style={styles.aiDetailValue}>{aiTriage.summary}</Text>
-          </View>
-        </View>
-      )}
-
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>2. Location Preview</Text>
-
-        <View style={styles.mapContainer}>
-          {hasNativeMap ? (
-            <MapView
-              style={styles.map}
-              initialRegion={{
-                latitude: location.latitude,
-                longitude: location.longitude,
-                latitudeDelta: 0.05,
-                longitudeDelta: 0.05,
-              }}
-              region={{
-                latitude: location.latitude,
-                longitude: location.longitude,
-                latitudeDelta: 0.015,
-                longitudeDelta: 0.015,
-              }}
-            >
-              {hasLocation && (
-                <Marker
-                  coordinate={location}
-                  draggable
-                  onDragEnd={(e) => {
-                    const newCoords = e.nativeEvent.coordinate;
-                    setLocation(newCoords);
-                    // Verify new coords are inside geofence via API
-                    api.post('/api/locate-barangay', {
-                      latitude: newCoords.latitude,
-                      longitude: newCoords.longitude,
-                    }).then((locData) => {
-                      if (locData && locData.barangay) {
-                        setBarangay(locData.barangay);
-                        setOutOfScope(false);
-                      } else {
-                        setBarangay("Unknown Area");
-                        setOutOfScope(true);
-                      }
-                    });
-                  }}
-                  pinColor="red"
-                />
-              )}
-            </MapView>
-          ) : (
-            Platform.OS === 'web' && hasLocation ? (
-              <WebMap latitude={location.latitude} longitude={location.longitude} />
-            ) : (
-              <View style={{ flex: 1, backgroundColor: '#f1f5f9', justifyContent: 'center', alignItems: 'center' }}>
-                {hasLocation ? (
-                  <Image
-                    source={{
-                      uri: `https://static-maps.yandex.ru/1.x/?ll=${location.longitude},${location.latitude}&size=450,200&z=14&l=map&pt=${location.longitude},${location.latitude},pm2rdl`
-                    }}
-                    style={{ width: '100%', height: '100%', borderRadius: 12 }}
-                  />
-                ) : (
-                  <View style={{ padding: 20, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#001e66', marginBottom: 4, textAlign: 'center' }}>
-                      Awaiting Location
-                    </Text>
-                    <Text style={{ fontSize: 11, color: '#525f7f', textAlign: 'center', lineHeight: 15 }}>
-                      Your current location will be captured automatically when you submit your complaint.
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )
-          )}
-        </View>
-
-        {hasLocation && (
-          <View style={styles.locationStatus}>
-            <Text style={styles.locationStatusText}>
-              <Text style={styles.locationStatusLabel}>Barangay: </Text>
-              {barangay || 'Detecting...'}
-            </Text>
-            <Text style={styles.locationStatusText}>
-              <Text style={styles.locationStatusLabel}>Coordinates: </Text>
-              {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
-            </Text>
-          </View>
-        )}
-
-        {outOfScope && (
-          <View style={styles.geofenceWarning}>
-            <Text style={styles.geofenceWarningText}>Outside Service Area. Please move pin inside San Fernando boundary.</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Submit Status Indicator */}
-      {loading && submitStatus ? (
-        <View style={styles.statusIndicator}>
-          <ActivityIndicator color="#001e66" size="small" />
-          <Text style={styles.statusIndicatorText}>{submitStatus}</Text>
-        </View>
-      ) : null}
-
-      <TouchableOpacity 
-        style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
-        onPress={handleSubmit}
-        disabled={loading}
+    <ScrollView 
+      className="flex-1 bg-[#F2F5FA]" 
+      contentContainerStyle={{ paddingBottom: 140 }}
+    >
+      <LinearGradient 
+        colors={['#02205eff', '#325497ff']} 
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.8, y: 1 }}
+        style={homeStyles.headerCard}
       >
-        {loading ? (
-          <ActivityIndicator color="#fff" size="small" />
-        ) : (
-          <Text style={styles.submitBtnText}>Submit</Text>
+        {/* Brand Row */}
+        <View style={homeStyles.brandRow}>
+          {/* Left: Brand Logo */}
+          <View style={homeStyles.logoContainer}>
+            <Image 
+              source={require('../../assets/LOGO3.png')}
+              style={homeStyles.logoImage}
+            />
+          </View>
+
+          {/* Middle: Brand Text */}
+          <View style={homeStyles.brandTextContainer}>
+            <View style={homeStyles.brandTitleRow}>
+              <Text style={homeStyles.brandAqua}>AQ</Text>
+              <Text style={[homeStyles.brandAqua, { color: '#ffd800' }]}>U</Text>
+              <Text style={[homeStyles.brandAqua, { color: '#970006' }]}>A</Text>
+              <Text style={homeStyles.brandRack}>T</Text>
+              <Text style={homeStyles.brandRack}>RACK</Text>
+            </View>
+            <Text style={homeStyles.brandSubtitle}>CONSUMER PORTAL</Text>
+          </View>
+
+          {/* Right: User Profile Pill */}
+          <TouchableOpacity 
+            style={homeStyles.profilePill}
+            activeOpacity={0.8}
+          >
+            <Text style={homeStyles.profileName} numberOfLines={1}>{userName}</Text>
+            <View style={homeStyles.avatarContainer}>
+              <Ionicons name="person" size={14} color="#ffffff" />
+              <View style={homeStyles.activeDot} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Metrics Counter Banner */}
+        <View style={homeStyles.metricsBanner}>
+          <View style={homeStyles.metricColumn}>
+            <Text style={homeStyles.metricLabel}>TOTAL LOGS</Text>
+            <Text style={homeStyles.metricNumber}>{metrics.total}</Text>
+          </View>
+          <View style={homeStyles.divider} />
+          
+          <View style={homeStyles.metricColumn}>
+            <Text style={[homeStyles.metricLabel, { color: '#FFCC00' }]}>PENDING</Text>
+            <Text style={[homeStyles.metricNumber, { color: '#FFCC00' }]}>{metrics.pending}</Text>
+          </View>
+          <View style={homeStyles.divider} />
+
+          <View style={homeStyles.metricColumn}>
+            <Text style={[homeStyles.metricLabel, { color: '#00D1FF' }]}>ACTIVE</Text>
+            <Text style={[homeStyles.metricNumber, { color: '#00D1FF' }]}>{metrics.active}</Text>
+          </View>
+          <View style={homeStyles.divider} />
+
+          <View style={homeStyles.metricColumn}>
+            <Text style={[homeStyles.metricLabel, { color: '#4CD964' }]}>RESOLVED</Text>
+            <Text style={[homeStyles.metricNumber, { color: '#4CD964' }]}>{metrics.resolved}</Text>
+          </View>
+        </View>
+      </LinearGradient>
+
+      {/* Screen Content Wrapper */}
+      <View className="px-[18px] mt-6">
+        <View className="mb-6">
+          <Text className="text-[#0B2240] font-black text-2xl tracking-tight">File a Complaint</Text>
+          <Text className="text-[#627D98] font-medium text-xs mt-1.5 leading-relaxed">
+            Report utility anomalies to the City Water District command center
+          </Text>
+        </View>
+
+        <View className="bg-white border border-[#E2E8F5] rounded-3xl p-5 mb-5 shadow-sm">
+          <Text className="text-[#009FDE] font-black text-xs uppercase tracking-widest mb-4">1. Incident Details</Text>
+          
+          <View className="space-y-4">
+            <Text className="text-[#0B2240] font-black text-[10px] uppercase tracking-wider">Problem Description</Text>
+            <TextInput
+              className="bg-[#F8FAFC] border border-[#E2E8F5] rounded-2xl p-4 text-[#0B2240] text-sm leading-relaxed text-left mt-1.5 mb-3"
+              style={{ minHeight: 120, textAlignVertical: 'top' }}
+              multiline
+              numberOfLines={4}
+              placeholder="Type your issue. You can write in English, Tagalog, Taglish, or Kapampangan..."
+              placeholderTextColor="#94a3b8"
+              value={rawText}
+              onChangeText={setRawText}
+            />
+
+            <TouchableOpacity 
+              onPress={handlePickPhoto}
+              activeOpacity={0.8}
+              style={{ 
+                backgroundColor: photoUri ? '#ECFDF5' : '#EFF6FF',
+                borderColor: photoUri ? '#10B981' : '#009FDE',
+                borderStyle: 'dashed'
+              }}
+              className="border rounded-2xl p-4 flex-row items-center justify-center mt-2"
+            >
+              <Ionicons 
+                name={photoUri ? "checkmark-circle" : "camera"} 
+                size={18} 
+                color={photoUri ? '#10B981' : '#009FDE'} 
+                style={{ marginRight: 8 }}
+              />
+              <Text 
+                style={{ color: photoUri ? '#10B981' : '#007AFF' }} 
+                className="font-bold text-sm"
+              >
+                {photoUri ? "Photo Attached" : "Attach Incident Photo"}
+              </Text>
+            </TouchableOpacity>
+
+            {photoUri && (
+              <Image 
+                source={{ uri: photoUri }} 
+                className="w-full h-48 rounded-2xl mt-4 border border-[#E2E8F5]"
+                style={{ resizeMode: 'cover' }}
+              />
+            )}
+
+          </View>
+        </View>
+
+        {/* AI Diagnostic Results Card */}
+        {aiTriage && (
+          <View className="bg-indigo-50/50 border border-indigo-100 rounded-3xl p-5 mb-5 shadow-sm">
+            <View className="flex-row items-center mb-3">
+              <Ionicons name="sparkles" size={16} color="#4F46E5" style={{ marginRight: 6 }} />
+              <Text className="text-[#4F46E5] font-black text-sm uppercase tracking-wider">Gemini AI Diagnosis</Text>
+            </View>
+            
+            <View className="space-y-2.5">
+              <View className="flex-row items-start">
+                <Text className="text-[#627D98] font-bold text-xs w-24">Translation:</Text>
+                <Text className="text-[#0B2240] font-medium text-xs flex-1 italic">"{aiTriage.translatedText}"</Text>
+              </View>
+              <View className="flex-row items-start mt-2">
+                <Text className="text-[#627D98] font-bold text-xs w-24">Category:</Text>
+                <Text className="text-[#0B2240] font-bold text-xs flex-1 uppercase">{aiTriage.category?.replace(/_/g, ' ')}</Text>
+              </View>
+              <View className="flex-row items-start mt-2">
+                <Text className="text-[#627D98] font-bold text-xs w-24">Urgency:</Text>
+                <Text className="text-[#0B2240] font-bold text-xs flex-1 uppercase">{aiTriage.urgency}</Text>
+              </View>
+              <View className="flex-row items-start mt-2">
+                <Text className="text-[#627D98] font-bold text-xs w-24">Summary:</Text>
+                <Text className="text-[#0B2240] font-semibold text-xs flex-1">{aiTriage.summary}</Text>
+              </View>
+            </View>
+          </View>
         )}
-      </TouchableOpacity>
+
+        <View className="bg-white border border-[#E2E8F5] rounded-3xl p-5 mb-5 shadow-sm">
+          <Text className="text-[#009FDE] font-black text-xs uppercase tracking-widest mb-4">2. Location Preview</Text>
+
+          <View className="w-full h-48 rounded-2xl overflow-hidden border border-[#E2E8F5] mb-4">
+            {hasNativeMap ? (
+              <MapView
+                style={{ width: '100%', height: '100%' }}
+                initialRegion={{
+                  latitude: location.latitude,
+                  longitude: location.longitude,
+                  latitudeDelta: 0.05,
+                  longitudeDelta: 0.05,
+                }}
+                region={{
+                  latitude: location.latitude,
+                  longitude: location.longitude,
+                  latitudeDelta: 0.015,
+                  longitudeDelta: 0.015,
+                }}
+              >
+                {hasLocation && (
+                  <Marker
+                    coordinate={location}
+                    draggable
+                    onDragEnd={(e) => {
+                      const newCoords = e.nativeEvent.coordinate;
+                      setLocation(newCoords);
+                      api.post('/api/locate-barangay', {
+                        latitude: newCoords.latitude,
+                        longitude: newCoords.longitude,
+                      }).then((locData) => {
+                        if (locData && locData.barangay) {
+                          setBarangay(locData.barangay);
+                          setOutOfScope(false);
+                        } else {
+                          setBarangay("Unknown Area");
+                          setOutOfScope(true);
+                        }
+                      });
+                    }}
+                    pinColor="red"
+                  />
+                )}
+              </MapView>
+            ) : (
+              Platform.OS === 'web' && hasLocation ? (
+                <WebMap latitude={location.latitude} longitude={location.longitude} />
+              ) : (
+                <View className="flex-1 bg-[#F8FAFC] items-center justify-center p-4">
+                  {hasLocation ? (
+                    <Image
+                      source={{
+                        uri: `https://static-maps.yandex.ru/1.x/?ll=${location.longitude},${location.latitude}&size=450,200&z=14&l=map&pt=${location.longitude},${location.latitude},pm2rdl`
+                      }}
+                      className="w-full h-full rounded-2xl"
+                      style={{ resizeMode: 'cover' }}
+                    />
+                  ) : (
+                    <View className="items-center p-4">
+                      <Ionicons name="location-outline" size={24} color="#0B2240" style={{ marginBottom: 6 }} />
+                      <Text className="text-[#0B2240] font-black text-sm mb-1 text-center">
+                        Awaiting Location
+                      </Text>
+                      <Text className="text-[#627D98] font-medium text-xs text-center leading-relaxed">
+                        Your current location will be captured automatically when you submit your complaint.
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )
+            )}
+          </View>
+
+          {hasLocation && (
+            <View className="bg-[#F8FAFC] border border-[#E2E8F5] rounded-2xl p-4 flex-row items-center justify-between">
+              <View className="flex-1">
+                <Text className="text-[#627D98] font-bold text-[9px] uppercase tracking-wider">Barangay</Text>
+                <Text className="text-[#0B2240] font-black text-xs mt-0.5">{barangay || 'Detecting...'}</Text>
+              </View>
+              <View className="w-px h-8 bg-[#E2E8F5] mx-4" />
+              <View className="flex-grow flex-shrink-0">
+                <Text className="text-[#627D98] font-bold text-[9px] uppercase tracking-wider">GPS Coordinates</Text>
+                <Text className="text-[#0B2240] font-black text-xs mt-0.5">{location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}</Text>
+              </View>
+            </View>
+          )}
+
+          {outOfScope && (
+            <View className="bg-red-50 border border-red-100 rounded-2xl p-4 mt-3">
+              <Text className="text-[#EF4444] font-semibold text-xs text-center leading-relaxed">
+                Outside Service Area. Please move pin inside San Fernando boundary.
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Submit Status Indicator */}
+        {loading && submitStatus ? (
+          <View className="bg-[#EFF6FF] border border-[#3B82F6]/20 rounded-2xl p-4 mb-4 flex-row items-center justify-center">
+            <ActivityIndicator color="#007AFF" size="small" style={{ marginRight: 8 }} />
+            <Text className="text-[#007AFF] font-bold text-xs">{submitStatus}</Text>
+          </View>
+        ) : null}
+
+        <TouchableOpacity 
+          onPress={handleSubmit}
+          disabled={loading}
+          activeOpacity={0.8}
+          className={`py-4 rounded-2xl items-center justify-center shadow-sm ${
+            loading ? 'bg-slate-300' : 'bg-[#0B2240] active:bg-[#061224]'
+          }`}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text className="text-white font-black text-sm uppercase tracking-wider">Submit Report</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Success Confirmation Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={successModalVisible}
+        onRequestClose={() => setSuccessModalVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(11, 34, 64, 0.4)' }} className="justify-center items-center p-6">
+          <View className="bg-white w-full max-w-sm rounded-3xl p-6 items-center shadow-xl border border-[#E2E8F5]">
+            
+            {/* Animated Checkmark Circle */}
+            <View className="bg-[#ECFDF5] border border-[#10B981]/20 p-4 rounded-full mb-4 items-center justify-center">
+              <Ionicons name="checkmark-circle" size={48} color="#10B981" />
+            </View>
+
+            {/* Title */}
+            <Text className="text-[#0B2240] font-black text-lg text-center leading-snug mb-1">
+              Complaint Registered
+            </Text>
+            <Text className="text-[#627D98] font-medium text-xs text-center mb-6 px-2">
+              Your utility report has been successfully logged into the AquaTrack command center.
+            </Text>
+
+            {/* Ticket Details Panel */}
+            <View className="bg-[#F8FAFC] border border-[#E2E8F5] w-full rounded-2xl p-4 mb-6">
+              <View className="flex-row justify-between items-center mb-2.5">
+                <Text className="text-[#627D98] font-bold text-[9px] uppercase tracking-wider">Ticket ID</Text>
+                <Text className="text-[#0B2240] font-black text-xs font-mono">{successTicketDetails.ticketId}</Text>
+              </View>
+              <View className="w-full h-px bg-[#E2E8F5] my-1" />
+              <View className="flex-row justify-between items-center mt-2.5">
+                <Text className="text-[#627D98] font-bold text-[9px] uppercase tracking-wider">Service Area</Text>
+                <Text className="text-[#0B2240] font-black text-xs">{successTicketDetails.barangay}</Text>
+              </View>
+            </View>
+
+            {/* Buttons */}
+            <View className="w-full">
+              <TouchableOpacity 
+                onPress={() => {
+                  setSuccessModalVisible(false);
+                  navigation.navigate('TrackComplaints');
+                }}
+                activeOpacity={0.85}
+                className="bg-[#0B2240] py-3.5 rounded-2xl w-full items-center justify-center shadow-sm"
+              >
+                <Text className="text-white font-black text-xs uppercase tracking-wider">Track Progress</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                onPress={() => setSuccessModalVisible(false)}
+                activeOpacity={0.8}
+                className="border border-[#E2E8F5] py-3.5 rounded-2xl w-full items-center justify-center mt-3"
+              >
+                <Text className="text-[#627D98] font-bold text-xs">File Another Report</Text>
+              </TouchableOpacity>
+            </View>
+
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }

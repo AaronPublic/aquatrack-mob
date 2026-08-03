@@ -58,7 +58,7 @@ export default StyleSheet.create({
 
   listContainer: {
     padding: 16,
-    paddingBottom: 110,
+    paddingBottom: 140,
     gap: 12,
   },
 

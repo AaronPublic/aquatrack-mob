@@ -1,19 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, LayoutAnimation, Platform, UIManager, Image } from 'react-native';
 import { api } from '../../src/config/api';
+import { supabase } from '../../src/config/supabase';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import styles from './Announcements.styles';
+import homeStyles from './ConsumerHome.styles';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-export default function Announcements() {
+export default function Announcements({ route, navigation }) {
   const [advisories, setAdvisories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('ALL'); // ALL, WARNINGS, UPDATES
   const [expandedId, setExpandedId] = useState(null);
+  const [userName, setUserName] = useState('Pedro');
+  const [metrics, setMetrics] = useState({ total: 25, pending: 9, active: 8, resolved: 8 });
 
   const fetchAdvisories = async () => {
     try {
@@ -33,9 +38,59 @@ export default function Announcements() {
     }
   };
 
+  const fetchProfileAndMetrics = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // Fetch profile
+        const profile = await api.post('/api/auth/profile', { userId: session.user.id });
+        if (profile?.name) {
+          setUserName(profile.name);
+        }
+
+        // Fetch complaint counts
+        const { data: userComplaints, error: compError } = await supabase
+          .from('Complaint')
+          .select('id, status')
+          .eq('userId', session.user.id);
+
+        if (!compError && userComplaints) {
+          const total = userComplaints.length;
+          const pending = userComplaints.filter(c => c.status === 'PENDING').length;
+          const active = userComplaints.filter(c => c.status === 'EVALUATING' || c.status === 'DISPATCHED' || c.status === 'ONGOING').length;
+          const resolved = userComplaints.filter(c => c.status === 'RESOLVED').length;
+
+          setMetrics({ total, pending, active, resolved });
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to load header profile/metrics:", err);
+    }
+  };
+
   useEffect(() => {
     fetchAdvisories();
-  }, []);
+    fetchProfileAndMetrics();
+
+    // Refresh when focused
+    const unsubscribeFocus = navigation?.addListener('focus', () => {
+      fetchAdvisories();
+      fetchProfileAndMetrics();
+    });
+
+    return () => {
+      unsubscribeFocus?.();
+    };
+  }, [navigation]);
+
+  useEffect(() => {
+    if (route?.params?.highlightAdvisoryId) {
+      // Set the expanded card ID to the warning
+      setExpandedId(route.params.highlightAdvisoryId);
+      // Automatically switch to ALL tab to make sure it is shown
+      setActiveTab('ALL');
+    }
+  }, [route?.params?.highlightAdvisoryId]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -113,47 +168,122 @@ export default function Announcements() {
   });
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Water District Bulletins</Text>
-        <Text style={styles.subtitle}>Latest official advisories and service interruption schedules</Text>
-      </View>
+    <View style={[styles.container, { backgroundColor: '#F2F5FA' }]}>
+      {/* Shared Header (Static at top for layout uniformity and flicker prevention) */}
+      <LinearGradient 
+        colors={['#02205eff', '#325497ff']} 
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.8, y: 1 }}
+        style={homeStyles.headerCard}
+      >
+        {/* Brand Row */}
+        <View style={homeStyles.brandRow}>
+          {/* Left: Brand Logo */}
+          <View style={homeStyles.logoContainer}>
+            <Image 
+              source={require('../../assets/LOGO3.png')}
+              style={homeStyles.logoImage}
+            />
+          </View>
 
-      {/* Segment Tabs */}
-      <View style={styles.tabBar}>
-        {['ALL', 'WARNINGS', 'UPDATES'].map((tab) => {
-          const isActive = activeTab === tab;
-          return (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tabButton, isActive && styles.tabButtonActive]}
-              onPress={() => {
-                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                setActiveTab(tab);
-                setExpandedId(null);
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-                {tab}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+          {/* Middle: Brand Text */}
+          <View style={homeStyles.brandTextContainer}>
+            <View style={homeStyles.brandTitleRow}>
+              <Text style={homeStyles.brandAqua}>AQ</Text>
+              <Text style={[homeStyles.brandAqua, { color: '#ffd800' }]}>U</Text>
+              <Text style={[homeStyles.brandAqua, { color: '#970006' }]}>A</Text>
+              <Text style={homeStyles.brandRack}>T</Text>
+              <Text style={homeStyles.brandRack}>RACK</Text>
+            </View>
+            <Text style={homeStyles.brandSubtitle}>CONSUMER PORTAL</Text>
+          </View>
+
+          {/* Right: User Profile Pill */}
+          <TouchableOpacity 
+            style={homeStyles.profilePill}
+            activeOpacity={0.8}
+          >
+            <Text style={homeStyles.profileName} numberOfLines={1}>{userName}</Text>
+            <View style={homeStyles.avatarContainer}>
+              <Ionicons name="person" size={14} color="#ffffff" />
+              <View style={homeStyles.activeDot} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Metrics Counter Banner */}
+        <View style={homeStyles.metricsBanner}>
+          <View style={homeStyles.metricColumn}>
+            <Text style={homeStyles.metricLabel}>TOTAL LOGS</Text>
+            <Text style={homeStyles.metricNumber}>{metrics.total}</Text>
+          </View>
+          <View style={homeStyles.divider} />
+          
+          <View style={homeStyles.metricColumn}>
+            <Text style={[homeStyles.metricLabel, { color: '#FFCC00' }]}>PENDING</Text>
+            <Text style={[homeStyles.metricNumber, { color: '#FFCC00' }]}>{metrics.pending}</Text>
+          </View>
+          <View style={homeStyles.divider} />
+
+          <View style={homeStyles.metricColumn}>
+            <Text style={[homeStyles.metricLabel, { color: '#00D1FF' }]}>ACTIVE</Text>
+            <Text style={[homeStyles.metricNumber, { color: '#00D1FF' }]}>{metrics.active}</Text>
+          </View>
+          <View style={homeStyles.divider} />
+
+          <View style={homeStyles.metricColumn}>
+            <Text style={[homeStyles.metricLabel, { color: '#4CD964' }]}>RESOLVED</Text>
+            <Text style={[homeStyles.metricNumber, { color: '#4CD964' }]}>{metrics.resolved}</Text>
+          </View>
+        </View>
+      </LinearGradient>
 
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator color="#001e66" size="large" />
+          <ActivityIndicator color="#0B2240" size="large" />
         </View>
       ) : (
         <FlatList
           data={filteredAdvisories}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
+          ListHeaderComponent={
+            <View>
+              {/* Title & Info */}
+              <View className="mb-4">
+                <Text className="text-[#0B2240] font-black text-2xl tracking-tight">Water District Bulletins</Text>
+                <Text className="text-[#627D98] font-medium text-xs mt-1.5 leading-relaxed">
+                  Latest official advisories and service interruption schedules
+                </Text>
+              </View>
+
+              {/* Segment Tabs */}
+              <View style={[styles.tabBar, { marginHorizontal: 0, marginBottom: 16 }]}>
+                {['ALL', 'WARNINGS', 'UPDATES'].map((tab) => {
+                  const isActive = activeTab === tab;
+                  return (
+                    <TouchableOpacity
+                      key={tab}
+                      style={[styles.tabButton, isActive && styles.tabButtonActive]}
+                      onPress={() => {
+                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                        setActiveTab(tab);
+                        setExpandedId(null);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                        {tab}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          }
           contentContainerStyle={styles.listContainer}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#001e66" />
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#0B2240" />
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
