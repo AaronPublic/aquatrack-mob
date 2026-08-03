@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
 import { api } from '../../src/config/api';
+import { Ionicons } from '@expo/vector-icons';
 import styles from './SubAdminAdvisories.styles';
+import TechHeader from './TechHeader';
 
-export default function SubAdminAdvisories() {
+export default function SubAdminAdvisories({ navigation }) {
   const [advisories, setAdvisories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -60,11 +62,13 @@ export default function SubAdminAdvisories() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Staff advisories</Text>
-        <Text style={styles.subtitle}>District advisories, pipeline maintenance events, and technician alerts</Text>
-      </View>
+    <View style={[styles.container, { backgroundColor: '#F2F5FA' }]}>
+      <TechHeader
+        navigation={navigation}
+        subtitle="STAFF ADVISORIES"
+        pageTitle="Staff Advisories"
+        pageDesc="District advisories, pipeline maintenance events, and technician alerts"
+      />
 
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -75,7 +79,7 @@ export default function SubAdminAdvisories() {
           data={advisories}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={styles.listContainer}
+          contentContainerStyle={[styles.listContainer, { paddingTop: 16 }]}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#001e66" />
           }

@@ -11,7 +11,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/LOGO3.png",
+        "foregroundImage": "./assets/favicon.png",
         "backgroundColor": "#02205e"
       },
       "package": "com.aquatrack.mob",
@@ -24,6 +24,15 @@
           "android": {
             "usesCleartextTraffic": true
           }
+        }
+      ],
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/GeistMono-Regular.ttf",
+            "./assets/fonts/GeistMono-Bold.ttf"
+          ]
         }
       ]
     ],

@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 import { theme } from '../../src/config/theme';
 
-export default StyleSheet.create({
+const rawStyles = {
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
@@ -33,8 +33,8 @@ export default StyleSheet.create({
     alignItems: 'center',
   },
   logoImage: {
-    width: 36,
-    height: 36,
+    width: 38,
+    height: 38,
     resizeMode: 'contain',
   },
   brandTextContainer: {
@@ -46,22 +46,49 @@ export default StyleSheet.create({
     alignItems: 'center',
   },
   brandAqua: {
-    fontSize: 15,
-    fontWeight: '900',
+    fontSize: 17,
+    fontWeight: '950',
     color: '#ffffff',
     letterSpacing: 0.5,
+    textShadowColor: 'rgba(255, 255, 255, 0.45)',
+    textShadowOffset: { width: 0.25, height: 0.25 },
+    textShadowRadius: 0.5,
+  },
+  brandAquaYellow: {
+    fontSize: 17,
+    fontWeight: '950',
+    color: '#ffd800',
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(255, 216, 0, 0.45)',
+    textShadowOffset: { width: 0.25, height: 0.25 },
+    textShadowRadius: 0.5,
+  },
+  brandAquaRed: {
+    fontSize: 17,
+    fontWeight: '950',
+    color: '#970006',
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(151, 0, 6, 0.45)',
+    textShadowOffset: { width: 0.25, height: 0.25 },
+    textShadowRadius: 0.5,
   },
   brandT: {
-    fontSize: 15,
-    fontWeight: '900',
+    fontSize: 17,
+    fontWeight: '950',
     color: '#00D1FF', // Bright Cyan/Azure
     letterSpacing: 0.5,
+    textShadowColor: 'rgba(0, 209, 255, 0.45)',
+    textShadowOffset: { width: 0.25, height: 0.25 },
+    textShadowRadius: 0.5,
   },
   brandRack: {
-    fontSize: 15,
-    fontWeight: '900',
+    fontSize: 17,
+    fontWeight: '950',
     color: '#ffffff',
     letterSpacing: 0.5,
+    textShadowColor: 'rgba(255, 255, 255, 0.45)',
+    textShadowOffset: { width: 0.25, height: 0.25 },
+    textShadowRadius: 0.5,
   },
   brandSubtitle: {
     fontSize: 8,
@@ -136,6 +163,7 @@ export default StyleSheet.create({
   metricNumber: {
     fontSize: 18,
     fontWeight: '900',
+    fontFamily: theme.fonts.mono,
     color: '#ffffff',
   },
   divider: {
@@ -316,6 +344,7 @@ export default StyleSheet.create({
   progressNumber: {
     fontSize: 16,
     fontWeight: '900',
+    fontFamily: theme.fonts.mono,
     color: theme.colors.primary,
   },
   progressUnit: {
@@ -641,4 +670,135 @@ export default StyleSheet.create({
     fontSize: 13,
     fontWeight: 'bold',
   },
+  notificationBell: {
+    position: 'relative',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444', 
+    borderWidth: 1.5,
+    borderColor: '#02205e', 
+  },
+  notificationsModalContent: {
+    backgroundColor: theme.colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: 36,
+    maxHeight: '80%', 
+    shadowColor: '#0B2240',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  notificationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    paddingHorizontal: 12,
+  },
+  notificationItemUnread: {
+    backgroundColor: 'rgba(0, 159, 222, 0.04)', 
+  },
+  notificationIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notificationContent: {
+    flex: 1,
+  },
+  notificationTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+    marginBottom: 2,
+  },
+  notificationMessage: {
+    fontSize: 11,
+    color: theme.colors.textMuted,
+    lineHeight: 14,
+  },
+  notificationTime: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    color: '#94a3b8',
+    textTransform: 'uppercase',
+    marginTop: 4,
+  },
+  emptyNotifications: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    gap: 8,
+  },
+  emptyNotificationsText: {
+    fontSize: 12,
+    color: theme.colors.textMuted,
+  },
+};
+
+// Post-process rawStyles to apply correct fontFamily and remove conflicting fontWeight on Android
+Object.keys(rawStyles).forEach(key => {
+  const style = rawStyles[key];
+  if (style) {
+    // If it has font family already (like GeistMono), map weights correctly
+    if (style.fontFamily === 'GeistMono-Regular' || style.fontFamily === theme.fonts.mono) {
+      if (style.fontWeight === 'bold' || style.fontWeight === '700' || style.fontWeight === '800' || style.fontWeight === '950' || style.fontWeight === '900') {
+        style.fontFamily = theme.fonts.monoBold;
+      }
+      delete style.fontWeight;
+    } else if (style.fontFamily === theme.fonts.monoBold) {
+      delete style.fontWeight;
+    } else {
+      // If it defines text-like properties (fontSize, color, letterSpacing, lineHeight, textTransform, etc.), apply Plus Jakarta Sans!
+      const isText = style.fontSize !== undefined || 
+                     style.letterSpacing !== undefined || 
+                     style.lineHeight !== undefined || 
+                     style.textTransform !== undefined ||
+                     key.toLowerCase().includes('text') || 
+                     key.toLowerCase().includes('title') || 
+                     key.toLowerCase().includes('label') ||
+                     key.toLowerCase().includes('desc') || 
+                     key.toLowerCase().includes('name') ||
+                     key.toLowerCase().includes('brand') ||
+                     key.toLowerCase().includes('btn') ||
+                     key.toLowerCase().includes('button') ||
+                     key.toLowerCase().includes('input');
+
+      if (isText && !style.fontFamily) {
+        if (style.fontWeight === 'bold' || style.fontWeight === '700') {
+          style.fontFamily = theme.fonts.bold;
+        } else if (style.fontWeight === '800' || style.fontWeight === '900' || style.fontWeight === '950') {
+          style.fontFamily = theme.fonts.extraBold;
+        } else if (style.fontWeight === '500' || style.fontWeight === '600') {
+          style.fontFamily = theme.fonts.semiBold;
+        } else {
+          style.fontFamily = theme.fonts.regular;
+        }
+        delete style.fontWeight;
+      }
+    }
+  }
 });
+
+export default StyleSheet.create(rawStyles);

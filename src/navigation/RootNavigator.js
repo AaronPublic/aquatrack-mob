@@ -168,22 +168,22 @@ function SubAdminTabNavigator() {
       <Tab.Screen 
         name="SubAdminHome" 
         component={SubAdminHome} 
-        options={{ title: 'My Job', headerTitle: 'Technician Command' }} 
+        options={{ title: 'My Job', headerShown: false }} 
       />
       <Tab.Screen 
         name="SubAdminComplaints" 
         component={SubAdminComplaints} 
-        options={{ title: 'Triage', headerTitle: 'Citizen Complaints' }} 
+        options={{ title: 'Triage', headerShown: false }} 
       />
       <Tab.Screen 
         name="SubAdminTelemetry" 
         component={SubAdminTelemetry} 
-        options={{ title: 'Telemetry', headerTitle: 'Sensor Network' }} 
+        options={{ title: 'Telemetry', headerShown: false }} 
       />
       <Tab.Screen 
         name="SubAdminAdvisories" 
         component={SubAdminAdvisories} 
-        options={{ title: 'Advisories', headerTitle: 'Staff Notices' }} 
+        options={{ title: 'Advisories', headerShown: false }} 
       />
     </Tab.Navigator>
   );

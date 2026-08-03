@@ -4,6 +4,7 @@ import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import styles from './Login.styles';
 import { useAuthStore } from '../../src/store/useAuthStore';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function Login({ navigation }) {
   const [email, setEmail] = useState('');
@@ -223,10 +224,13 @@ export default function Login({ navigation }) {
                       <TouchableOpacity 
                         activeOpacity={0.7} 
                         onPress={() => setShowPassword(!showPassword)}
+                        style={{ padding: 4 }}
                       >
-                        <Text style={styles.rightIconText}>
-                          {showPassword ? "[hide]" : "[show]"}
-                        </Text>
+                        <Ionicons 
+                          name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                          size={20} 
+                          color="#627D98" 
+                        />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -240,7 +244,7 @@ export default function Login({ navigation }) {
                       <Text style={styles.leftIconText}></Text>
                       <TextInput
                         id="login-billing-id"
-                        style={styles.inputField}
+                        style={[styles.inputField, { fontFamily: 'GeistMono-Regular' }]}
                         placeholder="Enter billing ID or scan QR code"
                         placeholderTextColor="#94a3b8"
                         value={billingId}

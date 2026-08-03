@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
+import { Ionicons } from '@expo/vector-icons';
 import styles from './SubAdminTelemetry.styles';
+import TechHeader from './TechHeader';
 
-export default function SubAdminTelemetry() {
+export default function SubAdminTelemetry({ navigation }) {
   const [nodes, setNodes] = useState([]);
   const [readings, setReadings] = useState({});
   const [loading, setLoading] = useState(true);
@@ -128,17 +130,20 @@ export default function SubAdminTelemetry() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: '#F2F5FA' }]}>
+      <TechHeader
+        navigation={navigation}
+        subtitle="TECHNICIAN TELEMETRY"
+        pageTitle="IoT Telemetry Nodes"
+        pageDesc="Real-time sensor monitors for pH, turbidity, pressure, and TDS"
+      />
+
       <ScrollView 
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#001e66" />
         }
-        contentContainerStyle={{ paddingBottom: 110 }}
+        contentContainerStyle={{ paddingBottom: 110, paddingTop: 16 }}
       >
-        <View style={styles.header}>
-          <Text style={styles.title}>IoT Telemetry Nodes</Text>
-          <Text style={styles.subtitle}>Real-time sensor monitors for ph, turbidity, pressure, and TDS</Text>
-        </View>
 
         {loading ? (
           <View style={{ marginTop: 40, justifyContent: 'center', alignItems: 'center' }}>

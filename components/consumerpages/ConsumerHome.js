@@ -8,6 +8,7 @@ import styles from './ConsumerHome.styles';
 import { theme } from '../../src/config/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../../src/store/useAuthStore';
+import { useNotificationStore } from '../../src/store/useNotificationStore';
 
 const statusConfigs = {
   PENDING: { label: "Pending Review", text: "#b45309", bg: "#fef3c7", dot: "#f59e0b" },
@@ -43,15 +44,58 @@ const formatCategory = (cat) => {
     .replace(/\b\w/g, c => c.toUpperCase());
 };
 
+const calculateWQI = (reading) => {
+  if (!reading) return 84; // Fallback default
+  let score = 0;
+  
+  // pH (Max 30)
+  const ph = reading.ph;
+  if (ph >= 7.2 && ph <= 7.8) score += 30;
+  else if (ph >= 6.5 && ph <= 8.5) score += 20;
+  else score += 5;
+
+  // Turbidity (Max 25)
+  const turb = reading.turbidity;
+  if (turb < 1.0) score += 25;
+  else if (turb <= 3.0) score += 20;
+  else if (turb <= 5.0) score += 12;
+  else score += 2;
+
+  // TDS (Max 25)
+  const tds = reading.tds;
+  if (tds < 150) score += 25;
+  else if (tds <= 300) score += 20;
+  else if (tds <= 500) score += 12;
+  else score += 2;
+
+  // Pressure (Max 20)
+  const press = reading.pressure;
+  if (press > 25) score += 20;
+  else if (press >= 15) score += 15;
+  else if (press >= 10) score += 8;
+  else score += 2;
+
+  return Math.round(score);
+};
+
 export default function ConsumerHome({ navigation }) {
   const [userName, setUserName] = useState('Pedro'); // Default fallback to "Pedro" per spec
   const [advisories, setAdvisories] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [recentComplaints, setRecentComplaints] = useState([]);
   const [profileModalVisible, setProfileModalVisible] = useState(false);
+  const [notificationsModalVisible, setNotificationsModalVisible] = useState(false);
+  const { notifications, unreadCount, fetchNotifications, markAllAsRead, dismissNotification } = useNotificationStore();
   const [dismissedAlerts, setDismissedAlerts] = useState([]);
-  
   const [metrics, setMetrics] = useState({ total: 25, pending: 9, active: 8, resolved: 8 });
+  const [waterIndexData, setWaterIndexData] = useState({
+    nodeName: 'DOLORES EDGE NODE',
+    wqi: 84,
+    statusText: 'STABLE STATE',
+    description: 'Satisfactory pressure and quality. Safe for daily household tasks and normal usage.',
+    statusColor: '#007AFF',
+    statusBg: 'rgba(0, 122, 255, 0.08)'
+  });
 
   useEffect(() => {
     const loadDismissed = async () => {
@@ -66,6 +110,21 @@ export default function ConsumerHome({ navigation }) {
     };
     loadDismissed();
   }, []);
+
+  const handleOpenNotifications = () => {
+    setNotificationsModalVisible(true);
+    markAllAsRead();
+  };
+
+  const handleNotificationPress = (item) => {
+    setNotificationsModalVisible(false);
+    dismissNotification(item.id);
+    if (item.type === 'advisory') {
+      navigation.navigate('Announcements');
+    } else if (item.type === 'complaint_status') {
+      navigation.navigate('TrackComplaints');
+    }
+  };
 
   useEffect(() => {
     const fetchProfileAndAdvisories = async () => {
@@ -94,6 +153,70 @@ export default function ConsumerHome({ navigation }) {
             setMetrics({ total, pending, active, resolved });
             setRecentComplaints(userComplaints.slice(0, 3));
           }
+
+          // Fetch Telemetry Nodes and Readings to calculate dynamic Water Health Index
+          try {
+            const { data: nodes } = await supabase.from('TelemetryNode').select('*');
+            const { data: readings } = await supabase
+              .from('TelemetryReading')
+              .select('*')
+              .order('timestamp', { ascending: false });
+
+            if (nodes && nodes.length > 0) {
+              const userBarangay = profile?.address || '';
+              
+              // Match node by name match to user address, default to first node (Dolores Edge Node usually)
+              let chosenNode = nodes[0];
+              for (const node of nodes) {
+                const nodeNameFirstWord = node.name.split(' ')[0].toLowerCase();
+                if (userBarangay.toLowerCase().includes(nodeNameFirstWord)) {
+                  chosenNode = node;
+                  break;
+                }
+              }
+
+              const latestReading = readings?.find(r => r.nodeId === chosenNode.id) || null;
+              const computedWqi = calculateWQI(latestReading);
+              
+              let statusText = 'STABLE STATE';
+              let description = 'Satisfactory pressure and quality. Safe for daily household tasks and normal usage.';
+              let statusColor = '#007AFF'; // Blue
+              let statusBg = 'rgba(0, 122, 255, 0.08)';
+
+              if (computedWqi >= 85) {
+                statusText = 'OPTIMAL STATE';
+                description = 'Excellent water quality and pressure. Highly safe for drinking and all general household uses.';
+                statusColor = '#10B981'; // Emerald
+                statusBg = '#ECFDF5';
+              } else if (computedWqi >= 70) {
+                statusText = 'STABLE STATE';
+                description = 'Satisfactory pressure and quality. Safe for daily household tasks and normal usage.';
+                statusColor = '#007AFF'; // Blue
+                statusBg = 'rgba(0, 122, 255, 0.08)';
+              } else if (computedWqi >= 50) {
+                statusText = 'MODERATE ANOMALY';
+                description = 'Mild pressure drop or mineral increase detected. Safe for utility tasks; avoid direct consumption.';
+                statusColor = '#F59E0B'; // Amber
+                statusBg = '#FEF3C7';
+              } else {
+                statusText = 'CRITICAL STATE';
+                description = 'High turbidity or severe pressure loss. Maintenance crews dispatched. Avoid usage for drinking/cooking.';
+                statusColor = '#EF4444'; // Red
+                statusBg = '#FEF2F2';
+              }
+
+              setWaterIndexData({
+                nodeName: chosenNode.name.toUpperCase(),
+                wqi: computedWqi,
+                statusText,
+                description,
+                statusColor,
+                statusBg
+              });
+            }
+          } catch (telemetryErr) {
+            console.warn("Failed to load dynamic water health index:", telemetryErr);
+          }
         }
 
         // Fetch advisories from API
@@ -107,6 +230,8 @@ export default function ConsumerHome({ navigation }) {
           const criticalAlerts = publicAdvisories.filter(ad => ad.type === 'warning');
           setAlerts(criticalAlerts);
         }
+        // Fetch global notifications store
+        fetchNotifications();
       } catch (err) {
         console.error("Failed to load home content:", err);
       }
@@ -123,6 +248,25 @@ export default function ConsumerHome({ navigation }) {
     const setupRealtime = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
+        // Fetch profile to identify nearest node
+        const profile = await api.post('/api/auth/profile', { userId: session.user.id });
+        const userBarangay = profile?.address || '';
+
+        // Fetch nodes
+        const { data: nodes } = await supabase.from('TelemetryNode').select('id, name');
+        let chosenNodeId = null;
+        if (nodes && nodes.length > 0) {
+          let chosenNode = nodes[0];
+          for (const node of nodes) {
+            const nodeNameFirstWord = node.name.split(' ')[0].toLowerCase();
+            if (userBarangay.toLowerCase().includes(nodeNameFirstWord)) {
+              chosenNode = node;
+              break;
+            }
+          }
+          chosenNodeId = chosenNode.id;
+        }
+
         channel = supabase.channel(`home-realtime-${session.user.id}`)
           .on(
             'postgres_changes',
@@ -148,8 +292,26 @@ export default function ConsumerHome({ navigation }) {
               console.log('Realtime advisory change on home screen:', payload);
               fetchProfileAndAdvisories();
             }
-          )
-          .subscribe();
+          );
+
+        // Add telemetry reading listener with nodeId filter (Option A!)
+        if (chosenNodeId) {
+          channel = channel.on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'TelemetryReading',
+              filter: `nodeId=eq.${chosenNodeId}`
+            },
+            (payload) => {
+              console.log(`Realtime telemetry change for node ${chosenNodeId}:`, payload);
+              fetchProfileAndAdvisories();
+            }
+          );
+        }
+
+        channel.subscribe();
       }
     };
 
@@ -256,26 +418,39 @@ export default function ConsumerHome({ navigation }) {
           <View style={styles.brandTextContainer}>
             <View style={styles.brandTitleRow}>
               <Text style={styles.brandAqua}>AQ</Text>
-              <Text style={[styles.brandAqua, { color: '#ffd800' }]}>U</Text>
-              <Text style={[styles.brandAqua, { color: '#970006' }]}>A</Text>
+              <Text style={styles.brandAquaYellow}>U</Text>
+              <Text style={styles.brandAquaRed}>A</Text>
               <Text style={styles.brandRack}>T</Text>
               <Text style={styles.brandRack}>RACK</Text>
             </View>
             <Text style={styles.brandSubtitle}>CONSUMER PORTAL</Text>
           </View>
 
-          {/* Right: User Profile Pill */}
-          <TouchableOpacity 
-            style={styles.profilePill}
-            onPress={handleProfilePress}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.profileName} numberOfLines={1}>{userName}</Text>
-            <View style={styles.avatarContainer}>
-              <Ionicons name="person" size={14} color="#ffffff" />
-              <View style={styles.activeDot} />
-            </View>
-          </TouchableOpacity>
+          {/* Right: Notification & Profile Section */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            {/* Notification Bell */}
+            <TouchableOpacity 
+              activeOpacity={0.7} 
+              onPress={handleOpenNotifications}
+              style={styles.notificationBell}
+            >
+              <Ionicons name="notifications-outline" size={18} color="#ffffff" />
+              {unreadCount > 0 && <View style={styles.notificationBadge} />}
+            </TouchableOpacity>
+
+            {/* User Profile Pill */}
+            <TouchableOpacity 
+              style={styles.profilePill}
+              onPress={handleProfilePress}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.profileName} numberOfLines={1}>{userName}</Text>
+              <View style={styles.avatarContainer}>
+                <Ionicons name="person" size={14} color="#ffffff" />
+                <View style={styles.activeDot} />
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Metrics Counter Banner */}
@@ -427,34 +602,50 @@ export default function ConsumerHome({ navigation }) {
         </View>
 
         {/* C. Water Health Consumer Index Card */}
-        <View style={styles.indexCard}>
+        <View className="bg-white border border-[#E2E8F5] rounded-3xl p-5 mb-6 shadow-sm mx-4">
           {/* Card Header */}
-          <View style={styles.indexCardHeader}>
-            <View style={styles.indexHeaderLeft}>
+          <View className="flex-row items-center justify-between border-b border-[#F2F5FA] pb-3.5 mb-4">
+            <View className="flex-row items-center">
               <Ionicons name="shield-checkmark" size={18} color="#007AFF" style={{ marginRight: 6 }} />
-              <Text style={styles.indexHeaderTitle}>WATER HEALTH CONSUMER INDEX</Text>
+              <Text className="text-[#0B2240] font-black text-[10px] tracking-wider uppercase">
+                Water Health Index
+              </Text>
             </View>
-            <View style={styles.indexHeaderRight}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveLabel}>DOLORES NODE LIVE</Text>
+            <View className="flex-row items-center bg-[#ECFDF5] px-2.5 py-1 rounded-full border border-[#10B981]/15">
+              <View className="w-1.5 h-1.5 rounded-full bg-[#10B981] mr-1.5" />
+              <Text className="text-[#10B981] font-black text-[8px] tracking-wider uppercase font-mono">
+                {waterIndexData.nodeName}
+              </Text>
             </View>
           </View>
 
           {/* Card Inner Panel */}
-          <View style={styles.indexInnerPanel}>
+          <View className="flex-row items-center gap-5">
             {/* Left: Circular progress ring graphic */}
-            <View style={styles.progressRing}>
-              <Text style={styles.progressNumber}>84</Text>
-              <Text style={styles.progressUnit}>WQI</Text>
+            <View 
+              style={{ borderColor: waterIndexData.statusColor }}
+              className="w-16 h-16 rounded-full border-4 items-center justify-center bg-[#F8FAFC]"
+            >
+              <Text className="text-[#0B2240] font-black text-xl font-mono">
+                {waterIndexData.wqi}
+              </Text>
             </View>
 
             {/* Right: Status Pill & Description */}
-            <View style={styles.indexInfoBlock}>
-              <View style={styles.statusPill}>
-                <Text style={styles.statusPillText}>STABLE STATE</Text>
+            <View className="flex-1" style={{ paddingLeft: 8 }}>
+              <View 
+                style={{ backgroundColor: waterIndexData.statusBg }}
+                className="self-start px-3 py-1 rounded-full mb-2"
+              >
+                <Text 
+                  style={{ color: waterIndexData.statusColor }}
+                  className="font-black text-[10px] tracking-wider uppercase font-mono"
+                >
+                  {waterIndexData.statusText}
+                </Text>
               </View>
-              <Text style={styles.indexDescription}>
-                Satisfactory pressure and quality. Safe for daily household tasks and normal usage.
+              <Text className="text-[#627D98] text-xs font-semibold leading-relaxed">
+                {waterIndexData.description}
               </Text>
             </View>
           </View>
@@ -604,6 +795,104 @@ export default function ConsumerHome({ navigation }) {
                 <Text style={styles.modalBtnDangerText}>Log Out Account</Text>
               </TouchableOpacity>
             </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Notifications Drawer Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={notificationsModalVisible}
+        onRequestClose={() => setNotificationsModalVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setNotificationsModalVisible(false)}
+        >
+          <TouchableOpacity 
+            style={styles.notificationsModalContent}
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Notifications & Updates</Text>
+              <TouchableOpacity onPress={() => setNotificationsModalVisible(false)}>
+                <Ionicons name="close" size={20} color="#0B1C3F" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Notifications Scrollable List */}
+            {notifications.length === 0 ? (
+              <View style={styles.emptyNotifications}>
+                <Ionicons name="notifications-off-outline" size={48} color="#94a3b8" />
+                <Text style={styles.emptyNotificationsText}>No updates or notifications yet.</Text>
+              </View>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {notifications.map((item) => {
+                  let iconName = 'notifications-outline';
+                  let iconColor = '#009FDE';
+                  let iconBg = 'rgba(0, 159, 222, 0.08)';
+
+                  if (item.type === 'advisory') {
+                    if (item.category === 'warning') {
+                      iconName = 'alert-circle-outline';
+                      iconColor = '#EF4444';
+                      iconBg = '#FEF2F2';
+                    } else {
+                      iconName = 'megaphone-outline';
+                      iconColor = '#F59E0B';
+                      iconBg = '#FEF3C7';
+                    }
+                  } else if (item.type === 'complaint_status') {
+                    if (item.status === 'RESOLVED') {
+                      iconName = 'checkmark-circle-outline';
+                      iconColor = '#10B981';
+                      iconBg = '#ECFDF5';
+                    } else if (item.status === 'ONGOING') {
+                      iconName = 'build-outline';
+                      iconColor = '#6366F1';
+                      iconBg = '#EEF2FF';
+                    } else {
+                      iconName = 'document-text-outline';
+                      iconColor = '#3B82F6';
+                      iconBg = '#EFF6FF';
+                    }
+                  }
+
+                  const timeString = item.date.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  });
+
+                  return (
+                    <TouchableOpacity 
+                      key={item.id} 
+                      activeOpacity={0.7}
+                      onPress={() => handleNotificationPress(item)}
+                      style={[
+                        styles.notificationItem, 
+                        !item.read && styles.notificationItemUnread
+                      ]}
+                    >
+                      <View style={[styles.notificationIconContainer, { backgroundColor: iconBg }]}>
+                        <Ionicons name={iconName} size={18} color={iconColor} />
+                      </View>
+                      <View style={styles.notificationContent}>
+                        <Text style={styles.notificationTitle}>{item.title}</Text>
+                        <Text style={styles.notificationMessage}>{item.message}</Text>
+                        <Text style={styles.notificationTime}>{timeString}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>

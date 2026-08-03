@@ -8,4 +8,11 @@ const config = getDefaultConfig(__dirname);
 // (such as 'stream' or 'ws' imports inside the Supabase client)
 config.resolver.unstable_enablePackageExports = false;
 
+// Exclude transient native android build folders and temp gradle caches from the watcher
+config.resolver.blockList = [
+  /node_modules\/.*\/build\/.*/,
+  /node_modules\/.*\.gradle\/.*/,
+  /android\/app\/build\/.*/,
+];
+
 module.exports = withNativeWind(config, { input: './global.css' });

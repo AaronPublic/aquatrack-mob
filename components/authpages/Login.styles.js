@@ -34,13 +34,13 @@ export default StyleSheet.create({
   },
   title: {
     fontSize: 22,
-    fontWeight: 'bold',
+    fontFamily: theme.fonts.bold,
     color: theme.colors.primary,
     letterSpacing: 0.2,
   },
   subtitle: {
     fontSize: 10,
-    fontWeight: '900',
+    fontFamily: theme.fonts.extraBold,
     color: theme.colors.accent,
     letterSpacing: 2,
     marginTop: 2,
@@ -48,6 +48,7 @@ export default StyleSheet.create({
   },
   supportingText: {
     fontSize: 12,
+    fontFamily: theme.fonts.regular,
     color: theme.colors.textMuted,
     textAlign: 'center',
     lineHeight: 18,
@@ -85,7 +86,7 @@ export default StyleSheet.create({
   },
   selectorText: {
     fontSize: 11,
-    fontWeight: 'bold',
+    fontFamily: theme.fonts.bold,
     color: '#627D98', 
     textTransform: 'uppercase',
     letterSpacing: 0.8,
@@ -112,7 +113,7 @@ export default StyleSheet.create({
   },
   label: {
     fontSize: 9,
-    fontWeight: '900',
+    fontFamily: theme.fonts.extraBold,
     color: theme.colors.primary,
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -133,7 +134,7 @@ export default StyleSheet.create({
     height: '100%',
     color: theme.colors.primary,
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: theme.fonts.regular,
     paddingHorizontal: 8,
   },
   leftIconText: {
@@ -153,13 +154,13 @@ export default StyleSheet.create({
   errorText: {
     color: theme.colors.alert,
     fontSize: 11,
-    fontWeight: '600',
+    fontFamily: theme.fonts.semiBold,
     marginTop: 2,
   },
   globalErrorText: {
     color: theme.colors.alert,
     fontSize: 12,
-    fontWeight: 'bold',
+    fontFamily: theme.fonts.bold,
     textAlign: 'center',
     backgroundColor: theme.colors.alertBg,
     borderColor: '#FEC2C2',
@@ -187,7 +188,7 @@ export default StyleSheet.create({
   submitButtonText: {
     color: theme.colors.white,
     fontSize: 13,
-    fontWeight: 'bold',
+    fontFamily: theme.fonts.bold,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -225,11 +226,12 @@ export default StyleSheet.create({
   },
   footerText: {
     fontSize: 13,
+    fontFamily: theme.fonts.regular,
     color: theme.colors.textMuted,
   },
   footerLink: {
     fontSize: 13,
-    fontWeight: 'bold',
+    fontFamily: theme.fonts.bold,
     color: theme.colors.accent,
   },
   qrScanButton: {
@@ -243,7 +245,7 @@ export default StyleSheet.create({
   qrScanButtonText: {
     color: theme.colors.white,
     fontSize: 11,
-    fontWeight: 'bold',
+    fontFamily: theme.fonts.bold,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -269,5 +271,6 @@ export default StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
     fontWeight: '500',
+    fontFamily: 'GeistMono-Regular',
   }
 });

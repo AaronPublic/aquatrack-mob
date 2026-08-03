@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 import { theme } from '../../src/config/theme';
 
-export default StyleSheet.create({
+const rawStyles = {
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
@@ -22,6 +22,7 @@ export default StyleSheet.create({
   },
   listContainer: {
     padding: 16,
+    paddingBottom: 110,
     gap: 12,
   },
   card: {
@@ -100,4 +101,35 @@ export default StyleSheet.create({
     fontStyle: 'italic',
     padding: 24,
   }
+};
+
+// Post-process styling variables dynamically to match custom fonts
+Object.keys(rawStyles).forEach((key) => {
+  const style = rawStyles[key];
+  if (style && typeof style === 'object') {
+    const hasFontProp = 'fontSize' in style || 'color' in style || 'fontWeight' in style || 'fontFamily' in style;
+    const isText = hasFontProp ||
+                   key.toLowerCase().includes('text') || 
+                   key.toLowerCase().includes('title') || 
+                   key.toLowerCase().includes('label') ||
+                   key.toLowerCase().includes('desc') || 
+                   key.toLowerCase().includes('name') ||
+                   key.toLowerCase().includes('btn') ||
+                   key.toLowerCase().includes('button');
+
+    if (isText && !style.fontFamily) {
+      if (style.fontWeight === 'bold' || style.fontWeight === '700') {
+        style.fontFamily = theme.fonts.bold;
+      } else if (style.fontWeight === '800' || style.fontWeight === '900' || style.fontWeight === '950') {
+        style.fontFamily = theme.fonts.extraBold;
+      } else if (style.fontWeight === '500' || style.fontWeight === '600') {
+        style.fontFamily = theme.fonts.semiBold;
+      } else {
+        style.fontFamily = theme.fonts.regular;
+      }
+      delete style.fontWeight;
+    }
+  }
 });
+
+export default StyleSheet.create(rawStyles);

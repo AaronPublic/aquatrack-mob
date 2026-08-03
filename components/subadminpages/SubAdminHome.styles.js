@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 import { theme } from '../../src/config/theme';
 
-export default StyleSheet.create({
+const rawStyles = {
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
@@ -18,6 +18,176 @@ export default StyleSheet.create({
     shadowRadius: 16,
     elevation: 6,
   },
+  // ─── Notification Bell ────────────────────────────────────────────────────
+  notificationBell: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -1,
+    right: -1,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#EF4444',
+    borderWidth: 1.5,
+    borderColor: '#02205e',
+  },
+  // ─── Notification Drawer ─────────────────────────────────────────────────
+  notificationsModalContent: {
+    backgroundColor: theme.colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 48,
+    maxHeight: '80%',
+    shadowColor: '#0B2240',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  emptyNotifications: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    gap: 8,
+  },
+  emptyNotificationsText: {
+    fontSize: 13,
+    color: '#94a3b8',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  // ─── Notification Item ───────────────────────────────────────────────────
+  notificationItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 10,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F5',
+    gap: 12,
+  },
+  notificationItemUnread: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+  },
+  notificationIconContainer: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  notificationContent: {
+    flex: 1,
+    gap: 3,
+  },
+  notificationTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+  },
+  notificationMessage: {
+    fontSize: 11,
+    color: theme.colors.textMuted,
+    lineHeight: 15,
+  },
+  notificationTime: {
+    fontSize: 9,
+    color: '#94a3b8',
+    marginTop: 2,
+    fontFamily: theme.fonts.mono,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  logoContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoImage: {
+    width: 38,
+    height: 38,
+    resizeMode: 'contain',
+  },
+  brandTextContainer: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  brandTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  brandAqua: {
+    fontSize: 17,
+    fontFamily: theme.fonts.extraBold,
+    color: '#ffffff',
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(255, 255, 255, 0.45)',
+    textShadowOffset: { width: 0.25, height: 0.25 },
+    textShadowRadius: 0.5,
+  },
+  brandAquaYellow: {
+    fontSize: 17,
+    fontFamily: theme.fonts.extraBold,
+    color: '#ffd800',
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(255, 216, 0, 0.45)',
+    textShadowOffset: { width: 0.25, height: 0.25 },
+    textShadowRadius: 0.5,
+  },
+  brandAquaRed: {
+    fontSize: 17,
+    fontFamily: theme.fonts.extraBold,
+    color: '#970006',
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(151, 0, 6, 0.45)',
+    textShadowOffset: { width: 0.25, height: 0.25 },
+    textShadowRadius: 0.5,
+  },
+  brandT: {
+    fontSize: 17,
+    fontFamily: theme.fonts.extraBold,
+    color: '#ffffff',
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(255, 255, 255, 0.45)',
+    textShadowOffset: { width: 0.25, height: 0.25 },
+    textShadowRadius: 0.5,
+  },
+  brandRack: {
+    fontSize: 17,
+    fontFamily: theme.fonts.extraBold,
+    color: '#ffffff',
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(255, 255, 255, 0.45)',
+    textShadowOffset: { width: 0.25, height: 0.25 },
+    textShadowRadius: 0.5,
+  },
+  brandSubtitle: {
+    fontSize: 8,
+    fontFamily: theme.fonts.extraBold,
+    color: 'rgba(255, 255, 255, 0.45)',
+    letterSpacing: 1.8,
+    marginTop: 2,
+    textTransform: 'uppercase',
+  },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -26,14 +196,14 @@ export default StyleSheet.create({
   },
   greetingText: {
     fontSize: 12,
+    fontFamily: theme.fonts.semiBold,
     color: 'rgba(255, 255, 255, 0.75)',
-    fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
   techNameTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontFamily: theme.fonts.bold,
     color: theme.colors.white,
     marginTop: 2,
   },
@@ -59,35 +229,37 @@ export default StyleSheet.create({
   metricsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.10)',
     borderRadius: 18,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 8,
     alignItems: 'center',
   },
   metricColumn: {
     flex: 1,
     alignItems: 'center',
+    gap: 2,
   },
   metricLabel: {
-    fontSize: 8,
-    fontWeight: '800',
-    color: 'rgba(255, 255, 255, 0.45)',
+    fontSize: 7,
+    fontWeight: '900',
+    color: 'rgba(255, 255, 255, 0.40)',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 1.2,
   },
   metricNumber: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 'bold',
+    fontFamily: theme.fonts.mono,
     color: '#ffffff',
-    marginTop: 4,
+    lineHeight: 26,
   },
   divider: {
     width: 1,
-    height: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    height: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.10)',
   },
 
   scrollView: {
@@ -472,4 +644,35 @@ export default StyleSheet.create({
     fontSize: 13,
     fontWeight: 'bold',
   },
+};
+
+// Post-process styling variables dynamically to match custom fonts
+Object.keys(rawStyles).forEach((key) => {
+  const style = rawStyles[key];
+  if (style && typeof style === 'object') {
+    const hasFontProp = 'fontSize' in style || 'color' in style || 'fontWeight' in style || 'fontFamily' in style;
+    const isText = hasFontProp ||
+                   key.toLowerCase().includes('text') || 
+                   key.toLowerCase().includes('title') || 
+                   key.toLowerCase().includes('label') ||
+                   key.toLowerCase().includes('desc') || 
+                   key.toLowerCase().includes('name') ||
+                   key.toLowerCase().includes('btn') ||
+                   key.toLowerCase().includes('button');
+
+    if (isText && !style.fontFamily) {
+      if (style.fontWeight === 'bold' || style.fontWeight === '700') {
+        style.fontFamily = theme.fonts.bold;
+      } else if (style.fontWeight === '800' || style.fontWeight === '900' || style.fontWeight === '950') {
+        style.fontFamily = theme.fonts.extraBold;
+      } else if (style.fontWeight === '500' || style.fontWeight === '600') {
+        style.fontFamily = theme.fonts.semiBold;
+      } else {
+        style.fontFamily = theme.fonts.regular;
+      }
+      delete style.fontWeight;
+    }
+  }
 });
+
+export default StyleSheet.create(rawStyles);

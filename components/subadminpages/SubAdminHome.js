@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import styles from './SubAdminHome.styles';
 import { useAuthStore } from '../../src/store/useAuthStore';
+import { useTechNotificationStore } from '../../src/store/useTechNotificationStore';
+import TechHeader from './TechHeader';
 
 export default function SubAdminHome({ navigation }) {
   const [techName, setTechName] = useState('Technician');
   const [loading, setLoading] = useState(true);
   const [profileModalVisible, setProfileModalVisible] = useState(false);
+  const { fetchNotifications } = useTechNotificationStore();
 
   const handleProfilePress = () => {
     setProfileModalVisible(true);
@@ -93,10 +95,12 @@ export default function SubAdminHome({ navigation }) {
 
   useEffect(() => {
     loadDashboardData();
+    fetchNotifications();
 
     // Refresh on screen focus
     const unsubscribe = navigation.addListener('focus', () => {
       loadDashboardData();
+      fetchNotifications();
     });
 
     return unsubscribe;
@@ -171,52 +175,16 @@ export default function SubAdminHome({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Dashboard Header Card */}
-      <LinearGradient 
-        colors={['#02205eff', '#325497ff']} 
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0.8, y: 1 }}
-        style={styles.headerCard}
-      >
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.greetingText}>Welcome,</Text>
-            <Text style={styles.techNameTitle}>FT-{techName.split(' ')[0]}</Text>
-          </View>
-          {/* Right: Profile Pill */}
-          <TouchableOpacity 
-            style={styles.profilePill}
-            onPress={handleProfilePress}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.profileName} numberOfLines={1}>{techName}</Text>
-            <View style={styles.avatarContainer}>
-              <Ionicons name="person" size={14} color="#ffffff" />
-              <View style={styles.activeDot} />
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* Dashboard Metrics overview */}
-        <View style={styles.metricsRow}>
-          <View style={styles.metricColumn}>
-            <Text style={styles.metricLabel}>My Jobs</Text>
-            <Text style={styles.metricNumber}>{metrics.activeJobs}</Text>
-          </View>
-          <View style={styles.divider} />
-          
-          <View style={styles.metricColumn}>
-            <Text style={styles.metricLabel}>Unassigned</Text>
-            <Text style={styles.metricNumber}>{metrics.pendingTriage}</Text>
-          </View>
-          <View style={styles.divider} />
-
-          <View style={styles.metricColumn}>
-            <Text style={styles.metricLabel}>IoT Alerts</Text>
-            <Text style={styles.metricNumber}>{metrics.telemetryAlerts}</Text>
-          </View>
-        </View>
-      </LinearGradient>
+      {/* Shared Technician Header */}
+      <TechHeader
+        navigation={navigation}
+        subtitle="TECHNICIAN PORTAL"
+        pageTitle={`FT-${techName.split(' ')[0]}`}
+        pageDesc="Welcome, Field Technician"
+        techName={techName}
+        metrics={metrics}
+        onProfilePress={handleProfilePress}
+      />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Active Work Order tracking panel */}
@@ -423,3 +391,4 @@ export default function SubAdminHome({ navigation }) {
     </View>
   );
 }
+

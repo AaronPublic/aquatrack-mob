@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
+import { Ionicons } from '@expo/vector-icons';
 import styles from './SubAdminComplaints.styles';
+import TechHeader from './TechHeader';
 
-export default function SubAdminComplaints() {
+export default function SubAdminComplaints({ navigation }) {
   const [complaints, setComplaints] = useState([]);
   const [techProfiles, setTechProfiles] = useState({});
   const [currentUser, setCurrentUser] = useState(null);
@@ -241,13 +243,15 @@ export default function SubAdminComplaints() {
   });
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Complaints Triage</Text>
-        <Text style={styles.subtitle}>Review municipal alerts and dispatch status</Text>
-      </View>
+    <View style={[styles.container, { backgroundColor: '#F2F5FA' }]}>
+      <TechHeader
+        navigation={navigation}
+        subtitle="TECHNICIAN TRIAGE"
+        pageTitle="Complaints Triage"
+        pageDesc="Review municipal alerts and dispatch status"
+      />
 
-      <View style={styles.filterRow}>
+      <View style={[styles.filterRow, { marginTop: 16 }]}>
         <TextInput
           style={styles.searchInput}
           placeholder="Search by keyword..."

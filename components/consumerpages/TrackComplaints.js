@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, ActivityIndicator, RefreshControl, Alert, TouchableOpacity, Image, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, RefreshControl, Alert, TouchableOpacity, Image, LayoutAnimation, Platform, UIManager, Modal, ScrollView } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import styles from './TrackComplaints.styles';
 import homeStyles from './ConsumerHome.styles';
+import { useNotificationStore } from '../../src/store/useNotificationStore';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -28,6 +29,23 @@ export default function TrackComplaints({ navigation }) {
   const [expandedId, setExpandedId] = useState(null);
   const [userName, setUserName] = useState('Pedro');
   const [metrics, setMetrics] = useState({ total: 25, pending: 9, active: 8, resolved: 8 });
+  const [notificationsModalVisible, setNotificationsModalVisible] = useState(false);
+  const { notifications, unreadCount, fetchNotifications, markAllAsRead, dismissNotification } = useNotificationStore();
+
+  const handleOpenNotifications = () => {
+    setNotificationsModalVisible(true);
+    markAllAsRead();
+  };
+
+  const handleNotificationPress = (item) => {
+    setNotificationsModalVisible(false);
+    dismissNotification(item.id);
+    if (item.type === 'advisory') {
+      navigation.navigate('Announcements');
+    } else if (item.type === 'complaint_status') {
+      navigation.navigate('TrackComplaints');
+    }
+  };
 
   const fetchComplaints = async () => {
     try {
@@ -82,6 +100,8 @@ export default function TrackComplaints({ navigation }) {
           setTechProfiles(prev => ({ ...prev, ...mapping }));
         }
       }
+      // Load notification center updates
+      fetchNotifications();
     } catch (err) {
       console.error("Failed to fetch tickets:", err);
       Alert.alert("Data Sync Failed", "Could not synchronize ticket records with server.");
@@ -327,25 +347,38 @@ export default function TrackComplaints({ navigation }) {
           <View style={homeStyles.brandTextContainer}>
             <View style={homeStyles.brandTitleRow}>
               <Text style={homeStyles.brandAqua}>AQ</Text>
-              <Text style={[homeStyles.brandAqua, { color: '#ffd800' }]}>U</Text>
-              <Text style={[homeStyles.brandAqua, { color: '#970006' }]}>A</Text>
+              <Text style={homeStyles.brandAquaYellow}>U</Text>
+              <Text style={homeStyles.brandAquaRed}>A</Text>
               <Text style={homeStyles.brandRack}>T</Text>
               <Text style={homeStyles.brandRack}>RACK</Text>
             </View>
             <Text style={homeStyles.brandSubtitle}>CONSUMER PORTAL</Text>
           </View>
 
-          {/* Right: User Profile Pill */}
-          <TouchableOpacity 
-            style={homeStyles.profilePill}
-            activeOpacity={0.8}
-          >
-            <Text style={homeStyles.profileName} numberOfLines={1}>{userName}</Text>
-            <View style={homeStyles.avatarContainer}>
-              <Ionicons name="person" size={14} color="#ffffff" />
-              <View style={homeStyles.activeDot} />
-            </View>
-          </TouchableOpacity>
+          {/* Right: Notification & Profile Section */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            {/* Notification Bell */}
+            <TouchableOpacity 
+              activeOpacity={0.7} 
+              onPress={handleOpenNotifications}
+              style={homeStyles.notificationBell}
+            >
+              <Ionicons name="notifications-outline" size={18} color="#ffffff" />
+              {unreadCount > 0 && <View style={homeStyles.notificationBadge} />}
+            </TouchableOpacity>
+
+            {/* User Profile Pill */}
+            <TouchableOpacity 
+              style={homeStyles.profilePill}
+              activeOpacity={0.8}
+            >
+              <Text style={homeStyles.profileName} numberOfLines={1}>{userName}</Text>
+              <View style={homeStyles.avatarContainer}>
+                <Ionicons name="person" size={14} color="#ffffff" />
+                <View style={homeStyles.activeDot} />
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Metrics Counter Banner */}
@@ -437,6 +470,104 @@ export default function TrackComplaints({ navigation }) {
           }
         />
       )}
+
+      {/* Notifications Drawer Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={notificationsModalVisible}
+        onRequestClose={() => setNotificationsModalVisible(false)}
+      >
+        <TouchableOpacity 
+          style={homeStyles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setNotificationsModalVisible(false)}
+        >
+          <TouchableOpacity 
+            style={homeStyles.notificationsModalContent}
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <View style={homeStyles.modalHeader}>
+              <Text style={homeStyles.modalTitle}>Notifications & Updates</Text>
+              <TouchableOpacity onPress={() => setNotificationsModalVisible(false)}>
+                <Ionicons name="close" size={20} color="#0B1C3F" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Notifications Scrollable List */}
+            {notifications.length === 0 ? (
+              <View style={homeStyles.emptyNotifications}>
+                <Ionicons name="notifications-off-outline" size={48} color="#94a3b8" />
+                <Text style={homeStyles.emptyNotificationsText}>No updates or notifications yet.</Text>
+              </View>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {notifications.map((item) => {
+                  let iconName = 'notifications-outline';
+                  let iconColor = '#009FDE';
+                  let iconBg = 'rgba(0, 159, 222, 0.08)';
+
+                  if (item.type === 'advisory') {
+                    if (item.category === 'warning') {
+                      iconName = 'alert-circle-outline';
+                      iconColor = '#EF4444';
+                      iconBg = '#FEF2F2';
+                    } else {
+                      iconName = 'megaphone-outline';
+                      iconColor = '#F59E0B';
+                      iconBg = '#FEF3C7';
+                    }
+                  } else if (item.type === 'complaint_status') {
+                    if (item.status === 'RESOLVED') {
+                      iconName = 'checkmark-circle-outline';
+                      iconColor = '#10B981';
+                      iconBg = '#ECFDF5';
+                    } else if (item.status === 'ONGOING') {
+                      iconName = 'build-outline';
+                      iconColor = '#6366F1';
+                      iconBg = '#EEF2FF';
+                    } else {
+                      iconName = 'document-text-outline';
+                      iconColor = '#3B82F6';
+                      iconBg = '#EFF6FF';
+                    }
+                  }
+
+                  const timeString = item.date.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  });
+
+                  return (
+                    <TouchableOpacity 
+                      key={item.id} 
+                      activeOpacity={0.7}
+                      onPress={() => handleNotificationPress(item)}
+                      style={[
+                        homeStyles.notificationItem, 
+                        !item.read && homeStyles.notificationItemUnread
+                      ]}
+                    >
+                      <View style={[homeStyles.notificationIconContainer, { backgroundColor: iconBg }]}>
+                        <Ionicons name={iconName} size={18} color={iconColor} />
+                      </View>
+                      <View style={homeStyles.notificationContent}>
+                        <Text style={homeStyles.notificationTitle}>{item.title}</Text>
+                        <Text style={homeStyles.notificationMessage}>{item.message}</Text>
+                        <Text style={homeStyles.notificationTime}>{timeString}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
