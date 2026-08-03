@@ -1,0 +1,8 @@
+{
+  "java.project.excludedPaths": [
+    "node_modules"
+  ],
+  "java.import.exclusions": [
+    "**/node_modules/**"
+  ]
+}
