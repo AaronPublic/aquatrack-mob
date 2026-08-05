@@ -197,3 +197,45 @@ Once the custom build is installed on your emulator or phone:
 For future App Store / Play Store release builds, integration plans for native Firebase SDK and MMKV caching are documented in the project brain artifacts:
 - **Zustand + MMKV Plan**: `brain/.../2026-07-19-zustand-mmkv-integration-plan.md`
 - **Firebase Native SDK Plan**: `brain/.../2026-07-19-fcm-integration-plan.md`
+
+## Session Changelog (August 6, 2026)
+
+### Mobile App — Sub-Admin / Technician Portal (`aquatrack-mob`)
+
+#### New Shared Header Component
+
+- **Created `components/subadminpages/TechHeader.js`** — A reusable React Native component that renders the full AQUATRACK-branded `LinearGradient` header for all four technician screens. Accepts props: `navigation`, `subtitle`, `pageTitle`, `pageDesc`, `techName`, `metrics` (optional, only shown on home screen), `onProfilePress`.
+- **Notification drawer modal** is now owned exclusively by `TechHeader` — renders a slide-up bottom sheet with complaint and advisory notifications sourced from `useTechNotificationStore`, with icon/color logic per type and urgency. Tapping a notification dismisses it and navigates to the relevant tab.
+- **Metrics bar** (home screen only) displays `MY JOBS`, `UNASSIGNED`, and `IOT ALERTS` counters with color-coded values: cyan / amber / red-or-green.
+
+#### Header Standardization Across All Screens
+
+All four sub-admin screens now import and use `TechHeader`, replacing their previous inline `LinearGradient` header blocks. Redundant imports (`Image`, `LinearGradient`, `homeStyles`) removed from each:
+
+| Screen | `subtitle` | `pageTitle` | Metrics bar |
+|---|---|---|---|
+| `SubAdminHome.js` | `TECHNICIAN PORTAL` | `FT-[FirstName]` | ✅ Yes |
+| `SubAdminComplaints.js` | `TECHNICIAN TRIAGE` | `Complaints Triage` | — |
+| `SubAdminTelemetry.js` | `TECHNICIAN TELEMETRY` | `IoT Telemetry Nodes` | — |
+| `SubAdminAdvisories.js` | `STAFF ADVISORIES` | `Staff Advisories` | — |
+
+Secondary screens also received the `{ navigation }` prop to enable notification routing inside `TechHeader`.
+
+#### Metrics Counter Improvements (`SubAdminHome.styles.js`)
+
+- Number `fontSize`: `18` → `22`, with `fontFamily: GeistMono-Regular`
+- Color-coded: MY JOBS = `#00D1FF`, UNASSIGNED = `#FFCC00`, IOT ALERTS = `#FF6B6B` / `#4CD964`
+- Divider height: `24` → `32`
+- Label `fontSize`: `8` → `7`, `letterSpacing`: `0.8` → `1.2`
+
+#### Brand Typography Fixes (`SubAdminHome.styles.js`)
+
+- `brandT` color: `#00D1FF` (cyan) → **`#ffffff` (white)** — the "T" in AQUATRACK now matches AQ and RACK
+- All five brand letter styles now use explicit `fontFamily: PlusJakartaSans_800ExtraBold` instead of non-standard `fontWeight: '950'` — guaranteed correct rendering on Android
+- `brandSubtitle` → `PlusJakartaSans_800ExtraBold`
+- `greetingText` → `PlusJakartaSans_600SemiBold`
+- `techNameTitle` → `PlusJakartaSans_700Bold`
+
+#### Metro Watcher Crash Fix
+
+- Created the missing directory `node_modules/expo-modules-core/expo-module-gradle-plugin/bin/src/main/kotlin` to resolve an `ENOENT` crash in Metro's `FallbackWatcher` when starting Expo with a cleared cache on Windows.
