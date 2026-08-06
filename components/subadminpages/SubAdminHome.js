@@ -7,6 +7,7 @@ import styles from './SubAdminHome.styles';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useTechNotificationStore } from '../../src/store/useTechNotificationStore';
 import TechHeader from './TechHeader';
+import * as Location from 'expo-location';
 
 export default function SubAdminHome({ navigation }) {
   const [techName, setTechName] = useState('Technician');
@@ -105,6 +106,73 @@ export default function SubAdminHome({ navigation }) {
 
     return unsubscribe;
   }, [navigation]);
+
+  // Real-time location tracking for Technician Proximity Dispatcher
+  useEffect(() => {
+    let isMounted = true;
+    let subscription = null;
+
+    const startLocationTracking = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          console.warn('Foreground location permission denied');
+          return;
+        }
+
+        // 1. Get initial position and send to database
+        const initialLoc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && isMounted) {
+          await api.post('/api/auth/location', {
+            userId: session.user.id,
+            latitude: initialLoc.coords.latitude,
+            longitude: initialLoc.coords.longitude,
+          });
+        }
+
+        // 2. Watch for moves of 50m or more and update DB
+        subscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.Balanced,
+            distanceInterval: 50, // 50 meters
+            timeInterval: 60000,   // or 60 seconds
+          },
+          async (newLoc) => {
+            if (!isMounted) return;
+            try {
+              const currentSession = await supabase.auth.getSession();
+              const uId = currentSession?.data?.session?.user?.id;
+              if (uId) {
+                await api.post('/api/auth/location', {
+                  userId: uId,
+                  latitude: newLoc.coords.latitude,
+                  longitude: newLoc.coords.longitude,
+                });
+                console.log('Technician location updated dynamically:', newLoc.coords.latitude, newLoc.coords.longitude);
+              }
+            } catch (err) {
+              console.error('Error updating live technician coordinates:', err);
+            }
+          }
+        );
+      } catch (err) {
+        console.error('Failed to initialize technician location tracker:', err);
+      }
+    };
+
+    startLocationTracking();
+
+    return () => {
+      isMounted = false;
+      if (subscription) {
+        subscription.remove();
+      }
+    };
+  }, []);
 
   const handleUpdateStatus = async (newStatus) => {
     Alert.alert(
