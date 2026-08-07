@@ -6,6 +6,10 @@
     "orientation": "portrait",
     "icon": "./assets/LOGO3.png",
     "userInterfaceStyle": "light",
+    "notification": {
+      "icon": "./assets/favicon.png",
+      "color": "#00aeef"
+    },
     "ios": {
       "supportsTablet": true
     },

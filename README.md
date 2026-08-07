@@ -239,3 +239,11 @@ Secondary screens also received the `{ navigation }` prop to enable notification
 #### Metro Watcher Crash Fix
 
 - Created the missing directory `node_modules/expo-modules-core/expo-module-gradle-plugin/bin/src/main/kotlin` to resolve an `ENOENT` crash in Metro's `FallbackWatcher` when starting Expo with a cleared cache on Windows.
+
+---
+
+## Session Changelog (August 8, 2026)
+
+### Push Notification Favicon Branding (`app.json`)
+- **Native Notification Icon:** Configured the `notification` manifest property inside `app.json` to load `./assets/favicon.png` as the native notification status icon badge instead of the general application logo.
+- **Brand Accents:** Styled the notification icon background color dynamically to match the official AquaTrack brand color tint (`#00aeef`).
