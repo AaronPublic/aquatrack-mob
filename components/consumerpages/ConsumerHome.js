@@ -414,11 +414,6 @@ export default function ConsumerHome({ navigation }) {
             />
           </View>
 
-          {/* Middle: Subtitle Badge */}
-          <View style={styles.brandTextContainer}>
-            <Text style={styles.brandSubtitle}>CONSUMER PORTAL</Text>
-          </View>
-
           {/* Right: Notification & Profile Section */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             {/* Notification Bell */}
@@ -749,26 +744,18 @@ export default function ConsumerHome({ navigation }) {
         </View>
       </ScrollView>
 
-      {/* Floating Glass Bottom Navigation Bar (High Visibility zIndex 9999) */}
+      {/* Floating Glass Bottom Navigation Bar (No White Background) */}
       <View
         style={{
           position: 'absolute',
           bottom: 14,
           left: 12,
           right: 12,
-          backgroundColor: '#FFFFFF',
-          borderRadius: 24,
-          borderWidth: 1.5,
-          borderColor: '#E2E8F5',
+          backgroundColor: 'transparent',
           paddingVertical: 10,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-around',
-          shadowColor: '#0B2240',
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.15,
-          shadowRadius: 16,
-          elevation: 20,
           zIndex: 9999,
         }}
       >
@@ -797,10 +784,16 @@ export default function ConsumerHome({ navigation }) {
           <Text style={{ fontSize: 9, fontFamily: theme.fonts.semiBold, color: '#64748B', marginTop: 2 }}>Advisories</Text>
         </TouchableOpacity>
 
-        {/* Tab 5: Settings Icon (Placed RIGHT BESIDE Megaphone Icon!) */}
+        {/* Tab 5: Settings Icon (RIGHT BESIDE MEGAPHONE!) */}
         <TouchableOpacity style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} onPress={handleProfilePress} activeOpacity={0.7}>
           <Ionicons name="settings-sharp" size={22} color="#007AFF" />
           <Text style={{ fontSize: 9, fontFamily: theme.fonts.bold, color: '#007AFF', marginTop: 2 }}>Settings</Text>
+        </TouchableOpacity>
+
+        {/* Tab 6: Profile */}
+        <TouchableOpacity style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} onPress={handleProfilePress} activeOpacity={0.7}>
+          <Ionicons name="person-outline" size={22} color="#64748B" />
+          <Text style={{ fontSize: 9, fontFamily: theme.fonts.semiBold, color: '#64748B', marginTop: 2 }}>Profile</Text>
         </TouchableOpacity>
       </View>
 
