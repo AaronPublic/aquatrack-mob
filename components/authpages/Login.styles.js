@@ -1,276 +1,386 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform, Dimensions } from 'react-native';
 import { theme } from '../../src/config/theme';
 
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 export default StyleSheet.create({
-  backgroundImage: {
+  outerContainer: {
     flex: 1,
-    backgroundColor: '#ffffff02', // Keep background base white
+    backgroundColor: '#FFFFFF',
   },
-  backgroundImageStyle: {
-    opacity: 0.12, // Lower opacity for a clean, non-distracting background watermark
-  },
-  container: {
+  keyboardContainer: {
     flex: 1,
-    backgroundColor: 'transparent',
   },
-  scrollContainer: {
+  scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
-    paddingBottom: 32,
+    backgroundColor: '#FFFFFF',
   },
-  // 1. Branding Header Panel
-  headerPanel: {
-    backgroundColor: 'transparent',
-    paddingTop: 48,
-    paddingBottom: 16,
-    paddingHorizontal: 28,
+
+  // ================= 70% TOP BRANDING SECTION (#2196F3) =================
+  topSection: {
+    backgroundColor: '#2196F3',
+    minHeight: SCREEN_HEIGHT * 0.65,
     alignItems: 'center',
-  },
-  Logo: {
-    height: 160,
-    width: 180,
-    resizeMode: 'contain',
-    marginBottom: -16,
-  },
-  title: {
-    fontSize: 22,
-    fontFamily: theme.fonts.bold,
-    color: theme.colors.primary,
-    letterSpacing: 0.2,
-  },
-  subtitle: {
-    fontSize: 10,
-    fontFamily: theme.fonts.extraBold,
-    color: theme.colors.accent,
-    letterSpacing: 2,
-    marginTop: 2,
-    textTransform: 'uppercase',
-  },
-  supportingText: {
-    fontSize: 12,
-    fontFamily: theme.fonts.regular,
-    color: theme.colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 18,
-    marginTop: 8,
-    maxWidth: 280,
-  },
-  // Form Area Wrapper
-  formArea: {
+    paddingTop: Platform.OS === 'ios' ? 52 : 36,
+    paddingBottom: 110,
     paddingHorizontal: 24,
-    gap: 16,
+    position: 'relative',
+    overflow: 'hidden',
   },
-  // 2. Segmented Authentication Method Selector
-  selectorContainer: {
-    backgroundColor: '#E6ECF5', 
-    borderRadius: 14,
-    padding: 4,
+
+  // Water Ripple Micro-Decorations
+  decorCircle1: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    top: -80,
+    right: -70,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  decorCircle2: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    top: 140,
+    left: -90,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  decorCircle3: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    bottom: 90,
+    right: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+  },
+
+  // Extra Large Transparent PNG Logo
+  bigLogoImage: {
+    width: 380,
+    height: 250,
+    marginTop: 18,
+    marginBottom: 0,
+  },
+
+  // City Subtitle Badge
+  cityBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '100%',
-  },
-  selectorButton: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  selectorButtonActive: {
-    backgroundColor: theme.colors.primary, 
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  selectorText: {
-    fontSize: 11,
-    fontFamily: theme.fonts.bold,
-    color: '#627D98', 
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  selectorTextActive: {
-    color: theme.colors.white, 
-  },
-  // 3. Form Surface (Crisp White Card)
-  formCard: {
-    backgroundColor: theme.colors.white, 
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderRadius: 20,
+    marginTop: 4,
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    padding: 20,
-    gap: 16,
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.04,
-    shadowRadius: 16,
-    elevation: 3,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
-  inputGroup: {
-    gap: 6,
-  },
-  label: {
-    fontSize: 9,
-    fontFamily: theme.fonts.extraBold,
-    color: theme.colors.primary,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  // Input container with left/right icons
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#D0D7E2', 
-    borderRadius: 12,
-    backgroundColor: theme.colors.white,
-    height: 52, 
-    paddingHorizontal: 16,
-  },
-  inputField: {
-    flex: 1,
-    height: '100%',
-    color: theme.colors.primary,
-    fontSize: 14,
-    fontFamily: theme.fonts.regular,
-    paddingHorizontal: 8,
-  },
-  leftIconText: {
+  brandSubtitle: {
     fontSize: 10,
-    fontWeight: 'bold',
-    color: theme.colors.textMuted,
-    textTransform: 'uppercase',
-    minWidth: 42,
+    fontFamily: theme.fonts.extraBold,
+    color: '#FFFFFF',
+    letterSpacing: 1.5,
   },
-  rightIconText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: theme.colors.accent,
-    textTransform: 'uppercase',
+  brandDescription: {
+    fontSize: 13,
+    fontFamily: theme.fonts.regular,
+    color: '#F0F9FF',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginTop: 8,
+    maxWidth: 320,
+    opacity: 0.95,
+  },
+
+  // Swirl Wave Boundary Junction
+  swirlWrapper: {
+    position: 'absolute',
+    bottom: -1,
+    left: 0,
+    right: 0,
+    height: 95,
+  },
+  swirlAccentImage: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    height: 95,
+    opacity: 0.6,
+  },
+  swirlBoundaryImage: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    height: 95,
+  },
+
+  // ================= 30% BOTTOM ACTION SECTION (WHITE) =================
+  bottomSection: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 40,
+    flex: 1,
+  },
+
+  // INITIAL LANDING: ONLY 2 BUTTONS
+  idleButtonsContainer: {
+    gap: 12,
+    marginTop: 12,
+    marginBottom: 12,
     paddingHorizontal: 4,
   },
-  errorText: {
-    color: theme.colors.alert,
+  idleLoginBtn: {
+    height: 54,
+    backgroundColor: '#2196F3',
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2196F3',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  idleLoginBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontFamily: theme.fonts.extraBold,
+    letterSpacing: 1.5,
+  },
+  idleRegisterBtn: {
+    height: 54,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 2,
+    borderColor: '#2196F3',
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  idleRegisterBtnText: {
+    color: '#2196F3',
+    fontSize: 15,
+    fontFamily: theme.fonts.extraBold,
+    letterSpacing: 1.5,
+  },
+
+  // "or" Divider Styles
+  orDividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 10,
+    paddingHorizontal: 12,
+  },
+  orDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E2E8F0',
+  },
+  orDividerText: {
+    fontSize: 13,
+    fontFamily: theme.fonts.bold,
+    color: '#94A3B8',
+    marginHorizontal: 14,
+  },
+
+  // Tech Support Text
+  techSupportBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+    paddingVertical: 4,
+  },
+  techSupportTitle: {
     fontSize: 11,
     fontFamily: theme.fonts.semiBold,
-    marginTop: 2,
+    color: '#64748B',
+    textAlign: 'center',
+    marginBottom: 2,
   },
-  globalErrorText: {
-    color: theme.colors.alert,
+  techSupportPhone: {
+    fontSize: 12,
+    fontFamily: 'GeistMono-Regular',
+    color: '#64748B',
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+
+  // Form Header Row with Back Button
+  formHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  backBtnText: {
+    fontSize: 15,
+    fontFamily: theme.fonts.bold,
+    color: '#2196F3',
+    marginLeft: 4,
+  },
+  formHeaderTitle: {
+    fontSize: 15,
+    fontFamily: theme.fonts.extraBold,
+    color: '#2196F3',
+    letterSpacing: 1,
+  },
+
+  // Password Login vs Billing ID Login Sub-Selector
+  subSelectorContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 3,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  subSelectorBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  subSelectorBtnActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  subSelectorTxt: {
+    fontSize: 11,
+    fontFamily: theme.fonts.bold,
+    color: '#64748B',
+  },
+  subSelectorTxtActive: {
+    color: '#2196F3',
+  },
+
+  // QR Scan Button
+  qrScanBtn: {
+    height: 46,
+    backgroundColor: '#0284C7',
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  qrScanBtnText: {
+    color: '#FFFFFF',
     fontSize: 12,
     fontFamily: theme.fonts.bold,
-    textAlign: 'center',
-    backgroundColor: theme.colors.alertBg,
+    letterSpacing: 0.5,
+  },
+
+  // Global Error Box
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
     borderColor: '#FEC2C2',
     borderWidth: 1,
     borderRadius: 12,
     padding: 12,
-    lineHeight: 18,
+    marginBottom: 14,
   },
-  // 4. Sign-In Button
-  submitButton: {
-    height: 52, 
-    backgroundColor: theme.colors.primary, 
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 4,
-    marginTop: 8,
-  },
-  submitButtonText: {
-    color: theme.colors.white,
-    fontSize: 13,
-    fontFamily: theme.fonts.bold,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  // Placeholder card for OTP / BILLING ID
-  infoCard: {
-    backgroundColor: theme.colors.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    padding: 20,
-    alignItems: 'center',
-    gap: 8,
-  },
-  infoCardTitle: {
+  errorBoxText: {
+    color: '#D32F2F',
     fontSize: 12,
-    fontWeight: 'bold',
-    color: theme.colors.primary,
-    textTransform: 'uppercase',
-  },
-  infoCardText: {
-    fontSize: 12,
-    color: theme.colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  // 5. Registration Footer
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F4F8',
-    gap: 4,
-  },
-  footerText: {
-    fontSize: 13,
-    fontFamily: theme.fonts.regular,
-    color: theme.colors.textMuted,
-  },
-  footerLink: {
-    fontSize: 13,
-    fontFamily: theme.fonts.bold,
-    color: theme.colors.accent,
-  },
-  qrScanButton: {
-    height: 52,
-    backgroundColor: theme.colors.accent, 
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  qrScanButtonText: {
-    color: theme.colors.white,
-    fontSize: 11,
-    fontFamily: theme.fonts.bold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  billingGuideBox: {
-    height: 52,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    paddingHorizontal: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  billingGuideText: {
-    fontSize: 11,
-    color: theme.colors.textMuted,
+    fontFamily: theme.fonts.semiBold,
+    flex: 1,
     lineHeight: 16,
-    textAlign: 'center',
   },
-  supportText: {
+
+  // Form Container
+  formContainer: {
+    gap: 2,
+  },
+
+  // Form Field Styles
+  fieldGroup: {
+    marginBottom: 12,
+  },
+  fieldLabel: {
+    fontSize: 10,
+    fontFamily: theme.fonts.extraBold,
+    color: '#1E293B',
+    letterSpacing: 1,
+    marginBottom: 5,
+  },
+  fieldInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    height: 48,
+    paddingHorizontal: 14,
+  },
+  fieldInput: {
+    flex: 1,
+    height: '100%',
+    color: '#0F172A',
+    fontSize: 14,
+    fontFamily: theme.fonts.regular,
+  },
+  fieldIconLeft: {
+    marginRight: 10,
+  },
+  fieldIconRight: {
+    padding: 4,
+  },
+  fieldErrorText: {
+    color: '#D32F2F',
     fontSize: 11,
-    color: theme.colors.textMuted,
-    textAlign: 'center',
-    marginTop: 20,
-    fontWeight: '500',
-    fontFamily: 'GeistMono-Regular',
-  }
+    fontFamily: theme.fonts.semiBold,
+    marginTop: 4,
+  },
+  passwordHintText: {
+    fontSize: 10,
+    fontFamily: theme.fonts.regular,
+    color: '#64748B',
+    marginTop: 4,
+  },
+
+  // Primary Action Button
+  primaryActionButton: {
+    height: 52,
+    backgroundColor: '#2196F3',
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+    shadowColor: '#2196F3',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  primaryActionText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: theme.fonts.extraBold,
+    letterSpacing: 1,
+    marginRight: 6,
+  },
 });
