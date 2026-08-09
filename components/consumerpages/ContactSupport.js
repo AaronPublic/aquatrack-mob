@@ -1,8 +1,10 @@
 import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import styles from './ContactSupport.styles';
+import homeStyles from './ConsumerHome.styles';
 
-export default function ContactSupport() {
+export default function ContactSupport({ navigation }) {
   const offices = [
     {
       name: "CSFWD Main Office (Sto. Rosario)",
@@ -32,61 +34,96 @@ export default function ContactSupport() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Contact Water District</Text>
-        <Text style={styles.subtitle}>Get in touch for billing, emergency operations, or service inquiries</Text>
-      </View>
+      {/* Landing Page #2196F3 Swirl Header */}
+      <View style={[homeStyles.headerCard, { paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }]}>
+        {/* Background Water Ripple Decorations */}
+        <View style={homeStyles.decorCircle1} />
+        <View style={homeStyles.decorCircle2} />
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Emergency Channels</Text>
-        
-        <View style={styles.contactRow}>
-          <View style={styles.contactLabelColumn}>
-            <Text style={styles.contactLabel}>Phone</Text>
+        {/* Brand Row */}
+        <View style={homeStyles.brandRow}>
+          {/* Left: Transparent High-Contrast Logo */}
+          <View style={homeStyles.logoContainer}>
+            <Image 
+              source={require('../../assets/Logo.png')}
+              style={homeStyles.logoImage}
+              resizeMode="contain"
+            />
           </View>
-          <View style={styles.contactValueColumn}>
-            <Text style={styles.contactValue}>(045) 961-3546</Text>
-            <Text style={styles.contactSubtext}>24/7 Operations Hotline</Text>
+
+          {/* Middle: Subtitle Badge */}
+          <View style={homeStyles.brandTextContainer}>
+            <Text style={homeStyles.brandSubtitle}>HELP & SUPPORT</Text>
           </View>
         </View>
 
-        <View style={styles.contactRow}>
-          <View style={styles.contactLabelColumn}>
-            <Text style={styles.contactLabel}>Email</Text>
-          </View>
-          <View style={styles.contactValueColumn}>
-            <Text style={styles.contactValue}>support@csfwd.gov.ph</Text>
-            <Text style={styles.contactSubtext}>Direct support desk email</Text>
-          </View>
-        </View>
-
-        <View style={styles.contactRow}>
-          <View style={styles.contactLabelColumn}>
-            <Text style={styles.contactLabel}>Web</Text>
-          </View>
-          <View style={styles.contactValueColumn}>
-            <Text style={styles.contactValue}>csfwd.gov.ph</Text>
-            <Text style={styles.contactSubtext}>Official Water District portal</Text>
+        {/* Page Greeting & Subtitle */}
+        <View style={homeStyles.greetingContainer}>
+          <Text style={homeStyles.greetingText}>Contact Support 📞</Text>
+          <View style={homeStyles.locationPill}>
+            <Ionicons name="call-outline" size={13} color="#E0F2FE" />
+            <Text style={homeStyles.locationText}>City Water District hotlines & branch directory</Text>
           </View>
         </View>
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>District Branches</Text>
-
-        {offices.map((office, idx) => {
-          const isLast = idx === offices.length - 1;
-          return (
-            <View key={idx} style={isLast ? styles.branchItemLast : styles.branchItem}>
-              <Text style={styles.branchName}>{office.name}</Text>
-              <Text style={styles.branchDetail}>Address: {office.address}</Text>
-              <Text style={styles.branchDetail}>Phone: <Text style={styles.branchDetailBold}>{office.phone}</Text></Text>
-              <Text style={styles.branchDetail}>Hours: {office.hours}</Text>
+      <View style={styles.contentPadding}>
+        <View style={styles.card}>
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons name="flash-outline" size={18} color="#2196F3" style={{ marginRight: 6 }} />
+            <Text style={styles.sectionTitle}>Emergency Channels</Text>
+          </View>
+          
+          <View style={styles.contactRow}>
+            <View style={styles.contactLabelColumn}>
+              <Text style={styles.contactLabel}>Phone</Text>
             </View>
-          );
-        })}
+            <View style={styles.contactValueColumn}>
+              <Text style={styles.contactValue}>(045) 961-3546</Text>
+              <Text style={styles.contactSubtext}>24/7 Operations Hotline</Text>
+            </View>
+          </View>
+
+          <View style={styles.contactRow}>
+            <View style={styles.contactLabelColumn}>
+              <Text style={styles.contactLabel}>Email</Text>
+            </View>
+            <View style={styles.contactValueColumn}>
+              <Text style={styles.contactValue}>support@csfwd.gov.ph</Text>
+              <Text style={styles.contactSubtext}>Direct support desk email</Text>
+            </View>
+          </View>
+
+          <View style={styles.contactRow}>
+            <View style={styles.contactLabelColumn}>
+              <Text style={styles.contactLabel}>Web</Text>
+            </View>
+            <View style={styles.contactValueColumn}>
+              <Text style={styles.contactValue}>csfwd.gov.ph</Text>
+              <Text style={styles.contactSubtext}>Official Water District portal</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons name="business-outline" size={18} color="#2196F3" style={{ marginRight: 6 }} />
+            <Text style={styles.sectionTitle}>District Branches</Text>
+          </View>
+
+          {offices.map((office, idx) => {
+            const isLast = idx === offices.length - 1;
+            return (
+              <View key={idx} style={isLast ? styles.branchItemLast : styles.branchItem}>
+                <Text style={styles.branchName}>{office.name}</Text>
+                <Text style={styles.branchDetail}>Address: {office.address}</Text>
+                <Text style={styles.branchDetail}>Phone: <Text style={styles.branchDetailBold}>{office.phone}</Text></Text>
+                <Text style={styles.branchDetail}>Hours: {office.hours}</Text>
+              </View>
+            );
+          })}
+        </View>
       </View>
     </ScrollView>
   );
 }
-

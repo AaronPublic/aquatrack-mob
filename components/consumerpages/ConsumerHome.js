@@ -398,31 +398,24 @@ export default function ConsumerHome({ navigation }) {
   return (
     <View style={styles.container}>
       {/* A. Header Card Component */}
-      <LinearGradient 
-        colors={['#02205eff', '#325497ff']} 
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0.8, y: 1 }}
-        style={styles.headerCard}
-      >
+      <View style={styles.headerCard}>
+        {/* Water Ripple Micro-Decorations */}
+        <View style={styles.decorCircle1} />
+        <View style={styles.decorCircle2} />
+
         {/* Brand Row */}
         <View style={styles.brandRow}>
           {/* Left: Brand Logo */}
           <View style={styles.logoContainer}>
             <Image 
-              source={require('../../assets/LOGO3.png')}
+              source={require('../../assets/Logo.png')}
               style={styles.logoImage}
+              resizeMode="contain"
             />
           </View>
 
-          {/* Middle: Brand Text */}
+          {/* Middle: Subtitle Badge */}
           <View style={styles.brandTextContainer}>
-            <View style={styles.brandTitleRow}>
-              <Text style={styles.brandAqua}>AQ</Text>
-              <Text style={styles.brandAquaYellow}>U</Text>
-              <Text style={styles.brandAquaRed}>A</Text>
-              <Text style={styles.brandRack}>T</Text>
-              <Text style={styles.brandRack}>RACK</Text>
-            </View>
             <Text style={styles.brandSubtitle}>CONSUMER PORTAL</Text>
           </View>
 
@@ -453,6 +446,15 @@ export default function ConsumerHome({ navigation }) {
           </View>
         </View>
 
+        {/* Greeting & Location Row */}
+        <View style={styles.greetingContainer}>
+          <Text style={styles.greetingText}>Hello, {userName} 👋</Text>
+          <View style={styles.locationPill}>
+            <Ionicons name="location-outline" size={13} color="#E0F2FE" />
+            <Text style={styles.locationText}>City of San Fernando • Dolores</Text>
+          </View>
+        </View>
+
         {/* Metrics Counter Banner */}
         <View style={styles.metricsBanner}>
           <View style={styles.metricColumn}>
@@ -462,23 +464,23 @@ export default function ConsumerHome({ navigation }) {
           <View style={styles.divider} />
           
           <View style={styles.metricColumn}>
-            <Text style={[styles.metricLabel, { color: '#FFCC00' }]}>PENDING</Text>
-            <Text style={[styles.metricNumber, { color: '#FFCC00' }]}>{metrics.pending}</Text>
+            <Text style={[styles.metricLabel, { color: '#E0F2FE' }]}>PENDING</Text>
+            <Text style={[styles.metricNumber, { color: '#FFFFFF' }]}>{metrics.pending}</Text>
           </View>
           <View style={styles.divider} />
 
           <View style={styles.metricColumn}>
-            <Text style={[styles.metricLabel, { color: '#00D1FF' }]}>ACTIVE</Text>
-            <Text style={[styles.metricNumber, { color: '#00D1FF' }]}>{metrics.active}</Text>
+            <Text style={[styles.metricLabel, { color: '#E0F2FE' }]}>ACTIVE</Text>
+            <Text style={[styles.metricNumber, { color: '#FFFFFF' }]}>{metrics.active}</Text>
           </View>
           <View style={styles.divider} />
 
           <View style={styles.metricColumn}>
-            <Text style={[styles.metricLabel, { color: '#4CD964' }]}>RESOLVED</Text>
-            <Text style={[styles.metricNumber, { color: '#4CD964' }]}>{metrics.resolved}</Text>
+            <Text style={[styles.metricLabel, { color: '#E0F2FE' }]}>RESOLVED</Text>
+            <Text style={[styles.metricNumber, { color: '#FFFFFF' }]}>{metrics.resolved}</Text>
           </View>
         </View>
-      </LinearGradient>
+      </View>
 
       {/* Main Scroll Content */}
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
@@ -491,7 +493,21 @@ export default function ConsumerHome({ navigation }) {
               navigation.navigate('Announcements', { highlightAdvisoryId: targetAlertId });
             }}
             activeOpacity={0.9}
-            className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-4 shadow-sm active:scale-[0.99] flex-row items-start animate-bounce"
+            style={{
+              backgroundColor: '#FFF5F5',
+              borderWidth: 1.5,
+              borderColor: '#FEC2C2',
+              borderRadius: 18,
+              padding: 16,
+              marginBottom: 16,
+              flexDirection: 'row',
+              alignItems: 'start',
+              shadowColor: '#EF4444',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.1,
+              shadowRadius: 8,
+              elevation: 2,
+            }}
           >
             {/* Left: Warning Icon Container */}
             <View className="bg-red-100 p-2 rounded-xl mr-3 items-center justify-center">
@@ -540,12 +556,15 @@ export default function ConsumerHome({ navigation }) {
               activeOpacity={0.85}
             >
               <View style={styles.cardHeaderRow}>
-                <View style={[styles.iconWrapper, { backgroundColor: 'rgba(0, 209, 255, 0.1)' }]}>
-                  <Ionicons name="document-text" size={18} color="#007AFF" />
+                <View style={[styles.iconWrapper, { backgroundColor: 'rgba(0, 122, 255, 0.1)' }]}>
+                  <Ionicons name="document-text" size={20} color="#007AFF" />
                 </View>
+                <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
               </View>
-              <Text style={styles.cardTitle}>File Report</Text>
-              <Text style={styles.cardDesc}>Submit live water quality or pressure issues</Text>
+              <View>
+                <Text style={styles.cardTitle}>File Report</Text>
+                <Text style={styles.cardDesc}>Submit live water quality or pressure issues</Text>
+              </View>
             </TouchableOpacity>
 
             {/* Card 2: Track Tickets */}
@@ -555,16 +574,21 @@ export default function ConsumerHome({ navigation }) {
               activeOpacity={0.85}
             >
               <View style={styles.cardHeaderRow}>
-                <View style={[styles.iconWrapper, { backgroundColor: 'rgba(255, 153, 0, 0.1)' }]}>
-                  <Ionicons name="ticket" size={18} color="#FF9500" />
+                <View style={[styles.iconWrapper, { backgroundColor: 'rgba(255, 149, 0, 0.1)' }]}>
+                  <Ionicons name="ticket" size={20} color="#FF9500" />
                 </View>
-                {/* Special feature: Floating badge */}
-                <View style={styles.badgeContainer}>
-                  <Text style={styles.badgeText}>{metrics.total || 17}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  {/* Floating badge */}
+                  <View style={styles.badgeContainer}>
+                    <Text style={styles.badgeText}>{metrics.total || 17}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
                 </View>
               </View>
-              <Text style={styles.cardTitle}>Track Tickets</Text>
-              <Text style={styles.cardDesc}>Monitor your filed reports & live technician progress</Text>
+              <View>
+                <Text style={styles.cardTitle}>Track Tickets</Text>
+                <Text style={styles.cardDesc}>Monitor your filed reports & live technician progress</Text>
+              </View>
             </TouchableOpacity>
           </View>
 
@@ -576,12 +600,15 @@ export default function ConsumerHome({ navigation }) {
               activeOpacity={0.85}
             >
               <View style={styles.cardHeaderRow}>
-                <View style={[styles.iconWrapper, { backgroundColor: 'rgba(76, 217, 100, 0.1)' }]}>
-                  <Ionicons name="megaphone" size={18} color="#4CD964" />
+                <View style={[styles.iconWrapper, { backgroundColor: 'rgba(52, 199, 89, 0.1)' }]}>
+                  <Ionicons name="megaphone" size={20} color="#34C759" />
                 </View>
+                <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
               </View>
-              <Text style={styles.cardTitle}>Advisories</Text>
-              <Text style={styles.cardDesc}>Official water service advisories & updates</Text>
+              <View>
+                <Text style={styles.cardTitle}>Advisories</Text>
+                <Text style={styles.cardDesc}>Official water service advisories & updates</Text>
+              </View>
             </TouchableOpacity>
 
             {/* Card 4: Support */}
@@ -591,12 +618,15 @@ export default function ConsumerHome({ navigation }) {
               activeOpacity={0.85}
             >
               <View style={styles.cardHeaderRow}>
-                <View style={[styles.iconWrapper, { backgroundColor: 'rgba(142, 142, 147, 0.1)' }]}>
-                  <Ionicons name="help-circle" size={18} color="#8E8E93" />
+                <View style={[styles.iconWrapper, { backgroundColor: 'rgba(88, 86, 214, 0.1)' }]}>
+                  <Ionicons name="headset" size={20} color="#5856D6" />
                 </View>
+                <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
               </View>
-              <Text style={styles.cardTitle}>Support</Text>
-              <Text style={styles.cardDesc}>Direct customer support line open 24/7</Text>
+              <View>
+                <Text style={styles.cardTitle}>Support</Text>
+                <Text style={styles.cardDesc}>Direct customer support line open 24/7</Text>
+              </View>
             </TouchableOpacity>
           </View>
         </View>
@@ -717,9 +747,62 @@ export default function ConsumerHome({ navigation }) {
             </View>
           )}
         </View>
-
-
       </ScrollView>
+
+      {/* Floating Glass Bottom Navigation Bar (High Visibility zIndex 9999) */}
+      <View
+        style={{
+          position: 'absolute',
+          bottom: 14,
+          left: 12,
+          right: 12,
+          backgroundColor: '#FFFFFF',
+          borderRadius: 24,
+          borderWidth: 1.5,
+          borderColor: '#E2E8F5',
+          paddingVertical: 10,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-around',
+          shadowColor: '#0B2240',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.15,
+          shadowRadius: 16,
+          elevation: 20,
+          zIndex: 9999,
+        }}
+      >
+        {/* Tab 1: Home */}
+        <TouchableOpacity style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} activeOpacity={0.7}>
+          <Ionicons name="home" size={22} color="#007AFF" />
+          <Text style={{ fontSize: 9, fontFamily: theme.fonts.bold, color: '#007AFF', marginTop: 2 }}>Home</Text>
+          <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#007AFF', marginTop: 2 }} />
+        </TouchableOpacity>
+
+        {/* Tab 2: Docs */}
+        <TouchableOpacity style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} onPress={() => navigation.navigate('FileComplaint')} activeOpacity={0.7}>
+          <Ionicons name="document-text-outline" size={22} color="#64748B" />
+          <Text style={{ fontSize: 9, fontFamily: theme.fonts.semiBold, color: '#64748B', marginTop: 2 }}>Docs</Text>
+        </TouchableOpacity>
+
+        {/* Tab 3: Ticket */}
+        <TouchableOpacity style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} onPress={() => navigation.navigate('TrackComplaints')} activeOpacity={0.7}>
+          <Ionicons name="ticket-outline" size={22} color="#64748B" />
+          <Text style={{ fontSize: 9, fontFamily: theme.fonts.semiBold, color: '#64748B', marginTop: 2 }}>Ticket</Text>
+        </TouchableOpacity>
+
+        {/* Tab 4: Megaphone / Advisories Icon */}
+        <TouchableOpacity style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} onPress={() => navigation.navigate('Announcements')} activeOpacity={0.7}>
+          <Ionicons name="megaphone-outline" size={22} color="#64748B" />
+          <Text style={{ fontSize: 9, fontFamily: theme.fonts.semiBold, color: '#64748B', marginTop: 2 }}>Advisories</Text>
+        </TouchableOpacity>
+
+        {/* Tab 5: Settings Icon (Placed RIGHT BESIDE Megaphone Icon!) */}
+        <TouchableOpacity style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} onPress={handleProfilePress} activeOpacity={0.7}>
+          <Ionicons name="settings-sharp" size={22} color="#007AFF" />
+          <Text style={{ fontSize: 9, fontFamily: theme.fonts.bold, color: '#007AFF', marginTop: 2 }}>Settings</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Profile actions Modal overlay */}
       <Modal

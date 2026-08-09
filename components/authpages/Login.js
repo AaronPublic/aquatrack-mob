@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView, 
   Platform, 
   ScrollView,
+  Dimensions,
   Alert
 } from 'react-native';
 import { supabase } from '../../src/config/supabase';
@@ -17,7 +18,11 @@ import styles from './Login.styles';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { Ionicons } from '@expo/vector-icons';
 
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 export default function Login({ navigation, route }) {
+  const scrollViewRef = useRef(null);
+
   // Mode state: 'IDLE' (clean 2-button view) | 'LOGIN' | 'REGISTER'
   const [authMode, setAuthMode] = useState('IDLE');
 
@@ -58,6 +63,28 @@ export default function Login({ navigation, route }) {
     const hasNumber = /[0-9]/.test(pwd);
     const hasAsterisk = /\*/.test(pwd);
     return hasUpper && hasLower && hasNumber && hasAsterisk && pwd.length >= 8;
+  };
+
+  const handleOpenLogin = () => {
+    setAuthMode('LOGIN');
+    setError(null);
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: SCREEN_HEIGHT * 0.44, animated: true });
+    }, 120);
+  };
+
+  const handleOpenRegister = () => {
+    setAuthMode('REGISTER');
+    setError(null);
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: SCREEN_HEIGHT * 0.44, animated: true });
+    }, 120);
+  };
+
+  const handleBackToLanding = () => {
+    setAuthMode('IDLE');
+    setError(null);
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
 
   const handleQrScanSimulation = () => {
@@ -190,7 +217,7 @@ export default function Login({ navigation, route }) {
       Alert.alert(
         "Registration Sent",
         "Please check your email inbox to confirm your registration link before logging in.",
-        [{ text: "Go to Login", onPress: () => setAuthMode('LOGIN') }]
+        [{ text: "Go to Login", onPress: () => handleOpenLogin() }]
       );
     } catch (err) {
       console.error(err);
@@ -206,12 +233,21 @@ export default function Login({ navigation, route }) {
         style={styles.keyboardContainer}
       >
         <ScrollView 
+          ref={scrollViewRef}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {/* ================= 70% TOP BRANDING SECTION (#2196F3) ================= */}
           <View style={styles.topSection}>
+            {/* Realistic Water Droplets Overlay Graphic */}
+            <Image 
+              source={require('../../assets/water_droplets.png')}
+              style={styles.waterDropletsOverlay}
+              resizeMode="cover"
+            />
+
+            {/* Background Water Ripple Micro-Decorations */}
             <View style={styles.decorCircle1} />
             <View style={styles.decorCircle2} />
             <View style={styles.decorCircle3} />
@@ -264,7 +300,7 @@ export default function Login({ navigation, route }) {
                 <TouchableOpacity 
                   activeOpacity={0.88}
                   style={styles.idleLoginBtn}
-                  onPress={() => { setAuthMode('LOGIN'); setError(null); }}
+                  onPress={handleOpenLogin}
                 >
                   <Ionicons name="log-in-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
                   <Text style={styles.idleLoginBtnText}>LOGIN</Text>
@@ -273,7 +309,7 @@ export default function Login({ navigation, route }) {
                 <TouchableOpacity 
                   activeOpacity={0.88}
                   style={styles.idleRegisterBtn}
-                  onPress={() => { setAuthMode('REGISTER'); setError(null); }}
+                  onPress={handleOpenRegister}
                 >
                   <Ionicons name="person-add-outline" size={20} color="#2196F3" style={{ marginRight: 8 }} />
                   <Text style={styles.idleRegisterBtnText}>REGISTER</Text>
@@ -301,10 +337,10 @@ export default function Login({ navigation, route }) {
                 <View style={styles.formHeaderRow}>
                   <TouchableOpacity 
                     style={styles.backBtn}
-                    onPress={() => { setAuthMode('IDLE'); setError(null); }}
+                    onPress={handleBackToLanding}
                   >
                     <Ionicons name="arrow-back" size={20} color="#2196F3" />
-                    <Text style={styles.backBtnText}>BACK</Text>
+                    <Text style={styles.backBtnText}>Back</Text>
                   </TouchableOpacity>
                   <Text style={styles.formHeaderTitle}>LOGIN</Text>
                 </View>
@@ -461,7 +497,7 @@ export default function Login({ navigation, route }) {
                 <View style={styles.formHeaderRow}>
                   <TouchableOpacity 
                     style={styles.backBtn}
-                    onPress={() => { setAuthMode('IDLE'); setError(null); }}
+                    onPress={handleBackToLanding}
                   >
                     <Ionicons name="arrow-back" size={20} color="#2196F3" />
                     <Text style={styles.backBtnText}>BACK</Text>

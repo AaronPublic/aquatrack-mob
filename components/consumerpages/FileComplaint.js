@@ -328,32 +328,25 @@ export default function FileComplaint({ navigation }) {
       className="flex-1 bg-[#F2F5FA]" 
       contentContainerStyle={{ paddingBottom: 140 }}
     >
-      <LinearGradient 
-        colors={['#02205eff', '#325497ff']} 
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0.8, y: 1 }}
-        style={homeStyles.headerCard}
-      >
+      <View style={[homeStyles.headerCard, { paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }]}>
+        {/* Background Water Ripple Decorations */}
+        <View style={homeStyles.decorCircle1} />
+        <View style={homeStyles.decorCircle2} />
+
         {/* Brand Row */}
         <View style={homeStyles.brandRow}>
           {/* Left: Brand Logo */}
           <View style={homeStyles.logoContainer}>
             <Image 
-              source={require('../../assets/LOGO3.png')}
+              source={require('../../assets/Logo.png')}
               style={homeStyles.logoImage}
+              resizeMode="contain"
             />
           </View>
 
-          {/* Middle: Brand Text */}
+          {/* Middle: Subtitle Badge */}
           <View style={homeStyles.brandTextContainer}>
-            <View style={homeStyles.brandTitleRow}>
-              <Text style={homeStyles.brandAqua}>AQ</Text>
-              <Text style={homeStyles.brandAquaYellow}>U</Text>
-              <Text style={homeStyles.brandAquaRed}>A</Text>
-              <Text style={homeStyles.brandRack}>T</Text>
-              <Text style={homeStyles.brandRack}>RACK</Text>
-            </View>
-            <Text style={homeStyles.brandSubtitle}>CONSUMER PORTAL</Text>
+            <Text style={homeStyles.brandSubtitle}>FILE REPORT</Text>
           </View>
 
           {/* Right: Notification & Profile Section */}
@@ -382,32 +375,15 @@ export default function FileComplaint({ navigation }) {
           </View>
         </View>
 
-        {/* Metrics Counter Banner */}
-        <View style={homeStyles.metricsBanner}>
-          <View style={homeStyles.metricColumn}>
-            <Text style={homeStyles.metricLabel}>TOTAL LOGS</Text>
-            <Text style={homeStyles.metricNumber}>{metrics.total}</Text>
-          </View>
-          <View style={homeStyles.divider} />
-          
-          <View style={homeStyles.metricColumn}>
-            <Text style={[homeStyles.metricLabel, { color: '#FFCC00' }]}>PENDING</Text>
-            <Text style={[homeStyles.metricNumber, { color: '#FFCC00' }]}>{metrics.pending}</Text>
-          </View>
-          <View style={homeStyles.divider} />
-
-          <View style={homeStyles.metricColumn}>
-            <Text style={[homeStyles.metricLabel, { color: '#00D1FF' }]}>ACTIVE</Text>
-            <Text style={[homeStyles.metricNumber, { color: '#00D1FF' }]}>{metrics.active}</Text>
-          </View>
-          <View style={homeStyles.divider} />
-
-          <View style={homeStyles.metricColumn}>
-            <Text style={[homeStyles.metricLabel, { color: '#4CD964' }]}>RESOLVED</Text>
-            <Text style={[homeStyles.metricNumber, { color: '#4CD964' }]}>{metrics.resolved}</Text>
+        {/* Page Greeting & Subtitle */}
+        <View style={homeStyles.greetingContainer}>
+          <Text style={homeStyles.greetingText}>File a Complaint 📋</Text>
+          <View style={homeStyles.locationPill}>
+            <Ionicons name="alert-circle-outline" size={13} color="#E0F2FE" />
+            <Text style={homeStyles.locationText}>Report utility anomalies to CSFWD</Text>
           </View>
         </View>
-      </LinearGradient>
+      </View>
 
       {/* Screen Content Wrapper */}
       <View className="px-[18px] mt-6">
@@ -607,7 +583,7 @@ export default function FileComplaint({ navigation }) {
           disabled={loading}
           activeOpacity={0.8}
           className={`py-4 rounded-2xl items-center justify-center shadow-sm ${
-            loading ? 'bg-slate-300' : 'bg-[#0B2240] active:bg-[#061224]'
+            loading ? 'bg-slate-300' : 'bg-[#2196F3] active:bg-[#1E88E5]'
           }`}
         >
           {loading ? (

@@ -89,7 +89,7 @@ export default function Register({ navigation }) {
       Alert.alert(
         "Registration Sent",
         "Please check your email inbox to confirm your registration link before logging in.",
-        [{ text: "Go to Login", onPress: () => navigation.navigate('Login', { initialMode: 'LOGIN' }) }]
+        [{ text: "Go to Login", onPress: () => navigation.navigate('Login') }]
       );
     } catch (err) {
       console.error(err);
@@ -111,6 +111,13 @@ export default function Register({ navigation }) {
         >
           {/* ================= 70% TOP BRANDING SECTION (#2196F3) ================= */}
           <View style={styles.topSection}>
+            {/* Realistic Water Droplets Overlay Graphic */}
+            <Image 
+              source={require('../../assets/water_droplets.png')}
+              style={styles.waterDropletsOverlay}
+              resizeMode="cover"
+            />
+
             <View style={styles.decorCircle1} />
             <View style={styles.decorCircle2} />
             <View style={styles.decorCircle3} />
@@ -149,21 +156,16 @@ export default function Register({ navigation }) {
           {/* ================= 30% BOTTOM ACTION SECTION (WHITE) ================= */}
           <View style={styles.bottomSection}>
             
-            {/* 2 MAIN BUTTONS HEADER */}
-            <View style={styles.twoButtonHeader}>
+            {/* Form Header with Back Navigation */}
+            <View style={styles.formHeaderRow}>
               <TouchableOpacity 
-                activeOpacity={0.85}
-                style={styles.mainOptionBtn}
-                onPress={() => navigation.navigate('Login', { initialMode: 'LOGIN' })}
+                style={styles.backBtn}
+                onPress={() => navigation.navigate('Login')}
               >
-                <Ionicons name="log-in-outline" size={18} color="#2196F3" style={{ marginRight: 6 }} />
-                <Text style={styles.mainOptionText}>LOGIN</Text>
+                <Ionicons name="arrow-back" size={20} color="#2196F3" />
+                <Text style={styles.backBtnText}>Back</Text>
               </TouchableOpacity>
-
-              <View style={[styles.mainOptionBtn, styles.mainOptionBtnActive]}>
-                <Ionicons name="person-add-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={[styles.mainOptionText, styles.mainOptionTextActive]}>REGISTER</Text>
-              </View>
+              <Text style={styles.formHeaderTitle}>REGISTER</Text>
             </View>
 
             {error && (
@@ -253,7 +255,7 @@ export default function Register({ navigation }) {
                 </View>
               </View>
 
-              {/* BLUE Submit Action Button */}
+              {/* Submit Action */}
               <TouchableOpacity 
                 style={styles.primaryActionButton}
                 onPress={handleRegisterSubmit}
@@ -271,18 +273,9 @@ export default function Register({ navigation }) {
               </TouchableOpacity>
             </View>
 
-            {/* "or" Divider & Tech Support Contact */}
-            <View style={styles.orDividerContainer}>
-              <View style={styles.orDividerLine} />
-              <Text style={styles.orDividerText}>or</Text>
-              <View style={styles.orDividerLine} />
-            </View>
-
-            <View style={styles.techSupportBox}>
-              <Text style={styles.techSupportTitle}>Technical issues? Contact CSFWD IT Division</Text>
-              <Text style={styles.techSupportPhone}>(045) 961-3546</Text>
-            </View>
-
+            <Text style={styles.supportFooterText}>
+              Technical Support: CSFWD IT Division (045) 961-3546
+            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

@@ -251,6 +251,7 @@ export default function SubAdminHome({ navigation }) {
         pageDesc="Welcome, Field Technician"
         techName={techName}
         metrics={metrics}
+        showSwirl={true}
         onProfilePress={handleProfilePress}
       />
 

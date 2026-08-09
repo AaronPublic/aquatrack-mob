@@ -190,32 +190,25 @@ export default function Announcements({ route, navigation }) {
   return (
     <View style={[styles.container, { backgroundColor: '#F2F5FA' }]}>
       {/* Shared Header (Static at top for layout uniformity and flicker prevention) */}
-      <LinearGradient 
-        colors={['#02205eff', '#325497ff']} 
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0.8, y: 1 }}
-        style={homeStyles.headerCard}
-      >
+      <View style={[homeStyles.headerCard, { paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }]}>
+        {/* Background Water Ripple Decorations */}
+        <View style={homeStyles.decorCircle1} />
+        <View style={homeStyles.decorCircle2} />
+
         {/* Brand Row */}
         <View style={homeStyles.brandRow}>
           {/* Left: Brand Logo */}
           <View style={homeStyles.logoContainer}>
             <Image 
-              source={require('../../assets/LOGO3.png')}
+              source={require('../../assets/Logo.png')}
               style={homeStyles.logoImage}
+              resizeMode="contain"
             />
           </View>
 
-          {/* Middle: Brand Text */}
+          {/* Middle: Subtitle Badge */}
           <View style={homeStyles.brandTextContainer}>
-            <View style={homeStyles.brandTitleRow}>
-              <Text style={homeStyles.brandAqua}>AQ</Text>
-              <Text style={homeStyles.brandAquaYellow}>U</Text>
-              <Text style={homeStyles.brandAquaRed}>A</Text>
-              <Text style={homeStyles.brandRack}>T</Text>
-              <Text style={homeStyles.brandRack}>RACK</Text>
-            </View>
-            <Text style={homeStyles.brandSubtitle}>CONSUMER PORTAL</Text>
+            <Text style={homeStyles.brandSubtitle}>PUBLIC ADVISORIES</Text>
           </View>
 
           {/* Right: Notification & Profile Section */}
@@ -244,32 +237,15 @@ export default function Announcements({ route, navigation }) {
           </View>
         </View>
 
-        {/* Metrics Counter Banner */}
-        <View style={homeStyles.metricsBanner}>
-          <View style={homeStyles.metricColumn}>
-            <Text style={homeStyles.metricLabel}>TOTAL LOGS</Text>
-            <Text style={homeStyles.metricNumber}>{metrics.total}</Text>
-          </View>
-          <View style={homeStyles.divider} />
-          
-          <View style={homeStyles.metricColumn}>
-            <Text style={[homeStyles.metricLabel, { color: '#FFCC00' }]}>PENDING</Text>
-            <Text style={[homeStyles.metricNumber, { color: '#FFCC00' }]}>{metrics.pending}</Text>
-          </View>
-          <View style={homeStyles.divider} />
-
-          <View style={homeStyles.metricColumn}>
-            <Text style={[homeStyles.metricLabel, { color: '#00D1FF' }]}>ACTIVE</Text>
-            <Text style={[homeStyles.metricNumber, { color: '#00D1FF' }]}>{metrics.active}</Text>
-          </View>
-          <View style={homeStyles.divider} />
-
-          <View style={homeStyles.metricColumn}>
-            <Text style={[homeStyles.metricLabel, { color: '#4CD964' }]}>RESOLVED</Text>
-            <Text style={[homeStyles.metricNumber, { color: '#4CD964' }]}>{metrics.resolved}</Text>
+        {/* Page Greeting & Subtitle */}
+        <View style={homeStyles.greetingContainer}>
+          <Text style={homeStyles.greetingText}>Public Advisories 📢</Text>
+          <View style={homeStyles.locationPill}>
+            <Ionicons name="megaphone-outline" size={13} color="#E0F2FE" />
+            <Text style={homeStyles.locationText}>Water maintenance & municipal notices</Text>
           </View>
         </View>
-      </LinearGradient>
+      </View>
 
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
