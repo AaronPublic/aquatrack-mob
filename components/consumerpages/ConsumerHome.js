@@ -394,27 +394,33 @@ export default function ConsumerHome({ navigation }) {
   };
 
   const activeAlerts = alerts.filter(ad => !dismissedAlerts.includes(ad.id));
-
-  return (
+return (
     <View style={styles.container}>
-      {/* A. Header Card Component */}
-      <View style={styles.headerCard}>
+      {/* Top 30% Blue Gradient Header Card Component */}
+      <LinearGradient 
+        colors={['#0C4F8B', '#008CE3']} 
+        start={{ x: 0, y: 0 }} 
+        end={{ x: 0, y: 1 }} 
+        style={styles.headerCard}
+      >
         {/* Water Ripple Micro-Decorations */}
         <View style={styles.decorCircle1} />
         <View style={styles.decorCircle2} />
 
         {/* Brand Row */}
         <View style={styles.brandRow}>
-          {/* Left: Brand Logo */}
+          {/* Upper Left: Light Blue Water Droplet + Custom Colored AQUATRACK Logo */}
           <View style={styles.logoContainer}>
-            <Image 
-              source={require('../../assets/Logo.png')}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
+            <Ionicons name="water" size={26} color="#7DD3FC" />
+            <Text style={styles.brandTitleText}>
+              <Text style={{ color: '#FFFFFF' }}>AQ</Text>
+              <Text style={{ color: '#FBBF24' }}>U</Text>
+              <Text style={{ color: '#EF4444' }}>A</Text>
+              <Text style={{ color: '#FFFFFF' }}>TRACK</Text>
+            </Text>
           </View>
 
-          {/* Right: Notification & Profile Section */}
+          {/* Right: Notification & Consumer Profile Section */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             {/* Notification Bell */}
             <TouchableOpacity 
@@ -426,7 +432,7 @@ export default function ConsumerHome({ navigation }) {
               {unreadCount > 0 && <View style={styles.notificationBadge} />}
             </TouchableOpacity>
 
-            {/* User Profile Pill */}
+            {/* Consumer Profile Pill */}
             <TouchableOpacity 
               style={styles.profilePill}
               onPress={handleProfilePress}
@@ -443,14 +449,14 @@ export default function ConsumerHome({ navigation }) {
 
         {/* Greeting & Location Row */}
         <View style={styles.greetingContainer}>
-          <Text style={styles.greetingText}>Hello, {userName} 👋</Text>
+          <Text style={styles.greetingText}>Hello, {userName}</Text>
           <View style={styles.locationPill}>
             <Ionicons name="location-outline" size={13} color="#E0F2FE" />
             <Text style={styles.locationText}>City of San Fernando • Dolores</Text>
           </View>
         </View>
 
-        {/* Metrics Counter Banner */}
+        {/* The Logs / Metrics Counter Banner */}
         <View style={styles.metricsBanner}>
           <View style={styles.metricColumn}>
             <Text style={styles.metricLabel}>TOTAL LOGS</Text>
@@ -475,10 +481,34 @@ export default function ConsumerHome({ navigation }) {
             <Text style={[styles.metricNumber, { color: '#FFFFFF' }]}>{metrics.resolved}</Text>
           </View>
         </View>
+      </LinearGradient>
+
+      {/* Soft Smooth 2-Curve Water / Wave Swirl Divider Junction (Overlays & Masks Scrolling Content Exactly Along Waves) */}
+      <View style={styles.swirlWrapper} pointerEvents="none">
+        {/* Solid Blue Extension Mask Fill */}
+        <View style={styles.swirlBlueMaskFill} />
+
+        {/* Curve 1: Minimal Upper Ocean Cyan Swirl */}
+        <View style={styles.smoothWaveCurve1} />
+
+        {/* Curve 2: Minimal Mid Azure Fluid Water Swirl */}
+        <View style={styles.smoothWaveCurve2} />
+
+        {/* Soft Water Swirl Graphic Overlays */}
+        <Image 
+          source={require('../../assets/swirl_accent.png')}
+          style={styles.swirlAccentImage}
+          resizeMode="stretch"
+        />
+        
       </View>
 
       {/* Main Scroll Content */}
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Critical System Alert Banner (conditional based on warnings) */}
         {activeAlerts.length > 0 && (
           <TouchableOpacity 

@@ -328,25 +328,28 @@ export default function FileComplaint({ navigation }) {
       className="flex-1 bg-[#F2F5FA]" 
       contentContainerStyle={{ paddingBottom: 140 }}
     >
-      <View style={[homeStyles.headerCard, { paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }]}>
+      {/* Top Blue Gradient Header Component */}
+      <LinearGradient 
+        colors={['#0C4F8B', '#008CE3']} 
+        start={{ x: 0, y: 0 }} 
+        end={{ x: 0, y: 1 }} 
+        style={[homeStyles.headerCard, { borderBottomLeftRadius: 24, borderBottomRightRadius: 24, paddingBottom: 20, marginBottom: 12 }]}
+      >
         {/* Background Water Ripple Decorations */}
         <View style={homeStyles.decorCircle1} />
         <View style={homeStyles.decorCircle2} />
 
         {/* Brand Row */}
         <View style={homeStyles.brandRow}>
-          {/* Left: Brand Logo */}
+          {/* Left: AquaTrack Multi-Colored Logo */}
           <View style={homeStyles.logoContainer}>
-            <Image 
-              source={require('../../assets/Logo.png')}
-              style={homeStyles.logoImage}
-              resizeMode="contain"
-            />
-          </View>
-
-          {/* Middle: Subtitle Badge */}
-          <View style={homeStyles.brandTextContainer}>
-            <Text style={homeStyles.brandSubtitle}>FILE REPORT</Text>
+            <Ionicons name="water" size={26} color="#7DD3FC" />
+            <Text style={homeStyles.brandTitleText}>
+              <Text style={{ color: '#FFFFFF' }}>AQ</Text>
+              <Text style={{ color: '#FBBF24' }}>U</Text>
+              <Text style={{ color: '#EF4444' }}>A</Text>
+              <Text style={{ color: '#FFFFFF' }}>TRACK</Text>
+            </Text>
           </View>
 
           {/* Right: Notification & Profile Section */}
@@ -377,22 +380,16 @@ export default function FileComplaint({ navigation }) {
 
         {/* Page Greeting & Subtitle */}
         <View style={homeStyles.greetingContainer}>
-          <Text style={homeStyles.greetingText}>File a Complaint 📋</Text>
+          <Text style={homeStyles.greetingText}>File a Complaint</Text>
           <View style={homeStyles.locationPill}>
             <Ionicons name="alert-circle-outline" size={13} color="#E0F2FE" />
             <Text style={homeStyles.locationText}>Report utility anomalies to CSFWD</Text>
           </View>
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Screen Content Wrapper */}
-      <View className="px-[18px] mt-6">
-        <View className="mb-6">
-          <Text className="text-[#0B2240] font-black text-2xl tracking-tight">File a Complaint</Text>
-          <Text className="text-[#627D98] font-medium text-xs mt-1.5 leading-relaxed">
-            Report utility anomalies to the City Water District command center
-          </Text>
-        </View>
+      <View className="px-[18px] mt-2">
 
         <View className="bg-white border border-[#E2E8F5] rounded-3xl p-5 mb-5 shadow-sm">
           <Text className="text-[#009FDE] font-black text-xs uppercase tracking-widest mb-4">1. Incident Details</Text>

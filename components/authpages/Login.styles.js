@@ -16,9 +16,8 @@ export default StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
 
-  // ================= 70% TOP BRANDING SECTION (#2196F3) =================
+  // ================= 70% TOP BRANDING SECTION (BLUE GRADIENT) =================
   topSection: {
-    backgroundColor: '#2196F3',
     minHeight: SCREEN_HEIGHT * 0.65,
     alignItems: 'center',
     paddingTop: Platform.OS === 'ios' ? 52 : 36,
@@ -28,7 +27,7 @@ export default StyleSheet.create({
     overflow: 'hidden',
   },
 
-  // Realistic Water Droplets Overlay Graphic
+  // Reduced Water Droplets Overlay Texture (Clean & Uncluttered)
   waterDropletsOverlay: {
     position: 'absolute',
     top: 0,
@@ -37,7 +36,55 @@ export default StyleSheet.create({
     bottom: 0,
     width: '100%',
     height: '100%',
-    opacity: 0.85,
+    opacity: 0.22,
+  },
+
+  // Logo Wrapper Container
+  logoWrapper: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 18,
+  },
+
+  // Extra Large Transparent PNG Logo
+  bigLogoImage: {
+    width: 380,
+    height: 250,
+    marginTop: 0,
+    marginBottom: 0,
+  },
+
+  // ONE Single Shiny Realistic 3D Water Droplet on the Logo
+  singleLogoDroplet: {
+    position: 'absolute',
+    top: 38,
+    right: 64,
+    width: 32,
+    height: 40,
+    borderRadius: 20,
+    borderTopLeftRadius: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+    transform: [{ rotate: '-22deg' }],
+    shadowColor: '#001030',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+
+  // Specular Reflection Glare Spot inside Single Droplet
+  dropletHighlight: {
+    position: 'absolute',
+    top: 4,
+    left: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
+    opacity: 0.95,
   },
 
   // Water Ripple Micro-Decorations
@@ -58,23 +105,6 @@ export default StyleSheet.create({
     top: 140,
     left: -90,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  decorCircle3: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    bottom: 90,
-    right: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.07)',
-  },
-
-  // Extra Large Transparent PNG Logo
-  bigLogoImage: {
-    width: 380,
-    height: 250,
-    marginTop: 18,
-    marginBottom: 0,
   },
 
   // City Subtitle Badge

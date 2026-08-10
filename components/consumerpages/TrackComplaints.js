@@ -8,7 +8,12 @@ import styles from './TrackComplaints.styles';
 import homeStyles from './ConsumerHome.styles';
 import { useNotificationStore } from '../../src/store/useNotificationStore';
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+if (
+  Platform.OS === 'android' && 
+  UIManager.setLayoutAnimationEnabledExperimental && 
+  !global.nativeFabricUIManager && 
+  !global.__turboModuleProxy
+) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
@@ -326,26 +331,28 @@ export default function TrackComplaints({ navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: '#F2F5FA' }]}>
-      {/* Shared Header (Static at top for layout uniformity and flicker prevention) */}
-      <View style={[homeStyles.headerCard, { paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }]}>
+      {/* Top Blue Gradient Header Component */}
+      <LinearGradient 
+        colors={['#0C4F8B', '#008CE3']} 
+        start={{ x: 0, y: 0 }} 
+        end={{ x: 0, y: 1 }} 
+        style={[homeStyles.headerCard, { borderBottomLeftRadius: 24, borderBottomRightRadius: 24, paddingBottom: 20, marginBottom: 12 }]}
+      >
         {/* Background Water Ripple Decorations */}
         <View style={homeStyles.decorCircle1} />
         <View style={homeStyles.decorCircle2} />
 
         {/* Brand Row */}
         <View style={homeStyles.brandRow}>
-          {/* Left: Brand Logo */}
+          {/* Left: AquaTrack Multi-Colored Logo */}
           <View style={homeStyles.logoContainer}>
-            <Image 
-              source={require('../../assets/Logo.png')}
-              style={homeStyles.logoImage}
-              resizeMode="contain"
-            />
-          </View>
-
-          {/* Middle: Subtitle Badge */}
-          <View style={homeStyles.brandTextContainer}>
-            <Text style={homeStyles.brandSubtitle}>TRACK TICKETS</Text>
+            <Ionicons name="water" size={26} color="#7DD3FC" />
+            <Text style={homeStyles.brandTitleText}>
+              <Text style={{ color: '#FFFFFF' }}>AQ</Text>
+              <Text style={{ color: '#FBBF24' }}>U</Text>
+              <Text style={{ color: '#EF4444' }}>A</Text>
+              <Text style={{ color: '#FFFFFF' }}>TRACK</Text>
+            </Text>
           </View>
 
           {/* Right: Notification & Profile Section */}
@@ -376,13 +383,13 @@ export default function TrackComplaints({ navigation }) {
 
         {/* Page Greeting & Subtitle */}
         <View style={homeStyles.greetingContainer}>
-          <Text style={homeStyles.greetingText}>My Reports 🔍</Text>
+          <Text style={homeStyles.greetingText}>My Reports</Text>
           <View style={homeStyles.locationPill}>
-            <Ionicons name="time-outline" size={13} color="#E0F2FE" />
-            <Text style={homeStyles.locationText}>Real-time report status & technician logs</Text>
+            <Ionicons name="ticket-outline" size={13} color="#E0F2FE" />
+            <Text style={homeStyles.locationText}>Track live ticket progress & dispatch logs</Text>
           </View>
         </View>
-      </View>
+      </LinearGradient>
 
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -395,14 +402,6 @@ export default function TrackComplaints({ navigation }) {
           renderItem={renderTicketItem}
           ListHeaderComponent={
             <View>
-              {/* Title & Info */}
-              <View className="mb-4">
-                <Text className="text-[#0B2240] font-black text-2xl tracking-tight">Track My Tickets</Text>
-                <Text className="text-[#627D98] font-medium text-xs mt-1.5 leading-relaxed">
-                  Check real-time evaluation logs and engineer dispatches
-                </Text>
-              </View>
-
               {/* Segment Tabs */}
               <View style={[styles.tabBar, { marginHorizontal: 0, marginBottom: 16 }]}>
                 {['ALL', 'ACTIVE', 'RESOLVED'].map((tab) => {

@@ -7,18 +7,13 @@ const rawStyles = {
     backgroundColor: theme.colors.background,
   },
   
-  // A. Header Card Component (32px Curved Bottom Corners & Soft Blue Border)
+  // A. Header Card Component (Top ~30% Blue Section)
   headerCard: {
-    backgroundColor: '#2196F3',
-    paddingTop: 46,
+    paddingTop: 48,
     paddingBottom: 24,
     paddingHorizontal: 20,
     position: 'relative',
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    borderBottomWidth: 2,
-    borderBottomColor: '#1E88E5',
-    overflow: 'hidden',
+    zIndex: 10,
   },
   waterDropletsOverlay: {
     position: 'absolute',
@@ -32,19 +27,19 @@ const rawStyles = {
   },
   decorCircle1: {
     position: 'absolute',
-    width: 260,
-    height: 260,
-    borderRadius: 130,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
     top: -70,
     right: -60,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   decorCircle2: {
     position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    top: 100,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    top: 90,
     left: -80,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
@@ -52,6 +47,20 @@ const rawStyles = {
     width: 155,
     height: 52,
     resizeMode: 'contain',
+  },
+  consumerTag: {
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  consumerTagText: {
+    fontSize: 9,
+    fontFamily: theme.fonts.extraBold,
+    color: '#FFFFFF',
+    letterSpacing: 1.2,
   },
   brandSubtitle: {
     fontSize: 9,
@@ -94,27 +103,80 @@ const rawStyles = {
     marginLeft: 5,
   },
   swirlWrapper: {
+    position: 'relative',
+    marginTop: -1,
+    height: 64,
+    zIndex: 100,
+    overflow: 'hidden',
+  },
+  swirlBlueMaskFill: {
     position: 'absolute',
-    bottom: -1,
+    top: 0,
     left: 0,
     right: 0,
-    height: 55,
+    height: 24,
+    backgroundColor: '#008CE3',
+  },
+  // Smooth Wave Curve 1: Minimal Upper Ocean Cyan Swirl
+  smoothWaveCurve1: {
+    position: 'absolute',
+    top: 2,
+    left: '-15%',
+    width: '130%',
+    height: 54,
+    backgroundColor: 'rgba(224, 242, 254, 0.55)',
+    borderTopLeftRadius: 240,
+    borderTopRightRadius: 300,
+    borderBottomLeftRadius: 100,
+    borderBottomRightRadius: 110,
+    transform: [{ rotate: '-4deg' }],
+  },
+  // Smooth Wave Curve 2: Minimal Mid Azure Fluid Water Swirl
+  smoothWaveCurve2: {
+    position: 'absolute',
+    top: 8,
+    left: '-10%',
+    width: '124%',
+    height: 50,
+    backgroundColor: 'rgba(186, 230, 253, 0.45)',
+    borderTopLeftRadius: 260,
+    borderTopRightRadius: 220,
+    transform: [{ rotate: '1.5deg' }],
+  },
+  // Smooth Wave Curve 3: Minimal Lower Fluid Boundary Swirl Curve
+  smoothWaveCurve3: {
+    position: 'absolute',
+    top: 14,
+    left: '-12%',
+    width: '124%',
+    height: 46,
+    backgroundColor: 'rgba(255, 255, 255, 0.82)',
+    borderTopWidth: 2,
+    borderTopColor: 'rgba(0, 140, 227, 0.35)',
+    borderTopLeftRadius: 280,
+    borderTopRightRadius: 230,
+    transform: [{ rotate: '2.5deg' }],
   },
   swirlAccentImage: {
     position: 'absolute',
-    bottom: 0,
+    top: 6,
+    left: 0,
+    right: 0,
     width: '100%',
-    height: 55,
-    opacity: 0.6,
+    height: 52,
+    opacity: 0.75,
   },
   swirlBoundaryImage: {
     position: 'absolute',
-    bottom: 0,
+    top: 12,
+    left: 0,
+    right: 0,
     width: '100%',
-    height: 55,
+    height: 48,
+    opacity: 0.9,
   },
   
-  // Brand Row
+  // Brand Row (Upper Left Corner)
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -122,8 +184,15 @@ const rawStyles = {
     marginBottom: 16,
   },
   logoContainer: {
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+  },
+  brandTitleText: {
+    fontSize: 22,
+    fontFamily: theme.fonts.extraBold,
+    color: '#FFFFFF',
+    letterSpacing: 1.8,
   },
   brandTextContainer: {
     flex: 1,
@@ -209,10 +278,13 @@ const rawStyles = {
   // Main Scrollable Area
   scrollView: {
     flex: 1,
+    marginTop: -64,
     backgroundColor: '#F2F2F7', // Apple System Grouped Background
+    zIndex: 1,
   },
   scrollContent: {
     padding: 16,
+    paddingTop: 76,
     paddingBottom: 110,
   },
   

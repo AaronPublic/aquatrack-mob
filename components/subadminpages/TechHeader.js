@@ -1,12 +1,13 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, ScrollView, Modal } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import homeStyles from './SubAdminHome.styles';
 import { useTechNotificationStore } from '../../src/store/useTechNotificationStore';
 
 /**
  * Shared header component for all sub-admin / technician screens.
- * Styled to match the Landing Page #2196F3 blue theme, water droplets, and swirl wave boundary.
+ * Styled to match the Landing Page blue gradient, water droplets, and swirl wave boundary.
  */
 export default function TechHeader({
   navigation,
@@ -39,10 +40,15 @@ export default function TechHeader({
 
   return (
     <>
-      <View style={[
-        homeStyles.headerCard,
-        !showSwirl && { paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }
-      ]}>
+      <LinearGradient 
+        colors={['#0C4F8B', '#008CE3']} 
+        start={{ x: 0, y: 0 }} 
+        end={{ x: 0, y: 1 }} 
+        style={[
+          homeStyles.headerCard,
+          !showSwirl && { paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }
+        ]}
+      >
         {/* Background Water Ripple Decorations */}
         <View style={homeStyles.decorCircle1} />
         <View style={homeStyles.decorCircle2} />
@@ -144,7 +150,7 @@ export default function TechHeader({
             />
           </View>
         )}
-      </View>
+      </LinearGradient>
 
       {/* ── Notifications Modal ────────────────────────────────────── */}
       <Modal

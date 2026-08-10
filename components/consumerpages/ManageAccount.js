@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import { Ionicons } from '@expo/vector-icons';
 import styles from './ManageAccount.styles';
+import homeStyles from './ConsumerHome.styles';
 
 export default function ManageAccount({ navigation }) {
   const [name, setName] = useState('');
@@ -101,7 +103,7 @@ export default function ManageAccount({ navigation }) {
       return;
     }
 
-    if (password) {
+    if (password || confirmPassword) {
       if (password !== confirmPassword) {
         setError("Passwords do not match.");
         return;
@@ -169,26 +171,55 @@ export default function ManageAccount({ navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator color="#001e66" size="large" />
+        <ActivityIndicator color="#0C4F8B" size="large" />
         <Text style={styles.loadingText}>Syncing Credentials...</Text>
       </View>
     );
   }
+
+  const renderHeader = (title, subtitle) => (
+    <LinearGradient 
+      colors={['#0C4F8B', '#008CE3']} 
+      start={{ x: 0, y: 0 }} 
+      end={{ x: 0, y: 1 }} 
+      style={[homeStyles.headerCard, { borderBottomLeftRadius: 24, borderBottomRightRadius: 24, paddingBottom: 20, marginBottom: 12 }]}
+    >
+      <View style={homeStyles.decorCircle1} />
+      <View style={homeStyles.decorCircle2} />
+
+      <View style={homeStyles.brandRow}>
+        <View style={homeStyles.logoContainer}>
+          <Ionicons name="water" size={26} color="#7DD3FC" />
+          <Text style={homeStyles.brandTitleText}>
+            <Text style={{ color: '#FFFFFF' }}>AQ</Text>
+            <Text style={{ color: '#FBBF24' }}>U</Text>
+            <Text style={{ color: '#EF4444' }}>A</Text>
+            <Text style={{ color: '#FFFFFF' }}>TRACK</Text>
+          </Text>
+        </View>
+      </View>
+
+      <View style={homeStyles.greetingContainer}>
+        <Text style={homeStyles.greetingText}>{title}</Text>
+        <View style={homeStyles.locationPill}>
+          <Ionicons name="settings-outline" size={13} color="#E0F2FE" />
+          <Text style={homeStyles.locationText}>{subtitle}</Text>
+        </View>
+      </View>
+    </LinearGradient>
+  );
 
   // 1. Password Verification Screen (runs first)
   if (!isVerified) {
     return (
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
+        style={[styles.container, { backgroundColor: '#F2F5FA' }]}
       >
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Confirm Identity</Text>
-            <Text style={styles.subtitle}>For security reasons, please confirm your current account password before modifying details.</Text>
-          </View>
+        <ScrollView contentContainerStyle={{ paddingBottom: 110 }}>
+          {renderHeader('Confirm Identity', 'Please verify your password before updating details')}
 
-          <View style={styles.card}>
+          <View style={[styles.card, { marginHorizontal: 16, marginTop: 16 }]}>
             <Text style={styles.sectionTitle}>Verification Required</Text>
             
             <View style={styles.form}>
@@ -241,16 +272,13 @@ export default function ManageAccount({ navigation }) {
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: '#F2F5FA' }]}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Account Settings</Text>
-          <Text style={styles.subtitle}>Modify your contact coordinates or update your secure login password</Text>
-        </View>
+      <ScrollView contentContainerStyle={{ paddingBottom: 110 }}>
+        {renderHeader('Account Settings', 'Modify contact details & update security password')}
 
         {/* Card 1: Profile Info */}
-        <View style={styles.card}>
+        <View style={[styles.card, { marginHorizontal: 16, marginTop: 16 }]}>
           <Text style={styles.sectionTitle}>Profile Details</Text>
           
           <View style={styles.form}>

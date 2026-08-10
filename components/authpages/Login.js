@@ -12,6 +12,7 @@ import {
   Dimensions,
   Alert
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import styles from './Login.styles';
@@ -238,9 +239,14 @@ export default function Login({ navigation, route }) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* ================= 70% TOP BRANDING SECTION (#2196F3) ================= */}
-          <View style={styles.topSection}>
-            {/* Realistic Water Droplets Overlay Graphic */}
+          {/* ================= 70% TOP BRANDING SECTION (BLUE GRADIENT) ================= */}
+          <LinearGradient 
+            colors={['#0C4F8B', '#008CE3']} 
+            start={{ x: 0, y: 0 }} 
+            end={{ x: 0, y: 1 }} 
+            style={styles.topSection}
+          >
+            {/* Subtle Reduced Water Droplets Overlay Texture */}
             <Image 
               source={require('../../assets/water_droplets.png')}
               style={styles.waterDropletsOverlay}
@@ -250,14 +256,19 @@ export default function Login({ navigation, route }) {
             {/* Background Water Ripple Micro-Decorations */}
             <View style={styles.decorCircle1} />
             <View style={styles.decorCircle2} />
-            <View style={styles.decorCircle3} />
 
-            {/* BIG TRANSPARENT PNG LOGO DIRECTLY ON BLUE */}
-            <Image 
-              source={require('../../assets/Logo.png')}
-              style={styles.bigLogoImage}
-              resizeMode="contain"
-            />
+            {/* BIG TRANSPARENT PNG LOGO WITH SINGLE SHINY WATER DROPLET */}
+            <View style={styles.logoWrapper}>
+              <Image 
+                source={require('../../assets/Logo.png')}
+                style={styles.bigLogoImage}
+                resizeMode="contain"
+              />
+              {/* ONE Single Shiny Realistic Water Droplet on the Logo */}
+              <View style={styles.singleLogoDroplet}>
+                <View style={styles.dropletHighlight} />
+              </View>
+            </View>
 
             <View style={styles.cityBadge}>
               <Ionicons name="water-outline" size={13} color="#E0F2FE" style={{ marginRight: 4 }} />
@@ -281,7 +292,7 @@ export default function Login({ navigation, route }) {
                 resizeMode="cover"
               />
             </View>
-          </View>
+          </LinearGradient>
 
           {/* ================= 30% BOTTOM ACTION SECTION (WHITE) ================= */}
           <View style={styles.bottomSection}>

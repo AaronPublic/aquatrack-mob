@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import styles from './ContactSupport.styles';
 import homeStyles from './ConsumerHome.styles';
@@ -33,39 +34,41 @@ export default function ContactSupport({ navigation }) {
   ];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      {/* Landing Page #2196F3 Swirl Header */}
-      <View style={[homeStyles.headerCard, { paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }]}>
+    <ScrollView style={[styles.container, { backgroundColor: '#F2F5FA' }]} contentContainerStyle={styles.scrollContent}>
+      {/* Top Blue Gradient Header Component */}
+      <LinearGradient 
+        colors={['#0C4F8B', '#008CE3']} 
+        start={{ x: 0, y: 0 }} 
+        end={{ x: 0, y: 1 }} 
+        style={[homeStyles.headerCard, { borderBottomLeftRadius: 24, borderBottomRightRadius: 24, paddingBottom: 20, marginBottom: 12 }]}
+      >
         {/* Background Water Ripple Decorations */}
         <View style={homeStyles.decorCircle1} />
         <View style={homeStyles.decorCircle2} />
 
         {/* Brand Row */}
         <View style={homeStyles.brandRow}>
-          {/* Left: Transparent High-Contrast Logo */}
+          {/* Left: AquaTrack Multi-Colored Logo */}
           <View style={homeStyles.logoContainer}>
-            <Image 
-              source={require('../../assets/Logo.png')}
-              style={homeStyles.logoImage}
-              resizeMode="contain"
-            />
-          </View>
-
-          {/* Middle: Subtitle Badge */}
-          <View style={homeStyles.brandTextContainer}>
-            <Text style={homeStyles.brandSubtitle}>HELP & SUPPORT</Text>
+            <Ionicons name="water" size={26} color="#7DD3FC" />
+            <Text style={homeStyles.brandTitleText}>
+              <Text style={{ color: '#FFFFFF' }}>AQ</Text>
+              <Text style={{ color: '#FBBF24' }}>U</Text>
+              <Text style={{ color: '#EF4444' }}>A</Text>
+              <Text style={{ color: '#FFFFFF' }}>TRACK</Text>
+            </Text>
           </View>
         </View>
 
         {/* Page Greeting & Subtitle */}
         <View style={homeStyles.greetingContainer}>
-          <Text style={homeStyles.greetingText}>Contact Support 📞</Text>
+          <Text style={homeStyles.greetingText}>Contact Support</Text>
           <View style={homeStyles.locationPill}>
             <Ionicons name="call-outline" size={13} color="#E0F2FE" />
             <Text style={homeStyles.locationText}>City Water District hotlines & branch directory</Text>
           </View>
         </View>
-      </View>
+      </LinearGradient>
 
       <View style={styles.contentPadding}>
         <View style={styles.card}>
