@@ -307,7 +307,7 @@ export default function FileComplaint({ navigation }) {
     >
       {/* ==================== TOP 30% BLUE SECTION ==================== */}
       <LinearGradient 
-        colors={['#072A5E', '#0B4A8F', '#008CE3']} 
+        colors={['#0C4F8B', '#008CE3']} 
         start={{ x: 0, y: 0 }} 
         end={{ x: 0, y: 1 }} 
         style={{
