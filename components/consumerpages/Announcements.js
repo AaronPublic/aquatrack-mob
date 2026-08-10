@@ -127,13 +127,33 @@ export default function Announcements({ route, navigation }) {
     setExpandedId(expandedId === id ? null : id);
   };
 
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('ConsumerHome');
+    }
+  };
+
   const renderItem = ({ item }) => {
     const isWarning = item.type === 'warning';
     const isExpanded = expandedId === item.id;
 
     return (
       <TouchableOpacity 
-        style={[styles.card, isExpanded && styles.cardExpanded]}
+        style={[
+          styles.card, 
+          isExpanded && styles.cardExpanded,
+          {
+            shadowColor: '#0B2240',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.07,
+            shadowRadius: 14,
+            elevation: 4,
+            marginBottom: 14,
+            borderRadius: 24,
+          }
+        ]}
         onPress={() => toggleExpand(item.id)}
         activeOpacity={0.9}
       >
@@ -194,65 +214,131 @@ export default function Announcements({ route, navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: '#F2F5FA' }]}>
-      {/* Top Blue Gradient Header Component */}
+      {/* ==================== TOP 30% BLUE SECTION ==================== */}
       <LinearGradient 
-        colors={['#0C4F8B', '#008CE3']} 
+        colors={['#072A5E', '#0B4A8F', '#008CE3']} 
         start={{ x: 0, y: 0 }} 
         end={{ x: 0, y: 1 }} 
-        style={[homeStyles.headerCard, { borderBottomLeftRadius: 24, borderBottomRightRadius: 24, paddingBottom: 20, marginBottom: 12 }]}
+        style={{
+          paddingTop: Platform.OS === 'ios' ? 54 : 42,
+          paddingHorizontal: 20,
+          paddingBottom: 28,
+          position: 'relative',
+          overflow: 'hidden'
+        }}
       >
-        {/* Background Water Ripple Decorations */}
+        {/* Background Decorative Ripples */}
         <View style={homeStyles.decorCircle1} />
         <View style={homeStyles.decorCircle2} />
 
-        {/* Brand Row */}
-        <View style={homeStyles.brandRow}>
-          {/* Left: AquaTrack Multi-Colored Logo */}
-          <View style={homeStyles.logoContainer}>
-            <Ionicons name="water" size={26} color="#7DD3FC" />
-            <Text style={homeStyles.brandTitleText}>
-              <Text style={{ color: '#FFFFFF' }}>AQ</Text>
-              <Text style={{ color: '#FBBF24' }}>U</Text>
-              <Text style={{ color: '#EF4444' }}>A</Text>
-              <Text style={{ color: '#FFFFFF' }}>TRACK</Text>
-            </Text>
-          </View>
+        {/* Top Header Navigation Bar */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          {/* Back Button */}
+          <TouchableOpacity 
+            onPress={handleBack}
+            activeOpacity={0.8}
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 14,
+              backgroundColor: 'rgba(255, 255, 255, 0.18)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.28)'
+            }}
+          >
+            <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
 
-          {/* Right: Notification & Profile Section */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            {/* Notification Bell */}
+          {/* Right Header Controls (Notification Bell) */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <TouchableOpacity 
               activeOpacity={0.7} 
               onPress={handleOpenNotifications}
               style={homeStyles.notificationBell}
             >
-              <Ionicons name="notifications-outline" size={18} color="#ffffff" />
+              <Ionicons name="notifications-outline" size={20} color="#ffffff" />
               {unreadCount > 0 && <View style={homeStyles.notificationBadge} />}
-            </TouchableOpacity>
-
-            {/* User Profile Pill */}
-            <TouchableOpacity 
-              style={homeStyles.profilePill}
-              activeOpacity={0.8}
-            >
-              <Text style={homeStyles.profileName} numberOfLines={1}>{userName}</Text>
-              <View style={homeStyles.avatarContainer}>
-                <Ionicons name="person" size={14} color="#ffffff" />
-                <View style={homeStyles.activeDot} />
-              </View>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Page Greeting & Subtitle */}
-        <View style={homeStyles.greetingContainer}>
-          <Text style={homeStyles.greetingText}>Public Advisories</Text>
-          <View style={homeStyles.locationPill}>
-            <Ionicons name="megaphone-outline" size={13} color="#E0F2FE" />
-            <Text style={homeStyles.locationText}>Water maintenance & municipal notices</Text>
+        {/* Hero Title Section inside 30% Blue Area */}
+        <View style={{ marginTop: 4, marginBottom: 8 }}>
+          <Text style={{ color: '#FFFFFF', fontSize: 30, fontWeight: '900', letterSpacing: -0.5, lineHeight: 36 }}>
+            Advisories
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 6 }}>
+            <Ionicons name="megaphone-outline" size={14} color="#7DD3FC" />
+            <Text style={{ color: '#BAE6FD', fontSize: 12, fontWeight: '600' }}>
+              Water maintenance & municipal notices
+            </Text>
           </View>
         </View>
       </LinearGradient>
+
+      {/* ==================== WAVY SWIRL DIVIDER ==================== */}
+      <View style={{ height: 46, backgroundColor: '#008CE3', overflow: 'hidden', width: '100%', position: 'relative' }}>
+        {/* Layer 1: Outer Azure Swirl Ring */}
+        <View 
+          style={{ 
+            position: 'absolute', 
+            bottom: -10, 
+            left: '-15%', 
+            width: '135%', 
+            height: 52, 
+            backgroundColor: 'rgba(2, 132, 199, 0.45)', 
+            borderTopLeftRadius: 180, 
+            borderTopRightRadius: 380, 
+            transform: [{ rotate: '-5deg' }] 
+          }} 
+        />
+
+        {/* Layer 2: Swirling Sea Foam Cyan Curl Accent */}
+        <View 
+          style={{ 
+            position: 'absolute', 
+            bottom: -14, 
+            left: '-10%', 
+            width: '130%', 
+            height: 56, 
+            backgroundColor: 'rgba(125, 211, 252, 0.65)', 
+            borderTopLeftRadius: 220, 
+            borderTopRightRadius: 420, 
+            transform: [{ rotate: '-4.2deg' }] 
+          }} 
+        />
+
+        {/* Layer 3: Swirl Crest Accent Ring */}
+        <View 
+          style={{ 
+            position: 'absolute', 
+            bottom: -6, 
+            right: '18%', 
+            width: 85, 
+            height: 42, 
+            borderRadius: 42, 
+            backgroundColor: 'rgba(255, 255, 255, 0.35)', 
+            transform: [{ scaleX: 1.8 }, { rotate: '-12deg' }] 
+          }} 
+        />
+
+        {/* Layer 4: Main Wavy Swirl Mask (#F2F5FA matching 70% section background) */}
+        <View 
+          style={{ 
+            position: 'absolute', 
+            bottom: -18, 
+            left: '-20%', 
+            width: '140%', 
+            height: 60, 
+            backgroundColor: '#F2F5FA', 
+            borderTopLeftRadius: 240, 
+            borderTopRightRadius: 450, 
+            transform: [{ rotate: '-4deg' }] 
+          }} 
+        />
+      </View>
 
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -264,7 +350,11 @@ export default function Announcements({ route, navigation }) {
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           ListHeaderComponent={
-            <View>
+            <View style={{ paddingHorizontal: 18, paddingTop: 4 }}>
+              {/* Outer Gray Label */}
+              <Text style={{ color: '#64748B', fontWeight: '800', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, paddingHorizontal: 4 }}>
+                Public Bulletins & Alerts
+              </Text>
               {/* Segment Tabs */}
               <View style={[styles.tabBar, { marginHorizontal: 0, marginBottom: 16 }]}>
                 {['ALL', 'WARNINGS', 'UPDATES'].map((tab) => {
@@ -289,7 +379,7 @@ export default function Announcements({ route, navigation }) {
               </View>
             </View>
           }
-          contentContainerStyle={styles.listContainer}
+          contentContainerStyle={[styles.listContainer, { paddingHorizontal: 18 }]}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#0B2240" />
           }

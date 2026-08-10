@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, ActivityInd
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import MapView, { Marker, Polygon } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 import { api } from '../../src/config/api';
 import { supabase } from '../../src/config/supabase';
 import { Ionicons } from '@expo/vector-icons';
@@ -54,9 +54,8 @@ export default function FileComplaint({ navigation }) {
     barangay: ''
   });
   const [userName, setUserName] = useState('Pedro');
-  const [metrics, setMetrics] = useState({ total: 25, pending: 9, active: 8, resolved: 8 });
   const [notificationsModalVisible, setNotificationsModalVisible] = useState(false);
-  const { notifications, unreadCount, fetchNotifications, markAllAsRead, dismissNotification } = useNotificationStore();
+  const { notifications, unreadCount, markAllAsRead, dismissNotification } = useNotificationStore();
 
   const handleOpenNotifications = () => {
     setNotificationsModalVisible(true);
@@ -70,6 +69,14 @@ export default function FileComplaint({ navigation }) {
       navigation.navigate('Announcements');
     } else if (item.type === 'complaint_status') {
       navigation.navigate('TrackComplaints');
+    }
+  };
+
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('ConsumerHome');
     }
   };
 
@@ -87,53 +94,24 @@ export default function FileComplaint({ navigation }) {
       }
     })();
 
-    const fetchProfileAndMetrics = async () => {
+    const fetchProfileData = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
-          // Fetch profile
           const profile = await api.post('/api/auth/profile', { userId: session.user.id });
           if (profile?.name) {
             setUserName(profile.name);
           }
-
-          // Fetch complaint counts
-          const { data: userComplaints, error: compError } = await supabase
-            .from('Complaint')
-            .select('id, status')
-            .eq('userId', session.user.id);
-
-          if (!compError && userComplaints) {
-            const total = userComplaints.length;
-            const pending = userComplaints.filter(c => c.status === 'PENDING').length;
-            const active = userComplaints.filter(c => c.status === 'EVALUATING' || c.status === 'DISPATCHED' || c.status === 'ONGOING').length;
-            const resolved = userComplaints.filter(c => c.status === 'RESOLVED').length;
-
-            if (total > 0) {
-              setMetrics({ total, pending, active, resolved });
-            }
-          }
         }
-        // Load notifications update
-        fetchNotifications();
       } catch (err) {
-        console.warn("Failed to load header profile/metrics:", err);
+        console.warn("Failed to load header profile:", err);
       }
     };
 
-    fetchProfileAndMetrics();
-
-    // Refresh when focused
-    const unsubscribeFocus = navigation.addListener('focus', () => {
-      fetchProfileAndMetrics();
-    });
-
-    return () => {
-      unsubscribeFocus();
-    };
+    fetchProfileData();
   }, [navigation]);
 
-  // Automatically locate user — used internally by handleSubmit
+  // Automatically locate user — used internally by handleSubmit and manual button
   const locateUser = async () => {
     setIsLocating(true);
     setOutOfScope(false);
@@ -171,11 +149,9 @@ export default function FileComplaint({ navigation }) {
         setOutOfScope(false);
         return { coords: newCoords, barangay: locData.barangay, outOfScope: false };
       } else {
-        // If outside San Fernando (like California emulator), do not update map coordinate state to California.
-        // Keep the map centered on default San Fernando coords (15.0298, 120.6955) so the map renders correctly.
         setBarangay('Unknown Area');
         setOutOfScope(true);
-        setHasLocation(true); // Keep marker at default center
+        setHasLocation(true);
         return { 
           coords: { latitude: 15.0298, longitude: 120.6955 }, 
           barangay: 'Unknown Area', 
@@ -203,7 +179,7 @@ export default function FileComplaint({ navigation }) {
     }
   };
 
-  // Run AI Diagnostics — used internally by handleSubmit
+  // Run AI Diagnostics
   const runAiTriage = async () => {
     setIsTriaging(true);
     setAiTriage(null);
@@ -220,7 +196,7 @@ export default function FileComplaint({ navigation }) {
     } finally {
       setIsTriaging(false);
     }
-    return null; // Graceful fallback — submission proceeds with defaults
+    return null;
   };
 
   // Unified Submit — automatically locates, triages with AI, uploads photo, and submits
@@ -325,155 +301,179 @@ export default function FileComplaint({ navigation }) {
 
   return (
     <ScrollView 
-      className="flex-1 bg-[#F2F5FA]" 
+      style={{ flex: 1, backgroundColor: '#F2F5FA' }}
       contentContainerStyle={{ paddingBottom: 140 }}
+      showsVerticalScrollIndicator={false}
     >
-      {/* Top Blue Gradient Header Component */}
+      {/* ==================== TOP 30% BLUE SECTION ==================== */}
       <LinearGradient 
-        colors={['#0C4F8B', '#008CE3']} 
+        colors={['#072A5E', '#0B4A8F', '#008CE3']} 
         start={{ x: 0, y: 0 }} 
         end={{ x: 0, y: 1 }} 
-        style={[homeStyles.headerCard, { borderBottomLeftRadius: 24, borderBottomRightRadius: 24, paddingBottom: 20, marginBottom: 12 }]}
+        style={{
+          paddingTop: Platform.OS === 'ios' ? 54 : 42,
+          paddingHorizontal: 20,
+          paddingBottom: 28,
+          position: 'relative',
+          overflow: 'hidden'
+        }}
       >
-        {/* Background Water Ripple Decorations */}
+        {/* Background Decorative Ripples */}
         <View style={homeStyles.decorCircle1} />
         <View style={homeStyles.decorCircle2} />
 
-        {/* Brand Row */}
-        <View style={homeStyles.brandRow}>
-          {/* Left: AquaTrack Multi-Colored Logo */}
-          <View style={homeStyles.logoContainer}>
-            <Ionicons name="water" size={26} color="#7DD3FC" />
-            <Text style={homeStyles.brandTitleText}>
-              <Text style={{ color: '#FFFFFF' }}>AQ</Text>
-              <Text style={{ color: '#FBBF24' }}>U</Text>
-              <Text style={{ color: '#EF4444' }}>A</Text>
-              <Text style={{ color: '#FFFFFF' }}>TRACK</Text>
-            </Text>
-          </View>
+        {/* Top Header Navigation Bar */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          {/* Back Button */}
+          <TouchableOpacity 
+            onPress={handleBack}
+            activeOpacity={0.8}
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 14,
+              backgroundColor: 'rgba(255, 255, 255, 0.18)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.28)'
+            }}
+          >
+            <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
 
-          {/* Right: Notification & Profile Section */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            {/* Notification Bell */}
+          {/* Right Header Controls (Notification Bell) */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <TouchableOpacity 
               activeOpacity={0.7} 
               onPress={handleOpenNotifications}
               style={homeStyles.notificationBell}
             >
-              <Ionicons name="notifications-outline" size={18} color="#ffffff" />
+              <Ionicons name="notifications-outline" size={20} color="#ffffff" />
               {unreadCount > 0 && <View style={homeStyles.notificationBadge} />}
-            </TouchableOpacity>
-
-            {/* User Profile Pill */}
-            <TouchableOpacity 
-              style={homeStyles.profilePill}
-              activeOpacity={0.8}
-            >
-              <Text style={homeStyles.profileName} numberOfLines={1}>{userName}</Text>
-              <View style={homeStyles.avatarContainer}>
-                <Ionicons name="person" size={14} color="#ffffff" />
-                <View style={homeStyles.activeDot} />
-              </View>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Page Greeting & Subtitle */}
-        <View style={homeStyles.greetingContainer}>
-          <Text style={homeStyles.greetingText}>File a Complaint</Text>
-          <View style={homeStyles.locationPill}>
-            <Ionicons name="alert-circle-outline" size={13} color="#E0F2FE" />
-            <Text style={homeStyles.locationText}>Report utility anomalies to CSFWD</Text>
+        {/* Hero Title Section inside 30% Blue Area */}
+        <View style={{ marginTop: 4, marginBottom: 8 }}>
+          <Text style={{ color: '#FFFFFF', fontSize: 30, fontWeight: '900', letterSpacing: -0.5, lineHeight: 36 }}>
+            File A Report
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 6 }}>
+            <Ionicons name="alert-circle-outline" size={14} color="#7DD3FC" />
+            <Text style={{ color: '#BAE6FD', fontSize: 12, fontWeight: '600' }}>
+              Report water utility & infrastructure anomalies
+            </Text>
           </View>
         </View>
       </LinearGradient>
 
-      {/* Screen Content Wrapper */}
-      <View className="px-[18px] mt-2">
+      {/* ==================== WAVY SWIRL DIVIDER ==================== */}
+      <View style={{ height: 46, backgroundColor: '#008CE3', overflow: 'hidden', width: '100%', position: 'relative' }}>
+        {/* Layer 1: Outer Azure Swirl Ring */}
+        <View 
+          style={{ 
+            position: 'absolute', 
+            bottom: -10, 
+            left: '-15%', 
+            width: '135%', 
+            height: 52, 
+            backgroundColor: 'rgba(2, 132, 199, 0.45)', 
+            borderTopLeftRadius: 180, 
+            borderTopRightRadius: 380, 
+            transform: [{ rotate: '-5deg' }] 
+          }} 
+        />
 
-        <View className="bg-white border border-[#E2E8F5] rounded-3xl p-5 mb-5 shadow-sm">
-          <Text className="text-[#009FDE] font-black text-xs uppercase tracking-widest mb-4">1. Incident Details</Text>
-          
-          <View className="space-y-4">
-            <Text className="text-[#0B2240] font-black text-[10px] uppercase tracking-wider">Problem Description</Text>
-            <TextInput
-              className="bg-[#F8FAFC] border border-[#E2E8F5] rounded-2xl p-4 text-[#0B2240] text-sm leading-relaxed text-left mt-1.5 mb-3"
-              style={{ minHeight: 120, textAlignVertical: 'top' }}
-              multiline
-              numberOfLines={4}
-              placeholder="Type your issue. You can write in English, Tagalog, Taglish, or Kapampangan..."
-              placeholderTextColor="#94a3b8"
-              value={rawText}
-              onChangeText={setRawText}
-            />
+        {/* Layer 2: Swirling Sea Foam Cyan Curl Accent */}
+        <View 
+          style={{ 
+            position: 'absolute', 
+            bottom: -14, 
+            left: '-10%', 
+            width: '130%', 
+            height: 56, 
+            backgroundColor: 'rgba(125, 211, 252, 0.65)', 
+            borderTopLeftRadius: 220, 
+            borderTopRightRadius: 420, 
+            transform: [{ rotate: '-4.2deg' }] 
+          }} 
+        />
 
-            <TouchableOpacity 
-              onPress={handlePickPhoto}
-              activeOpacity={0.8}
-              style={{ 
-                backgroundColor: photoUri ? '#ECFDF5' : '#EFF6FF',
-                borderColor: photoUri ? '#10B981' : '#009FDE',
-                borderStyle: 'dashed'
-              }}
-              className="border rounded-2xl p-4 flex-row items-center justify-center mt-2"
-            >
-              <Ionicons 
-                name={photoUri ? "checkmark-circle" : "camera"} 
-                size={18} 
-                color={photoUri ? '#10B981' : '#009FDE'} 
-                style={{ marginRight: 8 }}
-              />
-              <Text 
-                style={{ color: photoUri ? '#10B981' : '#007AFF' }} 
-                className="font-bold text-sm"
-              >
-                {photoUri ? "Photo Attached" : "Attach Incident Photo"}
-              </Text>
-            </TouchableOpacity>
+        {/* Layer 3: Swirl Crest Accent Ring */}
+        <View 
+          style={{ 
+            position: 'absolute', 
+            bottom: -6, 
+            right: '18%', 
+            width: 85, 
+            height: 42, 
+            borderRadius: 42, 
+            backgroundColor: 'rgba(255, 255, 255, 0.35)', 
+            transform: [{ scaleX: 1.8 }, { rotate: '-12deg' }] 
+          }} 
+        />
 
-            {photoUri && (
-              <Image 
-                source={{ uri: photoUri }} 
-                className="w-full h-48 rounded-2xl mt-4 border border-[#E2E8F5]"
-                style={{ resizeMode: 'cover' }}
-              />
-            )}
+        {/* Layer 4: Main Wavy Swirl Mask (#F2F5FA matching 70% section background) */}
+        <View 
+          style={{ 
+            position: 'absolute', 
+            bottom: -18, 
+            left: '-20%', 
+            width: '140%', 
+            height: 60, 
+            backgroundColor: '#F2F5FA', 
+            borderTopLeftRadius: 240, 
+            borderTopRightRadius: 450, 
+            transform: [{ rotate: '-4deg' }] 
+          }} 
+        />
+      </View>
 
-          </View>
+      {/* ==================== BOTTOM 70% SECTION ==================== */}
+      <View style={{ paddingHorizontal: 18, marginTop: 4 }}>
+
+        {/* 1. Incident Description */}
+        <Text className="text-[#64748B] font-extrabold text-xs uppercase tracking-widest mb-2 px-1">
+          Incident Description
+        </Text>
+        <View 
+          className="bg-white border border-[#E2E8F5] rounded-3xl p-5 mb-5"
+          style={{
+            shadowColor: '#0B2240',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.07,
+            shadowRadius: 14,
+            elevation: 4,
+          }}
+        >
+          <TextInput
+            className="bg-[#F8FAFC] border border-[#E2E8F5] rounded-2xl p-4 text-[#0B2240] text-sm leading-relaxed text-left"
+            style={{ minHeight: 120, textAlignVertical: 'top' }}
+            multiline
+            numberOfLines={4}
+            placeholder="Type your issue. You can write in English, Tagalog, Taglish, or Kapampangan..."
+            placeholderTextColor="#94a3b8"
+            value={rawText}
+            onChangeText={setRawText}
+          />
         </View>
 
-        {/* AI Diagnostic Results Card */}
-        {aiTriage && (
-          <View className="bg-indigo-50/50 border border-indigo-100 rounded-3xl p-5 mb-5 shadow-sm">
-            <View className="flex-row items-center mb-3">
-              <Ionicons name="sparkles" size={16} color="#4F46E5" style={{ marginRight: 6 }} />
-              <Text className="text-[#4F46E5] font-black text-sm uppercase tracking-wider">Gemini AI Diagnosis</Text>
-            </View>
-            
-            <View className="space-y-2.5">
-              <View className="flex-row items-start">
-                <Text className="text-[#627D98] font-bold text-xs w-24">Translation:</Text>
-                <Text className="text-[#0B2240] font-medium text-xs flex-1 italic">"{aiTriage.translatedText}"</Text>
-              </View>
-              <View className="flex-row items-start mt-2">
-                <Text className="text-[#627D98] font-bold text-xs w-24">Category:</Text>
-                <Text className="text-[#0B2240] font-bold text-xs flex-1 uppercase">{aiTriage.category?.replace(/_/g, ' ')}</Text>
-              </View>
-              <View className="flex-row items-start mt-2">
-                <Text className="text-[#627D98] font-bold text-xs w-24">Urgency:</Text>
-                <Text className="text-[#0B2240] font-bold text-xs flex-1 uppercase">{aiTriage.urgency}</Text>
-              </View>
-              <View className="flex-row items-start mt-2">
-                <Text className="text-[#627D98] font-bold text-xs w-24">Summary:</Text>
-                <Text className="text-[#0B2240] font-semibold text-xs flex-1">{aiTriage.summary}</Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        <View className="bg-white border border-[#E2E8F5] rounded-3xl p-5 mb-5 shadow-sm">
-          <Text className="text-[#009FDE] font-black text-xs uppercase tracking-widest mb-4">2. Location Preview</Text>
-
+        {/* 2. Detailed Map & Geofence Location Preview */}
+        <Text className="text-[#64748B] font-extrabold text-xs uppercase tracking-widest mb-2 px-1">
+          Detailed Map & Geofence
+        </Text>
+        <View 
+          className="bg-white border border-[#E2E8F5] rounded-3xl p-5 mb-5"
+          style={{
+            shadowColor: '#0B2240',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.07,
+            shadowRadius: 14,
+            elevation: 4,
+          }}
+        >
           <View className="w-full h-48 rounded-2xl overflow-hidden border border-[#E2E8F5] mb-4">
             {hasNativeMap ? (
               <MapView
@@ -567,6 +567,104 @@ export default function FileComplaint({ navigation }) {
           )}
         </View>
 
+        {/* 3. AI Diagnostic Results Card */}
+        {aiTriage && (
+          <>
+            <Text className="text-[#64748B] font-extrabold text-xs uppercase tracking-widest mb-2 px-1">
+              Gemini AI Diagnosis
+            </Text>
+            <View 
+              className="bg-indigo-50/50 border border-indigo-100 rounded-3xl p-5 mb-5"
+              style={{
+                shadowColor: '#4F46E5',
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.08,
+                shadowRadius: 14,
+                elevation: 4,
+              }}
+            >
+              <View className="flex-row items-center mb-3">
+                <Ionicons name="sparkles" size={16} color="#4F46E5" style={{ marginRight: 6 }} />
+                <Text className="text-[#4F46E5] font-black text-sm uppercase tracking-wider">Diagnosis Details</Text>
+              </View>
+              
+              <View className="space-y-2.5">
+                <View className="flex-row items-start">
+                  <Text className="text-[#627D98] font-bold text-xs w-24">Translation:</Text>
+                  <Text className="text-[#0B2240] font-medium text-xs flex-1 italic">"{aiTriage.translatedText}"</Text>
+                </View>
+                <View className="flex-row items-start mt-2">
+                  <Text className="text-[#627D98] font-bold text-xs w-24">Category:</Text>
+                  <Text className="text-[#0B2240] font-bold text-xs flex-1 uppercase">{aiTriage.category?.replace(/_/g, ' ')}</Text>
+                </View>
+                <View className="flex-row items-start mt-2">
+                  <Text className="text-[#627D98] font-bold text-xs w-24">Urgency:</Text>
+                  <Text className="text-[#0B2240] font-bold text-xs flex-1 uppercase">{aiTriage.urgency}</Text>
+                </View>
+                <View className="flex-row items-start mt-2">
+                  <Text className="text-[#627D98] font-bold text-xs w-24">Summary:</Text>
+                  <Text className="text-[#0B2240] font-semibold text-xs flex-1">{aiTriage.summary}</Text>
+                </View>
+              </View>
+            </View>
+          </>
+        )}
+
+        {/* 4. Attach Incident Photo Card (Positioned directly above Submit Report) */}
+        <Text className="text-[#64748B] font-extrabold text-xs uppercase tracking-widest mb-2 px-1">
+          Evidence & Media
+        </Text>
+        <View 
+          className="bg-white border border-[#E2E8F5] rounded-3xl p-5 mb-5"
+          style={{
+            shadowColor: '#0B2240',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.07,
+            shadowRadius: 14,
+            elevation: 4,
+          }}
+        >
+          <TouchableOpacity 
+            onPress={handlePickPhoto}
+            activeOpacity={0.8}
+            style={{ 
+              backgroundColor: photoUri ? '#ECFDF5' : '#EFF6FF',
+              borderColor: photoUri ? '#10B981' : '#009FDE',
+              borderStyle: 'dashed'
+            }}
+            className="border rounded-2xl p-4 flex-row items-center justify-center"
+          >
+            <Ionicons 
+              name={photoUri ? "checkmark-circle" : "camera"} 
+              size={18} 
+              color={photoUri ? '#10B981' : '#009FDE'} 
+              style={{ marginRight: 8 }}
+            />
+            <Text 
+              style={{ color: photoUri ? '#10B981' : '#007AFF' }} 
+              className="font-bold text-sm"
+            >
+              {photoUri ? "Photo Attached" : "Attach Incident Photo"}
+            </Text>
+          </TouchableOpacity>
+
+          {photoUri && (
+            <View className="relative mt-4">
+              <Image 
+                source={{ uri: photoUri }} 
+                className="w-full h-48 rounded-2xl border border-[#E2E8F5]"
+                style={{ resizeMode: 'cover' }}
+              />
+              <TouchableOpacity 
+                onPress={() => setPhotoUri(null)}
+                className="absolute top-2 right-2 bg-black/60 p-1.5 rounded-full"
+              >
+                <Ionicons name="close" size={16} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
         {/* Submit Status Indicator */}
         {loading && submitStatus ? (
           <View className="bg-[#EFF6FF] border border-[#3B82F6]/20 rounded-2xl p-4 mb-4 flex-row items-center justify-center">
@@ -575,11 +673,19 @@ export default function FileComplaint({ navigation }) {
           </View>
         ) : null}
 
+        {/* Submit Report Action Button */}
         <TouchableOpacity 
           onPress={handleSubmit}
           disabled={loading}
           activeOpacity={0.8}
-          className={`py-4 rounded-2xl items-center justify-center shadow-sm ${
+          style={{
+            shadowColor: '#2196F3',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.25,
+            shadowRadius: 10,
+            elevation: 5,
+          }}
+          className={`py-4 rounded-2xl items-center justify-center ${
             loading ? 'bg-slate-300' : 'bg-[#2196F3] active:bg-[#1E88E5]'
           }`}
         >
@@ -601,12 +707,10 @@ export default function FileComplaint({ navigation }) {
         <View style={{ flex: 1, backgroundColor: 'rgba(11, 34, 64, 0.4)' }} className="justify-center items-center p-6">
           <View className="bg-white w-full max-w-sm rounded-3xl p-6 items-center shadow-xl border border-[#E2E8F5]">
             
-            {/* Animated Checkmark Circle */}
             <View className="bg-[#ECFDF5] border border-[#10B981]/20 p-4 rounded-full mb-4 items-center justify-center">
               <Ionicons name="checkmark-circle" size={48} color="#10B981" />
             </View>
 
-            {/* Title */}
             <Text className="text-[#0B2240] font-black text-lg text-center leading-snug mb-1">
               Complaint Registered
             </Text>
@@ -614,7 +718,6 @@ export default function FileComplaint({ navigation }) {
               Your utility report has been successfully logged into the AquaTrack command center.
             </Text>
 
-            {/* Ticket Details Panel */}
             <View className="bg-[#F8FAFC] border border-[#E2E8F5] w-full rounded-2xl p-4 mb-6">
               <View className="flex-row justify-between items-center mb-2.5">
                 <Text className="text-[#627D98] font-bold text-[9px] uppercase tracking-wider">Ticket ID</Text>
@@ -627,7 +730,6 @@ export default function FileComplaint({ navigation }) {
               </View>
             </View>
 
-            {/* Buttons */}
             <View className="w-full">
               <TouchableOpacity 
                 onPress={() => {
@@ -670,7 +772,6 @@ export default function FileComplaint({ navigation }) {
             activeOpacity={1}
             onPress={(e) => e.stopPropagation()}
           >
-            {/* Modal Header */}
             <View style={homeStyles.modalHeader}>
               <Text style={homeStyles.modalTitle}>Notifications & Updates</Text>
               <TouchableOpacity onPress={() => setNotificationsModalVisible(false)}>
@@ -678,7 +779,6 @@ export default function FileComplaint({ navigation }) {
               </TouchableOpacity>
             </View>
 
-            {/* Notifications Scrollable List */}
             {notifications.length === 0 ? (
               <View style={homeStyles.emptyNotifications}>
                 <Ionicons name="notifications-off-outline" size={48} color="#94a3b8" />
@@ -753,3 +853,4 @@ export default function FileComplaint({ navigation }) {
     </ScrollView>
   );
 }
+
