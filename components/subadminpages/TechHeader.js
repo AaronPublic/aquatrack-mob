@@ -16,7 +16,8 @@ export default function TechHeader({
   pageDesc,
   techName = 'Technician',
   metrics = null,
-  showSwirl = false,
+  showSwirl = true,
+  showBack = false,
   onProfilePress,
 }) {
   const [notificationsVisible, setNotificationsVisible] = React.useState(false);
@@ -38,6 +39,14 @@ export default function TechHeader({
     }
   };
 
+  const handleBack = () => {
+    if (navigation && navigation.canGoBack()) {
+      navigation.goBack();
+    } else if (navigation) {
+      navigation.navigate('SubAdminHome');
+    }
+  };
+
   return (
     <>
       <LinearGradient 
@@ -53,31 +62,49 @@ export default function TechHeader({
         <View style={homeStyles.decorCircle1} />
         <View style={homeStyles.decorCircle2} />
 
-        {/* ── Brand Row ────────────────────────────────────────────── */}
+        {/* ── Top Bar ────────────────────────────────────────────── */}
         <View style={homeStyles.brandRow}>
-          {/* Left: Transparent High-Contrast Logo */}
-          <View style={homeStyles.logoContainer}>
-            <Image
-              source={require('../../assets/Logo.png')}
-              style={homeStyles.logoImage}
-              resizeMode="contain"
-            />
-          </View>
+          {showBack ? (
+            <TouchableOpacity 
+              onPress={handleBack}
+              activeOpacity={0.8}
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 14,
+                backgroundColor: 'rgba(255, 255, 255, 0.18)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 1,
+                borderColor: 'rgba(255, 255, 255, 0.28)'
+              }}
+            >
+              <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+          ) : (
+            <View style={homeStyles.logoContainer}>
+              <Image
+                source={require('../../assets/Logo.png')}
+                style={homeStyles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
+          )}
 
-          {/* Middle: Subtitle Badge */}
+          {/* Subtitle Badge */}
           <View style={homeStyles.brandTextContainer}>
             <Text style={homeStyles.brandSubtitle}>{subtitle}</Text>
           </View>
 
           {/* Right: Notification Bell + Profile Pill */}
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             {/* Notification Bell */}
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={handleOpenNotifications}
               style={homeStyles.notificationBell}
             >
-              <Ionicons name="notifications-outline" size={16} color="#ffffff" />
+              <Ionicons name="notifications-outline" size={18} color="#ffffff" />
               {unreadCount > 0 && <View style={homeStyles.notificationBadge} />}
             </TouchableOpacity>
 
@@ -102,9 +129,11 @@ export default function TechHeader({
 
         {/* ── Page Title Row ───────────────────────────────────────── */}
         {(pageTitle || pageDesc) && (
-          <View style={homeStyles.greetingContainer}>
+          <View style={[homeStyles.greetingContainer, { marginTop: showBack ? 6 : 10 }]}>
             {pageTitle && (
-              <Text style={homeStyles.greetingText}>{pageTitle}</Text>
+              <Text style={[homeStyles.greetingText, showBack && { fontSize: 28, fontWeight: '900', letterSpacing: -0.5 }]}>
+                {pageTitle}
+              </Text>
             )}
             {pageDesc && (
               <View style={homeStyles.locationPill}>
@@ -134,23 +163,21 @@ export default function TechHeader({
             </View>
           </View>
         )}
-
-        {/* ── Swirl Wave Boundary Junction (Only on Homepage) ─────────── */}
-        {showSwirl && (
-          <View style={homeStyles.swirlWrapper}>
-            <Image 
-              source={require('../../assets/swirl_accent.png')}
-              style={homeStyles.swirlAccentImage}
-              resizeMode="cover"
-            />
-            <Image 
-              source={require('../../assets/swirl_boundary.png')}
-              style={homeStyles.swirlBoundaryImage}
-              resizeMode="cover"
-            />
-          </View>
-        )}
       </LinearGradient>
+
+      {/* ── Consumer Home Wave Swirl Divider Junction ─────────── */}
+      {showSwirl && (
+        <View style={homeStyles.swirlWrapper} pointerEvents="none">
+          <View style={homeStyles.swirlBlueMaskFill} />
+          <View style={homeStyles.smoothWaveCurve1} />
+          <View style={homeStyles.smoothWaveCurve2} />
+          <Image 
+            source={require('../../assets/swirl_accent.png')}
+            style={homeStyles.swirlAccentImage}
+            resizeMode="stretch"
+          />
+        </View>
+      )}
 
       {/* ── Notifications Modal ────────────────────────────────────── */}
       <Modal

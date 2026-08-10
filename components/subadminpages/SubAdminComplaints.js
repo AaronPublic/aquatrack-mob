@@ -167,7 +167,20 @@ export default function SubAdminComplaints({ navigation }) {
     const assigneeName = item.assignedToId ? (techProfiles[item.assignedToId] || "Assigned Tech") : null;
 
     return (
-      <View style={styles.card}>
+      <View 
+        style={[
+          styles.card,
+          {
+            shadowColor: '#0B2240',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.07,
+            shadowRadius: 14,
+            elevation: 4,
+            borderRadius: 24,
+            marginBottom: 14,
+          }
+        ]}
+      >
         <View style={styles.cardHeader}>
           <View style={styles.barangayBadge}>
             <Text style={styles.barangayText}>Brgy. {item.barangay || 'Out of Boundary'}</Text>
@@ -249,37 +262,49 @@ export default function SubAdminComplaints({ navigation }) {
         subtitle="TECHNICIAN TRIAGE"
         pageTitle="Complaints Triage"
         pageDesc="Review municipal alerts and dispatch status"
+        showBack={true}
+        showSwirl={true}
       />
-
-      <View style={[styles.filterRow, { marginTop: 16 }]}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search by keyword..."
-          placeholderTextColor="#94a3b8"
-          value={search}
-          onChangeText={setSearch}
-        />
-        
-        <TouchableOpacity 
-          style={[styles.filterBtn, filterAssignedOnly && styles.filterBtnActive]}
-          onPress={() => setFilterAssignedOnly(!filterAssignedOnly)}
-        >
-          <Text style={[styles.filterBtnText, filterAssignedOnly && styles.filterBtnTextActive]}>
-            {filterAssignedOnly ? "Show All" : "My Assigned"}
-          </Text>
-        </TouchableOpacity>
-      </View>
 
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator color="#001e66" size="large" />
+          <ActivityIndicator color="#0C4F8B" size="large" />
         </View>
       ) : (
         <FlatList
+          style={{ flex: 1, marginTop: 12 }}
           data={filteredComplaints}
           keyExtractor={(item) => item.id}
           renderItem={renderTicketItem}
-          contentContainerStyle={styles.listContainer}
+          ListHeaderComponent={
+            <View style={{ paddingHorizontal: 18, paddingTop: 4 }}>
+              {/* Outer Gray Label */}
+              <Text style={{ color: '#64748B', fontWeight: '800', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, paddingHorizontal: 4 }}>
+                FIELD TRIAGE & INCIDENT QUEUE
+              </Text>
+              
+              {/* Search & Filter Bar */}
+              <View style={[styles.filterRow, { marginHorizontal: 0, marginBottom: 14 }]}>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search by keyword..."
+                  placeholderTextColor="#94a3b8"
+                  value={search}
+                  onChangeText={setSearch}
+                />
+                
+                <TouchableOpacity 
+                  style={[styles.filterBtn, filterAssignedOnly && styles.filterBtnActive]}
+                  onPress={() => setFilterAssignedOnly(!filterAssignedOnly)}
+                >
+                  <Text style={[styles.filterBtnText, filterAssignedOnly && styles.filterBtnTextActive]}>
+                    {filterAssignedOnly ? "Show All" : "My Assigned"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          }
+          contentContainerStyle={[styles.listContainer, { paddingHorizontal: 18 }]}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#001e66" />
           }

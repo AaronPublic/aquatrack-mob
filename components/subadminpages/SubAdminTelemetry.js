@@ -86,7 +86,20 @@ export default function SubAdminTelemetry({ navigation }) {
     const formattedTime = new Date(lastRead.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     return (
-      <View style={styles.card}>
+      <View 
+        style={[
+          styles.card,
+          {
+            shadowColor: '#0B2240',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.07,
+            shadowRadius: 14,
+            elevation: 4,
+            borderRadius: 24,
+            marginBottom: 14,
+          }
+        ]}
+      >
         <View style={styles.cardHeader}>
           <View>
             <Text style={styles.nodeName}>{item.name}</Text>
@@ -117,7 +130,7 @@ export default function SubAdminTelemetry({ navigation }) {
             <Text style={styles.metricLabel}>Pressure</Text>
             <Text style={[
               styles.metricValue, 
-              lastRead.pressure < 25 && { color: '#ef4444' } // Low pressure highlighted in red
+              lastRead.pressure < 25 && { color: '#ef4444' }
             ]}>
               {lastRead.pressure?.toFixed(1) || '40.0'} psi
             </Text>
@@ -136,18 +149,25 @@ export default function SubAdminTelemetry({ navigation }) {
         subtitle="TECHNICIAN TELEMETRY"
         pageTitle="IoT Telemetry Nodes"
         pageDesc="Real-time sensor monitors for pH, turbidity, pressure, and TDS"
+        showBack={true}
+        showSwirl={true}
       />
 
       <ScrollView 
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#001e66" />
         }
-        contentContainerStyle={{ paddingBottom: 110, paddingTop: 16 }}
+        style={{ flex: 1, marginTop: 12 }}
+        contentContainerStyle={{ paddingBottom: 110, paddingHorizontal: 18, paddingTop: 4 }}
       >
+        {/* Outer Gray Label */}
+        <Text style={{ color: '#64748B', fontWeight: '800', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, paddingHorizontal: 4 }}>
+          REAL-TIME TELEMETRY SENSOR NODES
+        </Text>
 
         {loading ? (
           <View style={{ marginTop: 40, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator color="#001e66" size="large" />
+            <ActivityIndicator color="#0C4F8B" size="large" />
           </View>
         ) : nodes.length > 0 ? (
           <View style={styles.listContainer}>

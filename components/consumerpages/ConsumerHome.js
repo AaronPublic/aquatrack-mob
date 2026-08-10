@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Alert, Modal } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, Alert, Modal, Animated } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import { Ionicons } from '@expo/vector-icons';
@@ -96,6 +96,29 @@ export default function ConsumerHome({ navigation }) {
     statusColor: '#007AFF',
     statusBg: 'rgba(0, 122, 255, 0.08)'
   });
+
+  const profileSlideAnim = useRef(new Animated.Value(280)).current;
+  const profileFadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (profileModalVisible) {
+      profileSlideAnim.setValue(280);
+      profileFadeAnim.setValue(0);
+      Animated.parallel([
+        Animated.spring(profileSlideAnim, {
+          toValue: 0,
+          tension: 65,
+          friction: 9,
+          useNativeDriver: true,
+        }),
+        Animated.timing(profileFadeAnim, {
+          toValue: 1,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [profileModalVisible]);
 
   useEffect(() => {
     const loadDismissed = async () => {
@@ -839,69 +862,77 @@ return (
           activeOpacity={1}
           onPress={() => setProfileModalVisible(false)}
         >
-          <TouchableOpacity 
-            style={styles.modalContent}
-            activeOpacity={1}
-            onPress={(e) => e.stopPropagation()} // Prevent close action from backdrop triggers
+          <Animated.View 
+            style={{ 
+              width: '100%', 
+              opacity: profileFadeAnim, 
+              transform: [{ translateY: profileSlideAnim }] 
+            }}
           >
-            {/* Modal Header */}
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Resident Options</Text>
-              <TouchableOpacity onPress={() => setProfileModalVisible(false)}>
-                <Ionicons name="close" size={20} color="#0B1C3F" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Profile Info Row */}
-            <View style={styles.modalUserSection}>
-              <View style={styles.modalAvatarLarge}>
-                <Ionicons name="person" size={20} color="#ffffff" />
+            <TouchableOpacity 
+              style={styles.modalContent}
+              activeOpacity={1}
+              onPress={(e) => e.stopPropagation()} // Prevent close action from backdrop triggers
+            >
+              {/* Modal Header */}
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Resident Options</Text>
+                <TouchableOpacity onPress={() => setProfileModalVisible(false)}>
+                  <Ionicons name="close" size={20} color="#0B1C3F" />
+                </TouchableOpacity>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.modalUserName}>{userName}</Text>
-                <Text style={styles.modalUserRole}>Registered Resident</Text>
+
+              {/* Profile Info Row */}
+              <View style={styles.modalUserSection}>
+                <View style={styles.modalAvatarLarge}>
+                  <Ionicons name="person" size={20} color="#ffffff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.modalUserName}>{userName}</Text>
+                  <Text style={styles.modalUserRole}>Registered Resident</Text>
+                </View>
               </View>
-            </View>
 
-            {/* Action Buttons */}
-            <View style={styles.modalActions}>
-              {/* Complaint History */}
-              <TouchableOpacity 
-                style={styles.modalBtnSecondary}
-                onPress={() => {
-                  setProfileModalVisible(false);
-                  navigation.navigate('ComplaintHistory');
-                }}
-              >
-                <Ionicons name="archive-outline" size={15} color="#001e66" style={{ marginRight: 6 }} />
-                <Text style={styles.modalBtnSecondaryText}>Resolved Tickets History</Text>
-              </TouchableOpacity>
+              {/* Action Buttons */}
+              <View style={styles.modalActions}>
+                {/* Complaint History */}
+                <TouchableOpacity 
+                  style={styles.modalBtnSecondary}
+                  onPress={() => {
+                    setProfileModalVisible(false);
+                    navigation.navigate('ComplaintHistory');
+                  }}
+                >
+                  <Ionicons name="archive-outline" size={15} color="#001e66" style={{ marginRight: 6 }} />
+                  <Text style={styles.modalBtnSecondaryText}>Resolved Tickets History</Text>
+                </TouchableOpacity>
 
-              {/* Manage Account */}
-              <TouchableOpacity 
-                style={styles.modalBtnPrimary}
-                onPress={() => {
-                  setProfileModalVisible(false);
-                  navigation.navigate('ManageAccount');
-                }}
-              >
-                <Ionicons name="settings-outline" size={15} color="#ffffff" style={{ marginRight: 6 }} />
-                <Text style={styles.modalBtnPrimaryText}>Manage Account</Text>
-              </TouchableOpacity>
+                {/* Manage Account */}
+                <TouchableOpacity 
+                  style={styles.modalBtnPrimary}
+                  onPress={() => {
+                    setProfileModalVisible(false);
+                    navigation.navigate('ManageAccount');
+                  }}
+                >
+                  <Ionicons name="settings-outline" size={15} color="#ffffff" style={{ marginRight: 6 }} />
+                  <Text style={styles.modalBtnPrimaryText}>Manage Account</Text>
+                </TouchableOpacity>
 
-              {/* Log Out */}
-              <TouchableOpacity 
-                style={styles.modalBtnDanger}
-                onPress={async () => {
-                  setProfileModalVisible(false);
-                  await handleLogout();
-                }}
-              >
-                <Ionicons name="log-out-outline" size={15} color="#FF3B30" style={{ marginRight: 6 }} />
-                <Text style={styles.modalBtnDangerText}>Log Out Account</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
+                {/* Log Out */}
+                <TouchableOpacity 
+                  style={styles.modalBtnDanger}
+                  onPress={async () => {
+                    setProfileModalVisible(false);
+                    await handleLogout();
+                  }}
+                >
+                  <Ionicons name="log-out-outline" size={15} color="#FF3B30" style={{ marginRight: 6 }} />
+                  <Text style={styles.modalBtnDangerText}>Log Out Account</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
         </TouchableOpacity>
       </Modal>
 

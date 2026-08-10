@@ -40,7 +40,20 @@ export default function SubAdminAdvisories({ navigation }) {
   const renderItem = ({ item }) => {
     const isWarning = item.type === 'warning';
     return (
-      <View style={styles.card}>
+      <View 
+        style={[
+          styles.card,
+          {
+            shadowColor: '#0B2240',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.07,
+            shadowRadius: 14,
+            elevation: 4,
+            borderRadius: 24,
+            marginBottom: 14,
+          }
+        ]}
+      >
         <View style={styles.cardHeader}>
           <Text style={styles.date}>{item.date}</Text>
           <View style={[
@@ -68,18 +81,29 @@ export default function SubAdminAdvisories({ navigation }) {
         subtitle="STAFF ADVISORIES"
         pageTitle="Staff Advisories"
         pageDesc="District advisories, pipeline maintenance events, and technician alerts"
+        showBack={true}
+        showSwirl={true}
       />
 
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator color="#001e66" size="large" />
+          <ActivityIndicator color="#0C4F8B" size="large" />
         </View>
       ) : (
         <FlatList
+          style={{ flex: 1, marginTop: 12 }}
           data={advisories}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={[styles.listContainer, { paddingTop: 16 }]}
+          ListHeaderComponent={
+            <View style={{ paddingHorizontal: 18, paddingTop: 4 }}>
+              {/* Outer Gray Label */}
+              <Text style={{ color: '#64748B', fontWeight: '800', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, paddingHorizontal: 4 }}>
+                BROADCASTED MUNICIPAL ALERTS
+              </Text>
+            </View>
+          }
+          contentContainerStyle={[styles.listContainer, { paddingHorizontal: 18 }]}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#001e66" />
           }

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, Animated } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +14,29 @@ export default function SubAdminHome({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const { fetchNotifications } = useTechNotificationStore();
+
+  const profileSlideAnim = useRef(new Animated.Value(280)).current;
+  const profileFadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (profileModalVisible) {
+      profileSlideAnim.setValue(280);
+      profileFadeAnim.setValue(0);
+      Animated.parallel([
+        Animated.spring(profileSlideAnim, {
+          toValue: 0,
+          tension: 65,
+          friction: 9,
+          useNativeDriver: true,
+        }),
+        Animated.timing(profileFadeAnim, {
+          toValue: 1,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [profileModalVisible]);
 
   const handleProfilePress = () => {
     setProfileModalVisible(true);
@@ -51,7 +74,7 @@ export default function SubAdminHome({ navigation }) {
           location: wo.alert?.nodeId ? `Telemetry Node ID: ${wo.alert.nodeId}` : "Assigned Field Site",
           description: wo.notes || "Investigate clustered consumer complaints and diagnostic telemetry anomalies.",
           instructions: "Inspect pipeline structures, take photos of repairs, and log notes before resolving.",
-          imageUrl: null // Supabase storage image would map here if available
+          imageUrl: null
         });
         setHasActiveJob(true);
       } else {
@@ -60,21 +83,18 @@ export default function SubAdminHome({ navigation }) {
       }
 
       // 2. Fetch metrics
-      // Count unclaimed complaints
-      const { count: unclaimedCount, error: compErr } = await supabase
+      const { count: unclaimedCount } = await supabase
         .from('Complaint')
         .select('*', { count: 'exact', head: true })
         .is('assignedToId', null)
         .neq('status', 'RESOLVED');
 
-      // Count active work orders for this tech
-      const { count: activeWoCount, error: activeErr } = await supabase
+      const { count: activeWoCount } = await supabase
         .from('WorkOrder')
         .select('*', { count: 'exact', head: true })
         .eq('engineerId', session.user.id)
         .neq('status', 'RESOLVED');
 
-      // Count active telemetry warnings/anomalies (non-ONLINE nodes)
       const nodeRes = await api.get('/api/admin/nodes');
       let activeAlerts = 0;
       if (nodeRes && nodeRes.success && nodeRes.nodes) {
@@ -98,7 +118,6 @@ export default function SubAdminHome({ navigation }) {
     loadDashboardData();
     fetchNotifications();
 
-    // Refresh on screen focus
     const unsubscribe = navigation.addListener('focus', () => {
       loadDashboardData();
       fetchNotifications();
@@ -107,7 +126,6 @@ export default function SubAdminHome({ navigation }) {
     return unsubscribe;
   }, [navigation]);
 
-  // Real-time location tracking for Technician Proximity Dispatcher
   useEffect(() => {
     let isMounted = true;
     let subscription = null;
@@ -115,12 +133,8 @@ export default function SubAdminHome({ navigation }) {
     const startLocationTracking = async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          console.warn('Foreground location permission denied');
-          return;
-        }
+        if (status !== 'granted') return;
 
-        // 1. Get initial position and send to database
         const initialLoc = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
@@ -134,12 +148,11 @@ export default function SubAdminHome({ navigation }) {
           });
         }
 
-        // 2. Watch for moves of 50m or more and update DB
         subscription = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.Balanced,
-            distanceInterval: 50, // 50 meters
-            timeInterval: 60000,   // or 60 seconds
+            distanceInterval: 50,
+            timeInterval: 60000,
           },
           async (newLoc) => {
             if (!isMounted) return;
@@ -152,7 +165,6 @@ export default function SubAdminHome({ navigation }) {
                   latitude: newLoc.coords.latitude,
                   longitude: newLoc.coords.longitude,
                 });
-                console.log('Technician location updated dynamically:', newLoc.coords.latitude, newLoc.coords.longitude);
               }
             } catch (err) {
               console.error('Error updating live technician coordinates:', err);
@@ -168,9 +180,7 @@ export default function SubAdminHome({ navigation }) {
 
     return () => {
       isMounted = false;
-      if (subscription) {
-        subscription.remove();
-      }
+      if (subscription) subscription.remove();
     };
   }, []);
 
@@ -196,7 +206,7 @@ export default function SubAdminHome({ navigation }) {
               if (newStatus === 'RESOLVED') {
                 setHasActiveJob(false);
               }
-              loadDashboardData(); // Refresh metrics
+              loadDashboardData();
             } catch (err) {
               Alert.alert("Status Update Failed", err.message);
             }
@@ -233,8 +243,8 @@ export default function SubAdminHome({ navigation }) {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f1f5f9' }}>
-        <ActivityIndicator color="#001e66" size="large" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F2F5FA' }}>
+        <ActivityIndicator color="#0C4F8B" size="large" />
       </View>
     );
   }
@@ -242,7 +252,7 @@ export default function SubAdminHome({ navigation }) {
   const currentStatusCfg = getStatusConfig(jobStatus);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: '#F2F5FA' }]}>
       {/* Shared Technician Header */}
       <TechHeader
         navigation={navigation}
@@ -255,12 +265,26 @@ export default function SubAdminHome({ navigation }) {
         onProfilePress={handleProfilePress}
       />
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView style={[styles.scrollView, { marginTop: 12 }]} contentContainerStyle={styles.scrollContent}>
         {/* Active Work Order tracking panel */}
         {hasActiveJob && jobDetails ? (
           <View style={{ marginBottom: 20 }}>
-            <Text style={styles.sectionHeader}>Latest Assignment</Text>
-            <View style={styles.trackerCard}>
+            <Text style={{ color: '#64748B', fontWeight: '800', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, paddingHorizontal: 4 }}>
+              LATEST ASSIGNMENT
+            </Text>
+            <View 
+              style={[
+                styles.trackerCard,
+                {
+                  shadowColor: '#0B2240',
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowOpacity: 0.07,
+                  shadowRadius: 14,
+                  elevation: 4,
+                  borderRadius: 24,
+                }
+              ]}
+            >
               <View style={styles.trackerHeader}>
                 <View style={{ flex: 1, marginRight: 8 }}>
                   <Text style={styles.trackerLabel}>Incident ID</Text>
@@ -278,13 +302,6 @@ export default function SubAdminHome({ navigation }) {
                   <Text style={styles.detailLabel}>Location</Text>
                   <Text style={styles.detailValue}>{jobDetails.location}</Text>
                 </View>
-
-                {jobDetails.imageUrl && (
-                  <View style={styles.woDetailItem}>
-                    <Text style={styles.detailLabel}>Incident Photo</Text>
-                    <Image source={{ uri: jobDetails.imageUrl }} style={styles.woImage} />
-                  </View>
-                )}
 
                 <View style={styles.woDetailItem}>
                   <Text style={styles.detailLabel}>Diagnostic Details</Text>
@@ -311,7 +328,7 @@ export default function SubAdminHome({ navigation }) {
             </View>
           </View>
         ) : (
-          <View style={styles.emptyTrackerBox}>
+          <View style={[styles.emptyTrackerBox, { marginBottom: 20, borderRadius: 24 }]}>
             <Ionicons name="construct-outline" size={24} color="#8E8E93" style={{ marginBottom: 6 }} />
             <Text style={styles.emptyTrackerTitle}>No Active Jobs Assigned</Text>
             <Text style={styles.emptyTrackerDesc}>You are currently available for dispatch work orders.</Text>
@@ -319,12 +336,24 @@ export default function SubAdminHome({ navigation }) {
         )}
 
         {/* Tools Grid */}
-        <Text style={styles.sectionHeader}>Technician Workspace</Text>
+        <Text style={{ color: '#64748B', fontWeight: '800', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, paddingHorizontal: 4 }}>
+          TECHNICIAN WORKSPACE
+        </Text>
         <View style={styles.gridContainer}>
           <View style={styles.gridRow}>
             {/* Card 1: Citizen Complaints Triage */}
             <TouchableOpacity 
-              style={styles.gridCard}
+              style={[
+                styles.gridCard,
+                {
+                  shadowColor: '#0B2240',
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowOpacity: 0.07,
+                  shadowRadius: 14,
+                  elevation: 4,
+                  borderRadius: 24,
+                }
+              ]}
               onPress={() => navigation.navigate('SubAdminComplaints')}
               activeOpacity={0.85}
             >
@@ -344,7 +373,17 @@ export default function SubAdminHome({ navigation }) {
 
             {/* Card 2: IoT Telemetry Node Sensor Network */}
             <TouchableOpacity 
-              style={styles.gridCard}
+              style={[
+                styles.gridCard,
+                {
+                  shadowColor: '#0B2240',
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowOpacity: 0.07,
+                  shadowRadius: 14,
+                  elevation: 4,
+                  borderRadius: 24,
+                }
+              ]}
               onPress={() => navigation.navigate('SubAdminTelemetry')}
               activeOpacity={0.85}
             >
@@ -361,7 +400,17 @@ export default function SubAdminHome({ navigation }) {
           <View style={styles.gridRow}>
             {/* Card 3: Staff Advisories */}
             <TouchableOpacity 
-              style={styles.gridCard}
+              style={[
+                styles.gridCard,
+                {
+                  shadowColor: '#0B2240',
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowOpacity: 0.07,
+                  shadowRadius: 14,
+                  elevation: 4,
+                  borderRadius: 24,
+                }
+              ]}
               onPress={() => navigation.navigate('SubAdminAdvisories')}
               activeOpacity={0.85}
             >
@@ -376,7 +425,17 @@ export default function SubAdminHome({ navigation }) {
 
             {/* Card 4: Support */}
             <TouchableOpacity 
-              style={styles.gridCard}
+              style={[
+                styles.gridCard,
+                {
+                  shadowColor: '#0B2240',
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowOpacity: 0.07,
+                  shadowRadius: 14,
+                  elevation: 4,
+                  borderRadius: 24,
+                }
+              ]}
               onPress={() => Alert.alert("Operations Hotline", "City water district control room dispatcher: +63 (45) 961-0022")}
               activeOpacity={0.85}
             >
@@ -404,57 +463,65 @@ export default function SubAdminHome({ navigation }) {
           activeOpacity={1}
           onPress={() => setProfileModalVisible(false)}
         >
-          <TouchableOpacity 
-            style={styles.modalContent}
-            activeOpacity={1}
-            onPress={(e) => e.stopPropagation()} // Prevent close action from backdrop triggers
+          <Animated.View 
+            style={{ 
+              width: '100%', 
+              opacity: profileFadeAnim, 
+              transform: [{ translateY: profileSlideAnim }] 
+            }}
           >
-            {/* Modal Header */}
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Technician Options</Text>
-              <TouchableOpacity onPress={() => setProfileModalVisible(false)}>
-                <Ionicons name="close" size={20} color="#0B1C3F" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Profile Info Row */}
-            <View style={styles.modalUserSection}>
-              <View style={styles.modalAvatarLarge}>
-                <Ionicons name="person" size={20} color="#ffffff" />
+            <TouchableOpacity 
+              style={styles.modalContent}
+              activeOpacity={1}
+              onPress={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Technician Options</Text>
+                <TouchableOpacity onPress={() => setProfileModalVisible(false)}>
+                  <Ionicons name="close" size={20} color="#0B1C3F" />
+                </TouchableOpacity>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.modalUserName}>{techName}</Text>
-                <Text style={styles.modalUserRole}>Field Technician</Text>
+
+              {/* Profile Info Row */}
+              <View style={styles.modalUserSection}>
+                <View style={styles.modalAvatarLarge}>
+                  <Ionicons name="person" size={20} color="#ffffff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.modalUserName}>{techName}</Text>
+                  <Text style={styles.modalUserRole}>Field Technician</Text>
+                </View>
               </View>
-            </View>
 
-            {/* Action Buttons */}
-            <View style={styles.modalActions}>
-              {/* Manage Account */}
-              <TouchableOpacity 
-                style={styles.modalBtnPrimary}
-                onPress={() => {
-                  setProfileModalVisible(false);
-                  navigation.navigate('ManageAccount');
-                }}
-              >
-                <Ionicons name="settings-outline" size={15} color="#ffffff" style={{ marginRight: 6 }} />
-                <Text style={styles.modalBtnPrimaryText}>Manage Account</Text>
-              </TouchableOpacity>
+              {/* Action Buttons */}
+              <View style={styles.modalActions}>
+                {/* Manage Account */}
+                <TouchableOpacity 
+                  style={styles.modalBtnPrimary}
+                  onPress={() => {
+                    setProfileModalVisible(false);
+                    navigation.navigate('ManageAccount');
+                  }}
+                >
+                  <Ionicons name="settings-outline" size={15} color="#ffffff" style={{ marginRight: 6 }} />
+                  <Text style={styles.modalBtnPrimaryText}>Manage Account</Text>
+                </TouchableOpacity>
 
-              {/* Log Out */}
-              <TouchableOpacity 
-                style={styles.modalBtnDanger}
-                onPress={async () => {
-                  setProfileModalVisible(false);
-                  await handleLogout();
-                }}
-              >
-                <Ionicons name="log-out-outline" size={15} color="#FF3B30" style={{ marginRight: 6 }} />
-                <Text style={styles.modalBtnDangerText}>Log Out Account</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
+                {/* Log Out */}
+                <TouchableOpacity 
+                  style={styles.modalBtnDanger}
+                  onPress={async () => {
+                    setProfileModalVisible(false);
+                    await handleLogout();
+                  }}
+                >
+                  <Ionicons name="log-out-outline" size={15} color="#FF3B30" style={{ marginRight: 6 }} />
+                  <Text style={styles.modalBtnDangerText}>Log Out Account</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
         </TouchableOpacity>
       </Modal>
     </View>
