@@ -30,7 +30,7 @@ export default function TrackComplaints({ navigation }) {
   const [techProfiles, setTechProfiles] = useState({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState('ALL'); // ALL, ACTIVE, RESOLVED
+  const [activeTab, setActiveTab] = useState('ACTIVE'); // ACTIVE, ALL, RESOLVED
   const [expandedId, setExpandedId] = useState(null);
   const [userName, setUserName] = useState('Pedro');
   const [metrics, setMetrics] = useState({ total: 25, pending: 9, active: 8, resolved: 8 });
@@ -415,66 +415,11 @@ export default function TrackComplaints({ navigation }) {
         </View>
       </LinearGradient>
 
-      {/* ==================== WAVY SWIRL DIVIDER ==================== */}
-      <View style={{ height: 46, backgroundColor: '#008CE3', overflow: 'hidden', width: '100%', position: 'relative' }}>
-        {/* Layer 1: Outer Azure Swirl Ring */}
-        <View 
-          style={{ 
-            position: 'absolute', 
-            bottom: -10, 
-            left: '-15%', 
-            width: '135%', 
-            height: 52, 
-            backgroundColor: 'rgba(2, 132, 199, 0.45)', 
-            borderTopLeftRadius: 180, 
-            borderTopRightRadius: 380, 
-            transform: [{ rotate: '-5deg' }] 
-          }} 
-        />
-
-        {/* Layer 2: Swirling Sea Foam Cyan Curl Accent */}
-        <View 
-          style={{ 
-            position: 'absolute', 
-            bottom: -14, 
-            left: '-10%', 
-            width: '130%', 
-            height: 56, 
-            backgroundColor: 'rgba(125, 211, 252, 0.65)', 
-            borderTopLeftRadius: 220, 
-            borderTopRightRadius: 420, 
-            transform: [{ rotate: '-4.2deg' }] 
-          }} 
-        />
-
-        {/* Layer 3: Swirl Crest Accent Ring */}
-        <View 
-          style={{ 
-            position: 'absolute', 
-            bottom: -6, 
-            right: '18%', 
-            width: 85, 
-            height: 42, 
-            borderRadius: 42, 
-            backgroundColor: 'rgba(255, 255, 255, 0.35)', 
-            transform: [{ scaleX: 1.8 }, { rotate: '-12deg' }] 
-          }} 
-        />
-
-        {/* Layer 4: Main Wavy Swirl Mask (#F2F5FA matching 70% section background) */}
-        <View 
-          style={{ 
-            position: 'absolute', 
-            bottom: -18, 
-            left: '-20%', 
-            width: '140%', 
-            height: 60, 
-            backgroundColor: '#F2F5FA', 
-            borderTopLeftRadius: 240, 
-            borderTopRightRadius: 450, 
-            transform: [{ rotate: '-4deg' }] 
-          }} 
-        />
+      {/* ==================== CONSUMER HOME WAVE SWIRL DIVIDER ==================== */}
+      <View style={homeStyles.swirlWrapper} pointerEvents="none">
+        <View style={homeStyles.swirlBlueMaskFill} />
+        <View style={homeStyles.smoothWaveCurve1} />
+        <View style={homeStyles.smoothWaveCurve2} />
       </View>
 
       {loading ? (
@@ -483,6 +428,7 @@ export default function TrackComplaints({ navigation }) {
         </View>
       ) : (
         <FlatList
+          style={{ flex: 1, marginTop: 12 }}
           data={filteredComplaints}
           keyExtractor={(item) => item.id}
           renderItem={renderTicketItem}
