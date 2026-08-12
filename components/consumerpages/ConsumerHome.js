@@ -474,8 +474,7 @@ return (
         <View style={styles.greetingContainer}>
           <Text style={styles.greetingText}>Hello, {userName}</Text>
           <View style={styles.locationPill}>
-            <Ionicons name="location-outline" size={13} color="#E0F2FE" />
-            <Text style={styles.locationText}>City of San Fernando • Dolores</Text>
+            <Text style={[styles.locationText, { marginLeft: 0 }]}>City of San Fernando • Dolores</Text>
           </View>
         </View>
 

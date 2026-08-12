@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Image } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import { Ionicons } from '@expo/vector-icons';
 import styles from './ManageAccount.styles';
-import homeStyles from './ConsumerHome.styles';
+import TechHeader from '../subadminpages/TechHeader';
 
 export default function ManageAccount({ navigation }) {
   const [name, setName] = useState('');
@@ -170,44 +169,12 @@ export default function ManageAccount({ navigation }) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F2F5FA' }}>
         <ActivityIndicator color="#0C4F8B" size="large" />
-        <Text style={styles.loadingText}>Syncing Credentials...</Text>
+        <Text style={{ marginTop: 12, color: '#64748B', fontSize: 13, fontWeight: '600' }}>Syncing Credentials...</Text>
       </View>
     );
   }
-
-  const renderHeader = (title, subtitle) => (
-    <LinearGradient 
-      colors={['#0C4F8B', '#008CE3']} 
-      start={{ x: 0, y: 0 }} 
-      end={{ x: 0, y: 1 }} 
-      style={[homeStyles.headerCard, { borderBottomLeftRadius: 24, borderBottomRightRadius: 24, paddingBottom: 20, marginBottom: 12 }]}
-    >
-      <View style={homeStyles.decorCircle1} />
-      <View style={homeStyles.decorCircle2} />
-
-      <View style={homeStyles.brandRow}>
-        <View style={homeStyles.logoContainer}>
-          <Ionicons name="water" size={26} color="#7DD3FC" />
-          <Text style={homeStyles.brandTitleText}>
-            <Text style={{ color: '#FFFFFF' }}>AQ</Text>
-            <Text style={{ color: '#FBBF24' }}>U</Text>
-            <Text style={{ color: '#EF4444' }}>A</Text>
-            <Text style={{ color: '#FFFFFF' }}>TRACK</Text>
-          </Text>
-        </View>
-      </View>
-
-      <View style={homeStyles.greetingContainer}>
-        <Text style={homeStyles.greetingText}>{title}</Text>
-        <View style={homeStyles.locationPill}>
-          <Ionicons name="settings-outline" size={13} color="#E0F2FE" />
-          <Text style={homeStyles.locationText}>{subtitle}</Text>
-        </View>
-      </View>
-    </LinearGradient>
-  );
 
   // 1. Password Verification Screen (runs first)
   if (!isVerified) {
@@ -216,17 +183,26 @@ export default function ManageAccount({ navigation }) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={[styles.container, { backgroundColor: '#F2F5FA' }]}
       >
-        <ScrollView contentContainerStyle={{ paddingBottom: 110 }}>
-          {renderHeader('Confirm Identity', 'Please verify your password before updating details')}
+        <TechHeader
+          navigation={navigation}
+          pageTitle="Manage Account"
+          pageDesc="Please verify your password before updating details"
+          showSwirl={true}
+        />
 
-          <View style={[styles.card, { marginHorizontal: 16, marginTop: 16 }]}>
-            <Text style={styles.sectionTitle}>Verification Required</Text>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 16, paddingBottom: 110 }}>
+          <View style={[styles.card, { borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#0B2240', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.07, shadowRadius: 14, elevation: 4 }]}>
+            <Text style={{ color: '#64748B', fontWeight: '800', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 14 }}>
+              VERIFICATION REQUIRED
+            </Text>
             
             <View style={styles.form}>
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Account Password</Text>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="lock-closed-outline" size={16} color="#001e66" style={styles.inputIcon} />
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#0C4F8B', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>
+                  Account Password
+                </Text>
+                <View style={[styles.inputWrapper, { borderRadius: 16, borderColor: '#E2E8F0', height: 50 }]}>
+                  <Ionicons name="lock-closed-outline" size={16} color="#0C4F8B" style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
                     placeholder="Enter current password"
@@ -240,29 +216,29 @@ export default function ManageAccount({ navigation }) {
                   <TouchableOpacity onPress={() => setShowCurrentPassword(!showCurrentPassword)}>
                     <Ionicons 
                       name={showCurrentPassword ? "eye-off-outline" : "eye-outline"} 
-                      size={16} 
-                      color="#525f7f" 
+                      size={18} 
+                      color="#64748B" 
                       style={{ padding: 4 }} 
                     />
                   </TouchableOpacity>
                 </View>
               </View>
             </View>
+
+            {verifyError && <Text style={styles.errorText}>{verifyError}</Text>}
+
+            <TouchableOpacity 
+              style={[styles.saveBtn, { borderRadius: 16, backgroundColor: '#0C4F8B', height: 50, marginTop: 16 }, verifying && { opacity: 0.8 }]}
+              onPress={handleVerifyPassword}
+              disabled={verifying}
+            >
+              {verifying ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.saveBtnText}>Verify Password</Text>
+              )}
+            </TouchableOpacity>
           </View>
-
-          {verifyError && <Text style={styles.errorText}>{verifyError}</Text>}
-
-          <TouchableOpacity 
-            style={[styles.saveBtn, verifying && { opacity: 0.8 }]}
-            onPress={handleVerifyPassword}
-            disabled={verifying}
-          >
-            {verifying ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text style={styles.saveBtnText}>Verify Password</Text>
-            )}
-          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     );
@@ -274,18 +250,27 @@ export default function ManageAccount({ navigation }) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={[styles.container, { backgroundColor: '#F2F5FA' }]}
     >
-      <ScrollView contentContainerStyle={{ paddingBottom: 110 }}>
-        {renderHeader('Account Settings', 'Modify contact details & update security password')}
+      <TechHeader
+        navigation={navigation}
+        pageTitle="Manage Account"
+        pageDesc="Modify contact details & update security password"
+        showSwirl={true}
+      />
 
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 16, paddingBottom: 110 }}>
         {/* Card 1: Profile Info */}
-        <View style={[styles.card, { marginHorizontal: 16, marginTop: 16 }]}>
-          <Text style={styles.sectionTitle}>Profile Details</Text>
+        <View style={[styles.card, { borderRadius: 24, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#0B2240', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.07, shadowRadius: 14, elevation: 4 }]}>
+          <Text style={{ color: '#64748B', fontWeight: '800', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 14 }}>
+            PROFILE DETAILS
+          </Text>
           
           <View style={styles.form}>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Full Name</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="person-outline" size={16} color="#001e66" style={styles.inputIcon} />
+              <Text style={{ fontSize: 10, fontWeight: '800', color: '#0C4F8B', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>
+                Full Name
+              </Text>
+              <View style={[styles.inputWrapper, { borderRadius: 16, borderColor: '#E2E8F0', height: 50 }]}>
+                <Ionicons name="person-outline" size={16} color="#0C4F8B" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Juan dela Cruz"
@@ -297,9 +282,11 @@ export default function ManageAccount({ navigation }) {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email Address</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="mail-outline" size={16} color="#001e66" style={styles.inputIcon} />
+              <Text style={{ fontSize: 10, fontWeight: '800', color: '#0C4F8B', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>
+                Email Address
+              </Text>
+              <View style={[styles.inputWrapper, { borderRadius: 16, borderColor: '#E2E8F0', height: 50 }]}>
+                <Ionicons name="mail-outline" size={16} color="#0C4F8B" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="juan@gmail.com"
@@ -320,14 +307,18 @@ export default function ManageAccount({ navigation }) {
         </View>
 
         {/* Card 2: Security & Password */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Credentials Security</Text>
+        <View style={[styles.card, { borderRadius: 24, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#0B2240', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.07, shadowRadius: 14, elevation: 4 }]}>
+          <Text style={{ color: '#64748B', fontWeight: '800', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 14 }}>
+            CREDENTIALS SECURITY
+          </Text>
           
           <View style={styles.form}>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>New Password (Optional)</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={16} color="#001e66" style={styles.inputIcon} />
+              <Text style={{ fontSize: 10, fontWeight: '800', color: '#0C4F8B', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>
+                New Password (Optional)
+              </Text>
+              <View style={[styles.inputWrapper, { borderRadius: 16, borderColor: '#E2E8F0', height: 50 }]}>
+                <Ionicons name="lock-closed-outline" size={16} color="#0C4F8B" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Fill in to change password"
@@ -340,8 +331,8 @@ export default function ManageAccount({ navigation }) {
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                   <Ionicons 
                     name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                    size={16} 
-                    color="#525f7f" 
+                    size={18} 
+                    color="#64748B" 
                     style={{ padding: 4 }} 
                   />
                 </TouchableOpacity>
@@ -350,9 +341,11 @@ export default function ManageAccount({ navigation }) {
 
             {password.length > 0 && (
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Confirm New Password</Text>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="lock-closed-outline" size={16} color="#001e66" style={styles.inputIcon} />
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#0C4F8B', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>
+                  Confirm New Password
+                </Text>
+                <View style={[styles.inputWrapper, { borderRadius: 16, borderColor: '#E2E8F0', height: 50 }]}>
+                  <Ionicons name="lock-closed-outline" size={16} color="#0C4F8B" style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
                     placeholder="Repeat new password"
@@ -371,7 +364,7 @@ export default function ManageAccount({ navigation }) {
         {error && <Text style={styles.errorText}>{error}</Text>}
 
         <TouchableOpacity 
-          style={[styles.saveBtn, updating && { opacity: 0.8 }]}
+          style={[styles.saveBtn, { borderRadius: 16, backgroundColor: '#0C4F8B', height: 50, marginTop: 8 }, updating && { opacity: 0.8 }]}
           onPress={handleUpdateAccount}
           disabled={updating}
         >

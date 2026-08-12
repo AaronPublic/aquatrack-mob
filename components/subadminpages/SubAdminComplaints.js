@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, RefreshControl, Alert, ScrollView } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,9 +11,9 @@ export default function SubAdminComplaints({ navigation }) {
   const [techProfiles, setTechProfiles] = useState({});
   const [currentUser, setCurrentUser] = useState(null);
   
-  // Filters state
+  // Filters & Sorting state
   const [search, setSearch] = useState('');
-  const [filterAssignedOnly, setFilterAssignedOnly] = useState(false);
+  const [sortBy, setSortBy] = useState('NEWEST');
   
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -96,52 +96,42 @@ export default function SubAdminComplaints({ navigation }) {
     }
   };
 
-  // Change Ticket Status
+  // Change Ticket Status (Sub-Admin / Technician can assign ONGOING or RESOLVED)
   const handleUpdateStatus = async (ticket, newStatus) => {
-    // Dispatched Safety Guard
-    if (newStatus === 'DISPATCHED' && !ticket.assignedToId) {
-      Alert.alert(
-        "Assignment Required",
-        "A field technician must be assigned to this ticket before changing status to DISPATCHED.",
-        [
-          { text: "Cancel", style: "cancel" },
-          { 
-            text: "Assign to Me & Dispatch", 
-            onPress: async () => {
-              setUpdatingId(ticket.id);
-              try {
-                const { error } = await supabase
-                  .from('Complaint')
-                  .update({ assignedToId: currentUser.id, status: 'DISPATCHED' })
-                  .eq('id', ticket.id);
-
-                if (error) throw error;
-                fetchComplaintsData();
-              } catch (err) {
-                Alert.alert("Update Failed", err.message);
-              } finally {
-                setUpdatingId(null);
-              }
-            } 
-          }
-        ]
-      );
-      return;
-    }
-
+    if (!currentUser) return;
     setUpdatingId(ticket.id);
     try {
-      const res = await api.put('/api/admin/complaints', {
-        id: ticket.id,
-        status: newStatus
-      });
+      const updatePayload = { status: newStatus };
 
-      if (res && res.success) {
-        fetchComplaintsData();
-      } else {
-        throw new Error(res.error || "Failed to update status");
+      if (newStatus === 'RESOLVED') {
+        updatePayload.resolvedAt = new Date().toISOString();
       }
+
+      // If ticket is unassigned, automatically assign to current technician upon status action
+      if (!ticket.assignedToId) {
+        updatePayload.assignedToId = currentUser.id;
+      }
+
+      // Update via Supabase
+      const { error } = await supabase
+        .from('Complaint')
+        .update(updatePayload)
+        .eq('id', ticket.id);
+
+      if (error) {
+        // Fallback via API
+        const res = await api.put('/api/admin/complaints', {
+          id: ticket.id,
+          ...updatePayload,
+        });
+        if (!res || !res.success) {
+          throw new Error(res?.error || "Failed to update status");
+        }
+      }
+
+      fetchComplaintsData();
     } catch (err) {
+      console.error("Status update error:", err);
       Alert.alert("Update Error", err.message);
     } finally {
       setUpdatingId(null);
@@ -198,7 +188,7 @@ export default function SubAdminComplaints({ navigation }) {
           </Text>
         </View>
 
-        {/* Status Action Row */}
+        {/* Status Action Row (ONGOING / RESOLVED) */}
         <View style={styles.statusControl}>
           <Text style={styles.statusLabel}>Status</Text>
           
@@ -206,16 +196,20 @@ export default function SubAdminComplaints({ navigation }) {
             <ActivityIndicator size="small" color="#001e66" />
           ) : (
             <View style={styles.statusBtnRow}>
-              {['EVALUATING', 'DISPATCHED', 'RESOLVED'].map((st) => {
+              {['ONGOING', 'RESOLVED'].map((st) => {
                 const isActive = item.status === st;
+                const activeColor = st === 'RESOLVED' ? '#10B981' : '#D97706'; // Mustard Yellow for ONGOING
                 return (
                   <TouchableOpacity 
                     key={st}
-                    style={[styles.statusBtn, isActive && styles.statusBtnActive]}
+                    style={[
+                      styles.statusBtn, 
+                      isActive && { backgroundColor: activeColor, borderColor: activeColor }
+                    ]}
                     onPress={() => handleUpdateStatus(item, st)}
                   >
                     <Text style={[styles.statusTextSmall, isActive && styles.statusTextSmallActive]}>
-                      {st.substring(0, 4)}
+                      {st}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -226,43 +220,52 @@ export default function SubAdminComplaints({ navigation }) {
 
         {/* Technician Assignment Info */}
         <View style={styles.assignmentRow}>
-          {assigneeName ? (
-            <Text style={styles.assignedText}>
-              Assigned: <Text style={styles.assignedName}>{isAssignedToMe ? "You" : assigneeName}</Text>
-            </Text>
-          ) : (
-            <Text style={styles.assignedText}>Unassigned</Text>
-          )}
-
-          {!item.assignedToId && (
-            <TouchableOpacity style={styles.assignBtn} onPress={() => handleAssignToMe(item.id)}>
-              <Text style={styles.assignBtnText}>Claim Ticket</Text>
-            </TouchableOpacity>
-          )}
+          <Text style={styles.assignedText}>
+            Assigned: <Text style={styles.assignedName}>{assigneeName ? (isAssignedToMe ? "You" : assigneeName) : "Unassigned"}</Text>
+          </Text>
         </View>
       </View>
     );
   };
 
-  // Filter complaints based on Search & Assigned Only toggle
-  const filteredComplaints = complaints.filter((c) => {
-    const textMatches = c.rawText.toLowerCase().includes(search.toLowerCase()) || 
-                       (c.summary && c.summary.toLowerCase().includes(search.toLowerCase()));
-    
-    if (filterAssignedOnly) {
-      return textMatches && currentUser && c.assignedToId === currentUser.id;
-    }
-    return textMatches;
-  });
+  // Filter & Sort complaints (Newest, Oldest, Urgency)
+  const filteredComplaints = complaints
+    .filter((c) => {
+      if (!search.trim()) return true;
+      const query = search.toLowerCase();
+      return (
+        c.rawText?.toLowerCase().includes(query) ||
+        (c.summary && c.summary.toLowerCase().includes(query)) ||
+        (c.barangay && c.barangay.toLowerCase().includes(query)) ||
+        (c.id && c.id.toLowerCase().includes(query))
+      );
+    })
+    .sort((a, b) => {
+      if (sortBy === 'OLDEST') {
+        const dateA = new Date(a.createdAt || Date.now());
+        const dateB = new Date(b.createdAt || Date.now());
+        return dateA - dateB;
+      }
+
+      if (sortBy === 'URGENCY') {
+        const urgencyWeight = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
+        const wA = urgencyWeight[a.urgency] || 0;
+        const wB = urgencyWeight[b.urgency] || 0;
+        return wB - wA;
+      }
+
+      // Default: NEWEST
+      const dateA = new Date(a.createdAt || Date.now());
+      const dateB = new Date(b.createdAt || Date.now());
+      return dateB - dateA;
+    });
 
   return (
     <View style={[styles.container, { backgroundColor: '#F2F5FA' }]}>
       <TechHeader
         navigation={navigation}
-        subtitle="TECHNICIAN TRIAGE"
         pageTitle="Complaints Triage"
         pageDesc="Review municipal alerts and dispatch status"
-        showBack={true}
         showSwirl={true}
       />
 
@@ -283,24 +286,81 @@ export default function SubAdminComplaints({ navigation }) {
                 FIELD TRIAGE & INCIDENT QUEUE
               </Text>
               
-              {/* Search & Filter Bar */}
-              <View style={[styles.filterRow, { marginHorizontal: 0, marginBottom: 14 }]}>
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Search by keyword..."
-                  placeholderTextColor="#94a3b8"
-                  value={search}
-                  onChangeText={setSearch}
-                />
-                
-                <TouchableOpacity 
-                  style={[styles.filterBtn, filterAssignedOnly && styles.filterBtnActive]}
-                  onPress={() => setFilterAssignedOnly(!filterAssignedOnly)}
+              {/* Improved Search Bar & Sort Options */}
+              <View style={{ marginBottom: 14 }}>
+                {/* Modern Full-Width Search Bar */}
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: '#E2E8F0',
+                    paddingHorizontal: 14,
+                    height: 48,
+                    marginBottom: 12,
+                    shadowColor: '#0B2240',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.05,
+                    shadowRadius: 10,
+                    elevation: 2,
+                  }}
                 >
-                  <Text style={[styles.filterBtnText, filterAssignedOnly && styles.filterBtnTextActive]}>
-                    {filterAssignedOnly ? "Show All" : "My Assigned"}
-                  </Text>
-                </TouchableOpacity>
+                  <Ionicons name="search" size={18} color="#0C4F8B" style={{ marginRight: 10 }} />
+                  <TextInput
+                    style={{
+                      flex: 1,
+                      fontSize: 13,
+                      color: '#0F172A',
+                    }}
+                    placeholder="Search by keyword, barangay, or ID..."
+                    placeholderTextColor="#94A3B8"
+                    value={search}
+                    onChangeText={setSearch}
+                  />
+                  {search.length > 0 && (
+                    <TouchableOpacity onPress={() => setSearch('')} activeOpacity={0.7} style={{ padding: 2 }}>
+                      <Ionicons name="close-circle" size={18} color="#94A3B8" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Centered Sorting Options Bar */}
+                <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
+                  {[
+                    { id: 'NEWEST', label: 'Newest' },
+                    { id: 'OLDEST', label: 'Oldest' },
+                    { id: 'URGENCY', label: 'Urgency' }
+                  ].map((opt) => {
+                    const isSelected = sortBy === opt.id;
+                    return (
+                      <TouchableOpacity
+                        key={opt.id}
+                        onPress={() => setSortBy(opt.id)}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          backgroundColor: isSelected ? '#0C4F8B' : '#FFFFFF',
+                          paddingHorizontal: 14,
+                          paddingVertical: 7,
+                          borderRadius: 16,
+                          borderWidth: 1,
+                          borderColor: isSelected ? '#0C4F8B' : '#E2E8F0',
+                          shadowColor: isSelected ? '#0C4F8B' : '#000000',
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: isSelected ? 0.2 : 0.04,
+                          shadowRadius: 4,
+                          elevation: isSelected ? 3 : 1,
+                        }}
+                      >
+                        <Text style={{ fontSize: 11.5, color: isSelected ? '#FFFFFF' : '#475569', fontWeight: isSelected ? '700' : '600' }}>
+                          {opt.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </View>
             </View>
           }

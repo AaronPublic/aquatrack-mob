@@ -58,28 +58,52 @@ export default function SubAdminHome({ navigation }) {
       const profile = await api.post('/api/auth/profile', { userId: session.user.id });
       if (profile?.name) setTechName(profile.name);
 
-      // 1. Fetch active work order assigned to this engineer
-      const { data: workOrders, error: woError } = await supabase
+      // 1. Fetch active work order OR assigned complaint assigned to this technician
+      const { data: workOrders } = await supabase
         .from('WorkOrder')
         .select('*, alert(*)')
         .eq('engineerId', session.user.id)
         .neq('status', 'RESOLVED')
         .limit(1);
 
-      if (!woError && workOrders && workOrders.length > 0) {
+      if (workOrders && workOrders.length > 0) {
         const wo = workOrders[0];
         setJobStatus(wo.status);
         setJobDetails({
           id: wo.id,
+          sourceType: 'WorkOrder',
           location: wo.alert?.nodeId ? `Telemetry Node ID: ${wo.alert.nodeId}` : "Assigned Field Site",
           description: wo.notes || "Investigate clustered consumer complaints and diagnostic telemetry anomalies.",
           instructions: "Inspect pipeline structures, take photos of repairs, and log notes before resolving.",
-          imageUrl: null
+          imageUrl: wo.imageUrl || null
         });
         setHasActiveJob(true);
       } else {
-        setHasActiveJob(false);
-        setJobDetails(null);
+        // Fetch active assigned complaint for this technician
+        const { data: activeComplaints } = await supabase
+          .from('Complaint')
+          .select('*')
+          .eq('assignedToId', session.user.id)
+          .neq('status', 'RESOLVED')
+          .order('updatedAt', { ascending: false })
+          .limit(1);
+
+        if (activeComplaints && activeComplaints.length > 0) {
+          const complaint = activeComplaints[0];
+          setJobStatus(complaint.status);
+          setJobDetails({
+            id: complaint.id,
+            sourceType: 'Complaint',
+            location: complaint.barangay ? `Brgy. ${complaint.barangay}` : "Municipal Field Site",
+            description: complaint.summary || complaint.rawText || "Assigned Resident Water Complaint",
+            instructions: complaint.rawText || "Inspect resident report location, perform field maintenance, and update resolution.",
+            imageUrl: complaint.photoUrl || complaint.imageUrl || null
+          });
+          setHasActiveJob(true);
+        } else {
+          setHasActiveJob(false);
+          setJobDetails(null);
+        }
       }
 
       // 2. Fetch metrics
@@ -202,9 +226,10 @@ export default function SubAdminHome({ navigation }) {
   }, []);
 
   const handleUpdateStatus = async (newStatus) => {
+    const statusLabel = newStatus === 'ONGOING' ? 'Ongoing Repair' : 'Resolved';
     Alert.alert(
       "Confirm Action",
-      `Are you sure you want to mark this job as ${newStatus === 'IN_PROGRESS' ? 'In Progress' : 'Resolved'}?`,
+      `Are you sure you want to mark this job as ${statusLabel}?`,
       [
         { text: "Cancel", style: "cancel" },
         { 
@@ -212,9 +237,15 @@ export default function SubAdminHome({ navigation }) {
           onPress: async () => {
             try {
               if (jobDetails) {
+                const targetTable = jobDetails.sourceType === 'Complaint' ? 'Complaint' : 'WorkOrder';
+                const updatePayload = {
+                  status: newStatus,
+                  ...(newStatus === 'RESOLVED' ? { resolvedAt: new Date().toISOString() } : {})
+                };
+
                 const { error } = await supabase
-                  .from('WorkOrder')
-                  .update({ status: newStatus, resolvedAt: newStatus === 'RESOLVED' ? new Date().toISOString() : null })
+                  .from(targetTable)
+                  .update(updatePayload)
                   .eq('id', jobDetails.id);
 
                 if (error) throw error;
@@ -247,14 +278,20 @@ export default function SubAdminHome({ navigation }) {
 
   const getStatusConfig = (status) => {
     switch (status) {
+      case 'ONGOING':
+        return { label: 'Ongoing Repair', text: '#d97706', bg: '#fef3c7', border: '#fde68a' };
+      case 'EVALUATING':
+        return { label: 'Evaluating', text: '#0284c7', bg: '#e0f2fe', border: '#bae6fd' };
+      case 'DISPATCHED':
+        return { label: 'Dispatched', text: '#4338ca', bg: '#eef2ff', border: '#c7d2fe' };
+      case 'IN_PROGRESS':
+        return { label: 'In Progress', text: '#d97706', bg: '#fef3c7', border: '#fde68a' };
       case 'ASSIGNED':
         return { label: 'Assigned', text: '#b45309', bg: '#fef3c7', border: '#fde68a' };
-      case 'IN_PROGRESS':
-        return { label: 'In Progress', text: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' };
       case 'RESOLVED':
         return { label: 'Resolved', text: '#047857', bg: '#ecfdf5', border: '#a7f3d0' };
       default:
-        return { label: 'Unknown', text: '#525f7f', bg: '#f1f5f9', border: '#e2e8f0' };
+        return { label: status || 'Assigned', text: '#0284c7', bg: '#e0f2fe', border: '#bae6fd' };
     }
   };
 
@@ -331,18 +368,6 @@ export default function SubAdminHome({ navigation }) {
                   <Text style={styles.instructionsText}>"{jobDetails.instructions}"</Text>
                 </View>
               </View>
-
-              <View style={styles.trackerActions}>
-                {jobStatus === 'ASSIGNED' ? (
-                  <TouchableOpacity style={styles.btnAction} onPress={() => handleUpdateStatus('IN_PROGRESS')} activeOpacity={0.8}>
-                    <Text style={styles.btnActionText}>Start Assignment</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity style={[styles.btnAction, { backgroundColor: '#10b981' }]} onPress={() => handleUpdateStatus('RESOLVED')} activeOpacity={0.8}>
-                    <Text style={styles.btnActionText}>Mark as Resolved</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
             </View>
           </View>
         ) : (
@@ -386,7 +411,7 @@ export default function SubAdminHome({ navigation }) {
                 )}
               </View>
               <Text style={styles.cardTitle}>Triage Board</Text>
-              <Text style={styles.cardDesc}>Claim unassigned citizen complaints & alerts</Text>
+              <Text style={styles.cardDesc}>View assigned citizen complaints & status updates</Text>
             </TouchableOpacity>
 
             {/* Card 2: IoT Telemetry Node Sensor Network */}

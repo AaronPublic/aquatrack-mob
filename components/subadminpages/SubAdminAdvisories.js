@@ -78,10 +78,8 @@ export default function SubAdminAdvisories({ navigation }) {
     <View style={[styles.container, { backgroundColor: '#F2F5FA' }]}>
       <TechHeader
         navigation={navigation}
-        subtitle="STAFF ADVISORIES"
         pageTitle="Staff Advisories"
         pageDesc="District advisories, pipeline maintenance events, and technician alerts"
-        showBack={true}
         showSwirl={true}
       />
 

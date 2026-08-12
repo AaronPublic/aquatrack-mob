@@ -318,7 +318,6 @@ export default function TrackComplaints({ navigation }) {
         ) : (
           <View style={styles.expandRow}>
             <View style={styles.ticketLocation}>
-              <Ionicons name="location-sharp" size={12} color="#00aeef" />
               <Text style={styles.ticketLocationText}>Brgy. {item.barangay || 'Resolved Area'}</Text>
             </View>
             <View style={styles.expandToggle}>

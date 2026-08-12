@@ -73,7 +73,6 @@ export default function ComplaintHistory() {
 
         {item.barangay && (
           <View style={styles.cardFooter}>
-            <Ionicons name="location-outline" size={12} color="#525f7f" />
             <Text style={styles.locationText}>Brgy. {item.barangay}</Text>
           </View>
         )}

@@ -124,6 +124,11 @@ function ConsumerTabNavigator() {
         component={Announcements} 
         options={{ title: 'Advisories', headerShown: false }} 
       />
+      <Tab.Screen 
+        name="ManageAccount" 
+        component={ManageAccount} 
+        options={{ title: 'Account', headerShown: false, tabBarButton: () => null }} 
+      />
     </Tab.Navigator>
   );
 }
@@ -184,6 +189,11 @@ function SubAdminTabNavigator() {
         name="SubAdminAdvisories" 
         component={SubAdminAdvisories} 
         options={{ title: 'Advisories', headerShown: false }} 
+      />
+      <Tab.Screen 
+        name="ManageAccount" 
+        component={ManageAccount} 
+        options={{ title: 'Account', headerShown: false, tabBarButton: () => null }} 
       />
     </Tab.Navigator>
   );
@@ -286,11 +296,7 @@ export default function RootNavigator() {
             name="ManageAccount" 
             component={ManageAccount} 
             options={{ 
-              headerShown: true, 
-              headerTitle: 'Account Settings',
-              headerTintColor: theme.colors.primary,
-              headerTitleStyle: { fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 },
-              headerStyle: { backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border }
+              headerShown: false, 
             }} 
           />
           <Stack.Screen 

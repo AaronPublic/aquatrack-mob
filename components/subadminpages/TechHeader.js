@@ -4,6 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import homeStyles from './SubAdminHome.styles';
 import { useTechNotificationStore } from '../../src/store/useTechNotificationStore';
+import { supabase } from '../../src/config/supabase';
+import { useAuthStore } from '../../src/store/useAuthStore';
 
 /**
  * Shared header component for all sub-admin / technician screens.
@@ -11,7 +13,7 @@ import { useTechNotificationStore } from '../../src/store/useTechNotificationSto
  */
 export default function TechHeader({
   navigation,
-  subtitle = 'TECHNICIAN PORTAL',
+  subtitle = undefined,
   pageTitle,
   pageDesc,
   roleDesc,
@@ -22,8 +24,34 @@ export default function TechHeader({
   onProfilePress,
 }) {
   const [notificationsVisible, setNotificationsVisible] = React.useState(false);
+  const [profileModalVisible, setProfileModalVisible] = React.useState(false);
+  const [userProfile, setUserProfile] = React.useState(null);
+  
   const { notifications, unreadCount, markAllAsRead, dismissNotification } =
     useTechNotificationStore();
+
+  React.useEffect(() => {
+    let isMounted = true;
+    const fetchUser = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && isMounted) {
+          const { data } = await supabase
+            .from('User')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          if (data && isMounted) {
+            setUserProfile(data);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load profile in TechHeader:', err);
+      }
+    };
+    fetchUser();
+    return () => { isMounted = false; };
+  }, []);
 
   const handleOpenNotifications = () => {
     setNotificationsVisible(true);
@@ -39,6 +67,11 @@ export default function TechHeader({
       navigation.navigate('SubAdminComplaints');
     }
   };
+
+  const fullTechName = userProfile?.name || (techName !== 'Technician' ? techName : 'Field Technician');
+  const displayTechName = userProfile?.name 
+    ? userProfile.name.split(' ')[0] 
+    : (techName !== 'Technician' ? techName.split(' ')[0] : 'Technician');
 
   const handleBack = () => {
     if (navigation && navigation.canGoBack()) {
@@ -65,24 +98,26 @@ export default function TechHeader({
 
         {/* ── Top Bar ────────────────────────────────────────────── */}
         <View style={homeStyles.brandRow}>
-          {showBack ? (
-            <TouchableOpacity 
-              onPress={handleBack}
-              activeOpacity={0.8}
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: 14,
-                backgroundColor: 'rgba(255, 255, 255, 0.18)',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.28)'
-              }}
-            >
-              <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
-            </TouchableOpacity>
-          ) : (
+          {/* Logo Container with Back Button */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            {showBack && (
+              <TouchableOpacity 
+                onPress={handleBack}
+                activeOpacity={0.8}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 12,
+                  backgroundColor: 'rgba(255, 255, 255, 0.18)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255, 255, 255, 0.28)'
+                }}
+              >
+                <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            )}
             <View style={homeStyles.logoContainer}>
               <Ionicons name="water" size={26} color="#7DD3FC" />
               <Text style={homeStyles.brandTitleText}>
@@ -92,7 +127,7 @@ export default function TechHeader({
                 <Text style={{ color: '#FFFFFF' }}>TRACK</Text>
               </Text>
             </View>
-          )}
+          </View>
 
           {/* Right: Notification Bell + Profile Pill */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -107,21 +142,19 @@ export default function TechHeader({
             </TouchableOpacity>
 
             {/* Profile Pill */}
-            {onProfilePress && (
-              <TouchableOpacity
-                style={homeStyles.profilePill}
-                onPress={onProfilePress}
-                activeOpacity={0.8}
-              >
-                <Text style={homeStyles.profileName} numberOfLines={1}>
-                  {techName}
-                </Text>
-                <View style={homeStyles.avatarContainer}>
-                  <Ionicons name="person" size={14} color="#ffffff" />
-                  <View style={homeStyles.activeDot} />
-                </View>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={homeStyles.profilePill}
+              onPress={onProfilePress || (() => setProfileModalVisible(true))}
+              activeOpacity={0.8}
+            >
+              <Text style={homeStyles.profileName} numberOfLines={1}>
+                {displayTechName}
+              </Text>
+              <View style={homeStyles.avatarContainer}>
+                <Ionicons name="person" size={14} color="#ffffff" />
+                <View style={homeStyles.activeDot} />
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -136,14 +169,16 @@ export default function TechHeader({
 
             {pageDesc && (
               <View style={homeStyles.locationPill}>
-                <Ionicons name="location-outline" size={13} color="#E0F2FE" />
-                <Text style={homeStyles.locationText}>{pageDesc}</Text>
+                {!showBack && <Ionicons name="location-outline" size={13} color="#E0F2FE" />}
+                <Text style={[homeStyles.locationText, showBack && { marginLeft: 0 }]}>{pageDesc}</Text>
               </View>
             )}
 
-            {subtitle && (
+            {Boolean(subtitle) && (
               <View style={homeStyles.brandSubtitlePill}>
-                <Text style={homeStyles.brandSubtitleText}>{subtitle}</Text>
+                <Text style={homeStyles.brandSubtitleText}>
+                  {subtitle}
+                </Text>
               </View>
             )}
 
@@ -202,15 +237,23 @@ export default function TechHeader({
       <Modal
         visible={notificationsVisible}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setNotificationsVisible(false)}
       >
-        <View style={homeStyles.modalOverlay}>
-          <View style={homeStyles.notifModalCard}>
+        <TouchableOpacity
+          style={homeStyles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setNotificationsVisible(false)}
+        >
+          <TouchableOpacity 
+            activeOpacity={1} 
+            style={homeStyles.notifModalCard}
+            onPress={(e) => e.stopPropagation?.()}
+          >
             {/* Header */}
             <View style={homeStyles.notifModalHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Ionicons name="notifications" size={18} color="#2196F3" />
+                <Ionicons name="notifications" size={20} color="#0C4F8B" />
                 <Text style={homeStyles.notifModalTitle}>Technician Alerts</Text>
               </View>
               <TouchableOpacity
@@ -222,10 +265,10 @@ export default function TechHeader({
             </View>
 
             {/* List */}
-            <ScrollView style={{ maxHeight: 340 }}>
+            <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
               {notifications.length === 0 ? (
                 <View style={homeStyles.notifEmptyBox}>
-                  <Ionicons name="notifications-off-outline" size={32} color="#CBD5E1" />
+                  <Ionicons name="notifications-off-outline" size={36} color="#CBD5E1" />
                   <Text style={homeStyles.notifEmptyText}>No notifications at this time.</Text>
                 </View>
               ) : (
@@ -246,8 +289,8 @@ export default function TechHeader({
                             ? 'warning-outline'
                             : 'megaphone-outline'
                         }
-                        size={16}
-                        color="#2196F3"
+                        size={18}
+                        color="#0C4F8B"
                       />
                     </View>
                     <View style={{ flex: 1 }}>
@@ -260,8 +303,71 @@ export default function TechHeader({
                 ))
               )}
             </ScrollView>
-          </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── Profile Modal ────────────────────────────────────────────── */}
+      <Modal
+        visible={profileModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setProfileModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={homeStyles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setProfileModalVisible(false)}
+        >
+          <TouchableOpacity activeOpacity={1} style={homeStyles.modalContent}>
+            <View style={homeStyles.modalHeader}>
+              <Text style={homeStyles.modalTitle}>Technician Profile</Text>
+              <TouchableOpacity onPress={() => setProfileModalVisible(false)}>
+                <Ionicons name="close" size={20} color="#0B1C3F" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={homeStyles.modalUserSection}>
+              <View style={homeStyles.modalAvatarLarge}>
+                <Ionicons name="person" size={20} color="#ffffff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={homeStyles.modalUserName}>{fullTechName}</Text>
+                <Text style={homeStyles.modalUserRole}>Field Technician</Text>
+              </View>
+            </View>
+
+            <View style={homeStyles.modalActions}>
+              <TouchableOpacity 
+                style={homeStyles.modalBtnPrimary}
+                onPress={() => {
+                  setProfileModalVisible(false);
+                  navigation?.navigate('ManageAccount');
+                }}
+              >
+                <Ionicons name="settings-outline" size={15} color="#ffffff" style={{ marginRight: 6 }} />
+                <Text style={homeStyles.modalBtnPrimaryText}>Manage Account</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={homeStyles.modalBtnDanger}
+                onPress={async () => {
+                  setProfileModalVisible(false);
+                  await useAuthStore.getState().signOut();
+                  if (navigation) {
+                    navigation.reset({
+                      index: 0,
+                      routes: [{ name: 'Login' }],
+                    });
+                  }
+                }}
+              >
+                <Ionicons name="log-out-outline" size={15} color="#FF3B30" style={{ marginRight: 6 }} />
+                <Text style={homeStyles.modalBtnDangerText}>Log Out Account</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </>
   );

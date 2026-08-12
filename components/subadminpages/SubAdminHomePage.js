@@ -257,7 +257,7 @@ export default function SubAdminHomePage({ navigation }) {
                 )}
               </View>
               <Text style={styles.cardTitle}>Triage Board</Text>
-              <Text style={styles.cardDesc}>Claim unassigned citizen complaints & alerts</Text>
+              <Text style={styles.cardDesc}>View assigned citizen complaints & status updates</Text>
             </TouchableOpacity>
 
             {/* Card 2: IoT Telemetry Node Sensor Network */}

@@ -146,10 +146,8 @@ export default function SubAdminTelemetry({ navigation }) {
     <View style={[styles.container, { backgroundColor: '#F2F5FA' }]}>
       <TechHeader
         navigation={navigation}
-        subtitle="TECHNICIAN TELEMETRY"
         pageTitle="IoT Telemetry Nodes"
         pageDesc="Real-time sensor monitors for pH, turbidity, pressure, and TDS"
-        showBack={true}
         showSwirl={true}
       />
 

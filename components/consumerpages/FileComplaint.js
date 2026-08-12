@@ -476,7 +476,6 @@ export default function FileComplaint({ navigation }) {
                     />
                   ) : (
                     <View className="items-center p-4">
-                      <Ionicons name="location-outline" size={24} color="#0B2240" style={{ marginBottom: 6 }} />
                       <Text className="text-[#0B2240] font-black text-sm mb-1 text-center">
                         Awaiting Location
                       </Text>
