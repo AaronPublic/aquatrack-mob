@@ -83,11 +83,26 @@ export default function SubAdminHome({ navigation }) {
       }
 
       // 2. Fetch metrics
+      const { count: totalLogsCount } = await supabase
+        .from('Complaint')
+        .select('*', { count: 'exact', head: true });
+
       const { count: unclaimedCount } = await supabase
         .from('Complaint')
         .select('*', { count: 'exact', head: true })
         .is('assignedToId', null)
         .neq('status', 'RESOLVED');
+
+      const { count: assignedCount } = await supabase
+        .from('Complaint')
+        .select('*', { count: 'exact', head: true })
+        .eq('assignedToId', session.user.id)
+        .neq('status', 'RESOLVED');
+
+      const { count: resolvedCount } = await supabase
+        .from('Complaint')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'RESOLVED');
 
       const { count: activeWoCount } = await supabase
         .from('WorkOrder')
@@ -102,7 +117,9 @@ export default function SubAdminHome({ navigation }) {
       }
 
       setMetrics({
-        activeJobs: activeWoCount || 0,
+        totalLogs: totalLogsCount || 0,
+        assigned: (assignedCount || activeWoCount || 0),
+        resolved: resolvedCount || 0,
         pendingTriage: unclaimedCount || 0,
         telemetryAlerts: activeAlerts,
       });
@@ -257,8 +274,9 @@ export default function SubAdminHome({ navigation }) {
       <TechHeader
         navigation={navigation}
         subtitle="TECHNICIAN PORTAL"
-        pageTitle={`FT-${techName.split(' ')[0]}`}
-        pageDesc="Welcome, Field Technician"
+        pageTitle={`Hello, ${techName}`}
+        pageDesc="City of San Fernando • Field Ops"
+        roleDesc="Manage field work orders, dispatch repair crews, monitor real-time IoT telemetry nodes, and triage citizen complaint reports."
         techName={techName}
         metrics={metrics}
         showSwirl={true}

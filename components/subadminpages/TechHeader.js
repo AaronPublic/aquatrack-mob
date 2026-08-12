@@ -14,6 +14,7 @@ export default function TechHeader({
   subtitle = 'TECHNICIAN PORTAL',
   pageTitle,
   pageDesc,
+  roleDesc,
   techName = 'Technician',
   metrics = null,
   showSwirl = true,
@@ -83,21 +84,18 @@ export default function TechHeader({
             </TouchableOpacity>
           ) : (
             <View style={homeStyles.logoContainer}>
-              <Image
-                source={require('../../assets/Logo.png')}
-                style={homeStyles.logoImage}
-                resizeMode="contain"
-              />
+              <Ionicons name="water" size={26} color="#7DD3FC" />
+              <Text style={homeStyles.brandTitleText}>
+                <Text style={{ color: '#FFFFFF' }}>AQ</Text>
+                <Text style={{ color: '#FBBF24' }}>U</Text>
+                <Text style={{ color: '#EF4444' }}>A</Text>
+                <Text style={{ color: '#FFFFFF' }}>TRACK</Text>
+              </Text>
             </View>
           )}
 
-          {/* Subtitle Badge */}
-          <View style={homeStyles.brandTextContainer}>
-            <Text style={homeStyles.brandSubtitle}>{subtitle}</Text>
-          </View>
-
           {/* Right: Notification Bell + Profile Pill */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             {/* Notification Bell */}
             <TouchableOpacity
               activeOpacity={0.7}
@@ -127,39 +125,60 @@ export default function TechHeader({
           </View>
         </View>
 
-        {/* ── Page Title Row ───────────────────────────────────────── */}
-        {(pageTitle || pageDesc) && (
+        {/* ── Page Title / Greeting Row & Role Details ───────────────── */}
+        {(pageTitle || pageDesc || subtitle || roleDesc) && (
           <View style={[homeStyles.greetingContainer, { marginTop: showBack ? 6 : 10 }]}>
             {pageTitle && (
-              <Text style={[homeStyles.greetingText, showBack && { fontSize: 28, fontWeight: '900', letterSpacing: -0.5 }]}>
+              <Text style={[homeStyles.greetingText, showBack && { fontSize: 24, letterSpacing: -0.5 }]}>
                 {pageTitle}
               </Text>
             )}
+
             {pageDesc && (
               <View style={homeStyles.locationPill}>
-                <Ionicons name="construct-outline" size={13} color="#E0F2FE" />
+                <Ionicons name="location-outline" size={13} color="#E0F2FE" />
                 <Text style={homeStyles.locationText}>{pageDesc}</Text>
               </View>
+            )}
+
+            {subtitle && (
+              <View style={homeStyles.brandSubtitlePill}>
+                <Text style={homeStyles.brandSubtitleText}>{subtitle}</Text>
+              </View>
+            )}
+
+            {roleDesc && (
+              <Text style={homeStyles.roleDescriptionText}>
+                {roleDesc}
+              </Text>
             )}
           </View>
         )}
 
-        {/* ── Metrics Summary Bar ──────────────────────────────────── */}
+        {/* ── Technician Analytics Banner (Total Logs, Assigned, Triage, Resolved) ───────── */}
         {metrics && (
           <View style={homeStyles.metricsBanner}>
             <View style={homeStyles.metricColumn}>
-              <Text style={homeStyles.metricLabel}>MY JOBS</Text>
-              <Text style={homeStyles.metricNumber}>{metrics.activeJobs ?? 0}</Text>
+              <Text style={homeStyles.metricLabel}>TOTAL LOGS</Text>
+              <Text style={homeStyles.metricNumber}>{metrics.totalLogs ?? metrics.total ?? 0}</Text>
             </View>
             <View style={homeStyles.divider} />
+
             <View style={homeStyles.metricColumn}>
-              <Text style={homeStyles.metricLabel}>PENDING TRIAGE</Text>
-              <Text style={homeStyles.metricNumber}>{metrics.pendingTriage ?? 0}</Text>
+              <Text style={[homeStyles.metricLabel, { color: '#E0F2FE' }]}>ASSIGNED</Text>
+              <Text style={[homeStyles.metricNumber, { color: '#FFFFFF' }]}>{metrics.assigned ?? metrics.activeJobs ?? 0}</Text>
             </View>
             <View style={homeStyles.divider} />
+
             <View style={homeStyles.metricColumn}>
-              <Text style={homeStyles.metricLabel}>TELEMETRY ALERTS</Text>
-              <Text style={homeStyles.metricNumber}>{metrics.telemetryAlerts ?? 0}</Text>
+              <Text style={[homeStyles.metricLabel, { color: '#E0F2FE' }]}>TRIAGE</Text>
+              <Text style={[homeStyles.metricNumber, { color: '#FFFFFF' }]}>{metrics.pendingTriage ?? 0}</Text>
+            </View>
+            <View style={homeStyles.divider} />
+
+            <View style={homeStyles.metricColumn}>
+              <Text style={[homeStyles.metricLabel, { color: '#E0F2FE' }]}>RESOLVED</Text>
+              <Text style={[homeStyles.metricNumber, { color: '#FFFFFF' }]}>{metrics.resolved ?? 0}</Text>
             </View>
           </View>
         )}
