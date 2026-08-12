@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, ActivityIndicator, RefreshControl, Alert, Image } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, FlatList, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import styles from './ComplaintHistory.styles';
-import homeStyles from './ConsumerHome.styles';
+import TechHeader from '../subadminpages/TechHeader';
 
-export default function ComplaintHistory() {
+export default function ComplaintHistory({ navigation }) {
   const [resolvedComplaints, setResolvedComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -82,52 +81,24 @@ export default function ComplaintHistory() {
 
   return (
     <View style={[styles.container, { backgroundColor: '#F2F5FA' }]}>
-      {/* Top Blue Gradient Header Component */}
-      <LinearGradient 
-        colors={['#0C4F8B', '#008CE3']} 
-        start={{ x: 0, y: 0 }} 
-        end={{ x: 0, y: 1 }} 
-        style={[homeStyles.headerCard, { borderBottomLeftRadius: 24, borderBottomRightRadius: 24, paddingBottom: 20, marginBottom: 12 }]}
-      >
-        {/* Background Water Ripple Decorations */}
-        <View style={homeStyles.decorCircle1} />
-        <View style={homeStyles.decorCircle2} />
-
-        {/* Brand Row */}
-        <View style={homeStyles.brandRow}>
-          {/* Left: AquaTrack Multi-Colored Logo */}
-          <View style={homeStyles.logoContainer}>
-            <Ionicons name="water" size={26} color="#7DD3FC" />
-            <Text style={homeStyles.brandTitleText}>
-              <Text style={{ color: '#FFFFFF' }}>AQ</Text>
-              <Text style={{ color: '#FBBF24' }}>U</Text>
-              <Text style={{ color: '#EF4444' }}>A</Text>
-              <Text style={{ color: '#FFFFFF' }}>TRACK</Text>
-            </Text>
-          </View>
-        </View>
-
-        {/* Page Greeting & Subtitle */}
-        <View style={homeStyles.greetingContainer}>
-          <Text style={homeStyles.greetingText}>Ticket History</Text>
-          <View style={homeStyles.locationPill}>
-            <Ionicons name="archive-outline" size={13} color="#E0F2FE" />
-            <Text style={homeStyles.locationText}>Archived & resolved water report logs</Text>
-          </View>
-        </View>
-      </LinearGradient>
+      <TechHeader
+        navigation={navigation}
+        pageTitle="Archived Tickets"
+        pageDesc="Historical municipal complaints & resolved ticket records"
+        showSwirl={true}
+      />
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator color="#001e66" size="large" />
+          <ActivityIndicator color="#0C4F8B" size="large" />
         </View>
       ) : (
         <FlatList
           data={resolvedComplaints}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={styles.listContainer}
+          contentContainerStyle={[styles.listContainer, { paddingBottom: 110 }]}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#001e66" />
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#0C4F8B" />
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>

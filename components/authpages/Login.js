@@ -10,7 +10,8 @@ import {
   Platform, 
   ScrollView,
   Dimensions,
-  Alert
+  Alert,
+  Modal
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../src/config/supabase';
@@ -39,6 +40,7 @@ export default function Login({ navigation, route }) {
   const [error, setError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [emailError, setEmailError] = useState(null);
+  const [adminModalVisible, setAdminModalVisible] = useState(false);
 
   // Register form state
   const [regName, setRegName] = useState('');
@@ -118,6 +120,21 @@ export default function Login({ navigation, route }) {
     setLoading(true);
 
     try {
+      // 1. Pre-check user role in DB by email before initiating Supabase Auth session
+      const { data: preCheckUser } = await supabase
+        .from('User')
+        .select('role')
+        .ilike('email', email.trim())
+        .maybeSingle();
+
+      if (preCheckUser && preCheckUser.role === 'ADMIN') {
+        setError(null);
+        setAdminModalVisible(true);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Authenticate credentials with Supabase Auth for non-admin accounts
       const { data, error: authErr } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -134,29 +151,28 @@ export default function Login({ navigation, route }) {
       }
 
       const profile = await useAuthStore.getState().fetchProfile(data.user.id);
+
+      if (profile && profile.role === 'ADMIN') {
+        await supabase.auth.signOut();
+        await useAuthStore.getState().signOut();
+        setError(null);
+        setAdminModalVisible(true);
+        setLoading(false);
+        return;
+      }
+
       useAuthStore.getState().setSession(data.session);
 
-      if (profile && profile.role) {
-        if (profile.role === 'ADMIN') {
-          await supabase.auth.signOut();
-          useAuthStore.getState().signOut();
-          setError("Access Denied: Administrator accounts must use the Web Dashboard.");
-          setLoading(false);
-          return;
-        } else if (profile.role === 'FIELD_ENGINEER_TECHNICIAN') {
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'SubAdminTab' }],
-          });
-        } else {
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'ConsumerTab' }],
-          });
-        }
+      if (profile && profile.role === 'FIELD_ENGINEER_TECHNICIAN') {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'SubAdminTab' }],
+        });
       } else {
-        setError("User profile details could not be loaded. Contact support.");
-        setLoading(false);
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'ConsumerTab' }],
+        });
       }
     } catch (err) {
       console.error(err);
@@ -619,10 +635,86 @@ export default function Login({ navigation, route }) {
                 </View>
               </View>
             )}
-
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* ── Admin Access Restriction Modal ────────────────────────────── */}
+      <Modal
+        visible={adminModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAdminModalVisible(false)}
+      >
+        <TouchableOpacity 
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(11, 34, 64, 0.55)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 24,
+          }}
+          activeOpacity={1}
+          onPress={() => setAdminModalVisible(false)}
+        >
+          <TouchableOpacity 
+            activeOpacity={1} 
+            style={{
+              backgroundColor: '#FFFFFF',
+              width: '100%',
+              borderRadius: 28,
+              padding: 24,
+              alignItems: 'center',
+              shadowColor: '#0B2240',
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.15,
+              shadowRadius: 24,
+              elevation: 10,
+            }}
+          >
+            {/* Warning Shield Icon */}
+            <View 
+              style={{
+                width: 60,
+                height: 60,
+                borderRadius: 30,
+                backgroundColor: '#FEE2E2',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 16,
+              }}
+            >
+              <Ionicons name="shield-outline" size={30} color="#EF4444" />
+            </View>
+
+            {/* Modal Title & Message */}
+            <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A', marginBottom: 8, textAlign: 'center' }}>
+              Admin Access Restricted
+            </Text>
+            <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 19, marginBottom: 20 }}>
+              Administrator accounts are restricted to the Web Administrative Portal and cannot log in on the mobile application.
+            </Text>
+
+            {/* Close Button */}
+            <TouchableOpacity
+              onPress={() => setAdminModalVisible(false)}
+              activeOpacity={0.8}
+              style={{
+                height: 48,
+                backgroundColor: '#0C4F8B',
+                borderRadius: 14,
+                width: '100%',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>
+                I Understand
+              </Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }

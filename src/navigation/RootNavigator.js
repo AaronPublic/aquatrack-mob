@@ -129,6 +129,11 @@ function ConsumerTabNavigator() {
         component={ManageAccount} 
         options={{ title: 'Account', headerShown: false, tabBarButton: () => null }} 
       />
+      <Tab.Screen 
+        name="ComplaintHistory" 
+        component={ComplaintHistory} 
+        options={{ title: 'Archived', headerShown: false, tabBarButton: () => null }} 
+      />
     </Tab.Navigator>
   );
 }
@@ -195,6 +200,11 @@ function SubAdminTabNavigator() {
         component={ManageAccount} 
         options={{ title: 'Account', headerShown: false, tabBarButton: () => null }} 
       />
+      <Tab.Screen 
+        name="ComplaintHistory" 
+        component={ComplaintHistory} 
+        options={{ title: 'Archived', headerShown: false, tabBarButton: () => null }} 
+      />
     </Tab.Navigator>
   );
 }
@@ -206,12 +216,20 @@ export default function RootNavigator() {
     // Sync initial session on mount
     const syncSession = async () => {
       const { data: { session: activeSession } } = await supabase.auth.getSession();
-      setSession(activeSession);
       if (activeSession) {
         const profileResult = await fetchProfile(activeSession.user.id);
-        if (profileResult) {
-          await requestUserPermission(activeSession.user.id);
+        if (profileResult && profileResult.role === 'ADMIN') {
+          await supabase.auth.signOut();
+          useAuthStore.setState({ session: null, profile: null });
+        } else {
+          setSession(activeSession);
+          if (profileResult) {
+            await requestUserPermission(activeSession.user.id);
+          }
         }
+      } else {
+        setSession(null);
+        useAuthStore.setState({ profile: null });
       }
     };
     
@@ -219,17 +237,19 @@ export default function RootNavigator() {
 
     // Listen to Supabase Auth State changes and sync with Zustand
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      setSession(newSession);
       if (newSession) {
         const fetchedProfile = await fetchProfile(newSession.user.id);
-        if (fetchedProfile) {
-          if (fetchedProfile.role === 'ADMIN') {
-            await signOut();
-          } else {
+        if (fetchedProfile && fetchedProfile.role === 'ADMIN') {
+          await supabase.auth.signOut();
+          useAuthStore.setState({ session: null, profile: null });
+        } else {
+          setSession(newSession);
+          if (fetchedProfile) {
             await requestUserPermission(newSession.user.id);
           }
         }
       } else {
+        setSession(null);
         useAuthStore.setState({ profile: null });
       }
     });
@@ -289,24 +309,6 @@ export default function RootNavigator() {
               headerTitle: 'CONTACT SUPPORT',
               headerTintColor: theme.colors.primary,
               headerTitleStyle: { fontSize: 13, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 },
-              headerStyle: { backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border }
-            }} 
-          />
-          <Stack.Screen 
-            name="ManageAccount" 
-            component={ManageAccount} 
-            options={{ 
-              headerShown: false, 
-            }} 
-          />
-          <Stack.Screen 
-            name="ComplaintHistory" 
-            component={ComplaintHistory} 
-            options={{ 
-              headerShown: true, 
-              headerTitle: 'Archived Tickets',
-              headerTintColor: theme.colors.primary,
-              headerTitleStyle: { fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 },
               headerStyle: { backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border }
             }} 
           />
