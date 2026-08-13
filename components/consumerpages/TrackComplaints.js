@@ -265,7 +265,7 @@ export default function TrackComplaints({ navigation }) {
             <View style={styles.metaRow}>
               <View style={styles.metaItem}>
                 <Text style={styles.metaLabel}>Ticket ID</Text>
-                <Text style={styles.metaValueMono}>{item.id.substring(0, 16)}...</Text>
+                <Text style={styles.metaValueMono}>AQ-{item.id ? item.id.slice(0, 4).toUpperCase() : 'N/A'}</Text>
               </View>
               <View style={styles.metaItem}>
                 <Text style={styles.metaLabel}>Barangay</Text>

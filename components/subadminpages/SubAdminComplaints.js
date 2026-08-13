@@ -184,7 +184,7 @@ export default function SubAdminComplaints({ navigation }) {
           <Text style={styles.cardSummary}>{item.summary || "Resident Complaint"}</Text>
           <Text style={styles.cardDesc}>{item.rawText}</Text>
           <Text style={styles.metaText}>
-            ID: {item.id.substring(0, 8)}... | Date: {new Date(item.createdAt).toLocaleDateString()}
+            ID: AQ-{item.id ? item.id.slice(0, 4).toUpperCase() : 'N/A'} | Date: {new Date(item.createdAt).toLocaleDateString()}
           </Text>
         </View>
 

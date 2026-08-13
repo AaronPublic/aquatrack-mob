@@ -275,7 +275,7 @@ export default function FileComplaint({ navigation }) {
 
       if (result && result.success) {
         setSuccessTicketDetails({
-          ticketId: `AQ-${result.id?.slice(0, 8).toUpperCase() || 'RESOLVED'}`,
+          ticketId: `AQ-${result.id?.slice(0, 4).toUpperCase() || 'RESOLVED'}`,
           barangay: result.barangay || resolvedLocation.barangay || 'City Center'
         });
         setSuccessModalVisible(true);

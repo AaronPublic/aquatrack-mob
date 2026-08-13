@@ -751,7 +751,7 @@ return (
                   <View className="flex-row items-center justify-between mb-2.5">
                     <View className="flex-row items-center">
                       <Text className="text-[#0B2240] font-black text-[10px] font-mono tracking-wider mr-2">
-                        AQ-{item.id.slice(0, 8).toUpperCase()}
+                        AQ-{item.id.slice(0, 4).toUpperCase()}
                       </Text>
                       <Text className="text-[#475569] font-extrabold text-[10px] uppercase tracking-wider font-mono">
                         •  {formattedDate}

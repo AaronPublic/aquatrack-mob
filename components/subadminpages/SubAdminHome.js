@@ -343,7 +343,7 @@ export default function SubAdminHome({ navigation }) {
               <View style={styles.trackerHeader}>
                 <View style={{ flex: 1, marginRight: 8 }}>
                   <Text style={styles.trackerLabel}>Incident ID</Text>
-                  <Text style={styles.trackerTitle}>{jobDetails.id}</Text>
+                  <Text style={styles.trackerTitle}>AQ-{jobDetails.id ? jobDetails.id.slice(0, 4).toUpperCase() : 'N/A'}</Text>
                 </View>
                 <View style={[styles.statusBadgeSmall, { backgroundColor: currentStatusCfg.bg, borderColor: currentStatusCfg.border }]}>
                   <Text style={[styles.statusTextSmall, { color: currentStatusCfg.text }]}>
