@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, Alert, Modal, Animated } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
-import { Ionicons } from '@expo/vector-icons';
+import AppIcon from '../../components/AppIcon';
 import { LinearGradient } from 'expo-linear-gradient';
 import styles from './ConsumerHome.styles';
 import { theme } from '../../src/config/theme';
@@ -366,7 +366,7 @@ export default function ConsumerHome({ navigation }) {
                 step.active ? styles.stepDotActive : styles.stepDotInactive
               ]}>
                 {step.key === 'RESOLVED' && currentStatus === 'RESOLVED' ? (
-                  <Ionicons name="checkmark" size={8} color="#fff" />
+                  <AppIcon name="checkmark" size={8} color="#fff" />
                 ) : step.active ? (
                   <View style={styles.stepDotInner} />
                 ) : null}
@@ -434,7 +434,7 @@ return (
         <View style={styles.brandRow}>
           {/* Upper Left: Light Blue Water Droplet + Custom Colored AQUATRACK Logo */}
           <View style={styles.logoContainer}>
-            <Ionicons name="water" size={26} color="#7DD3FC" />
+            <AppIcon name="water" size={26} color="#7DD3FC" />
             <Text style={styles.brandTitleText}>
               <Text style={{ color: '#FFFFFF' }}>AQ</Text>
               <Text style={{ color: '#FBBF24' }}>U</Text>
@@ -451,7 +451,7 @@ return (
               onPress={handleOpenNotifications}
               style={styles.notificationBell}
             >
-              <Ionicons name="notifications-outline" size={18} color="#ffffff" />
+              <AppIcon name="notifications-outline" size={18} color="#ffffff" />
               {unreadCount > 0 && <View style={styles.notificationBadge} />}
             </TouchableOpacity>
 
@@ -463,7 +463,7 @@ return (
             >
               <Text style={styles.profileName} numberOfLines={1}>{userName}</Text>
               <View style={styles.avatarContainer}>
-                <Ionicons name="person" size={14} color="#ffffff" />
+                <AppIcon name="person" size={14} color="#ffffff" />
                 <View style={styles.activeDot} />
               </View>
             </TouchableOpacity>
@@ -558,7 +558,7 @@ return (
           >
             {/* Left: Warning Icon Container */}
             <View className="bg-red-100 p-2 rounded-xl mr-3 items-center justify-center">
-              <Ionicons name="warning" size={18} color="#EF4444" />
+              <AppIcon name="warning" size={18} color="#EF4444" />
             </View>
 
             {/* Right: Alert text details */}
@@ -604,9 +604,9 @@ return (
             >
               <View style={styles.cardHeaderRow}>
                 <View style={[styles.iconWrapper, { backgroundColor: 'rgba(0, 122, 255, 0.1)' }]}>
-                  <Ionicons name="document-text" size={20} color="#007AFF" />
+                  <AppIcon name="document-text" size={20} color="#007AFF" />
                 </View>
-                <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
+                <AppIcon name="chevron-forward" size={16} color="#C7C7CC" />
               </View>
               <View>
                 <Text style={styles.cardTitle}>File Report</Text>
@@ -622,14 +622,14 @@ return (
             >
               <View style={styles.cardHeaderRow}>
                 <View style={[styles.iconWrapper, { backgroundColor: 'rgba(255, 149, 0, 0.1)' }]}>
-                  <Ionicons name="ticket" size={20} color="#FF9500" />
+                  <AppIcon name="ticket" size={20} color="#FF9500" />
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   {/* Floating badge */}
                   <View style={styles.badgeContainer}>
                     <Text style={styles.badgeText}>{metrics.total || 17}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
+                  <AppIcon name="chevron-forward" size={16} color="#C7C7CC" />
                 </View>
               </View>
               <View>
@@ -648,9 +648,9 @@ return (
             >
               <View style={styles.cardHeaderRow}>
                 <View style={[styles.iconWrapper, { backgroundColor: 'rgba(52, 199, 89, 0.1)' }]}>
-                  <Ionicons name="megaphone" size={20} color="#34C759" />
+                  <AppIcon name="megaphone" size={20} color="#34C759" />
                 </View>
-                <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
+                <AppIcon name="chevron-forward" size={16} color="#C7C7CC" />
               </View>
               <View>
                 <Text style={styles.cardTitle}>Advisories</Text>
@@ -666,9 +666,9 @@ return (
             >
               <View style={styles.cardHeaderRow}>
                 <View style={[styles.iconWrapper, { backgroundColor: 'rgba(88, 86, 214, 0.1)' }]}>
-                  <Ionicons name="headset" size={20} color="#5856D6" />
+                  <AppIcon name="headset" size={20} color="#5856D6" />
                 </View>
-                <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
+                <AppIcon name="chevron-forward" size={16} color="#C7C7CC" />
               </View>
               <View>
                 <Text style={styles.cardTitle}>Support</Text>
@@ -683,7 +683,7 @@ return (
           {/* Card Header */}
           <View className="flex-row items-center justify-between border-b border-[#F2F5FA] pb-3.5 mb-4">
             <View className="flex-row items-center">
-              <Ionicons name="shield-checkmark" size={18} color="#007AFF" style={{ marginRight: 6 }} />
+              <AppIcon name="shield-checkmark" size={18} color="#007AFF" style={{ marginRight: 6 }} />
               <Text className="text-[#0B2240] font-black text-[10px] tracking-wider uppercase">
                 Water Health Index
               </Text>
@@ -762,7 +762,7 @@ return (
                       style={{ backgroundColor: statusCfg.bg, borderColor: statusCfg.text }}
                       className="flex-row items-center rounded-full py-1 px-2.5 border"
                     >
-                      <Ionicons 
+                      <AppIcon 
                         name={statusIconConfigs[item.status]?.name || 'alert-circle-outline'} 
                         size={11} 
                         color={statusCfg.text} 
@@ -788,7 +788,7 @@ return (
             })
           ) : (
             <View style={styles.emptyActivityCard}>
-              <Ionicons name="clipboard-outline" size={24} color="#8E8E93" style={{ marginBottom: 8 }} />
+              <AppIcon name="clipboard-outline" size={24} color="#8E8E93" style={{ marginBottom: 8 }} />
               <Text style={styles.emptyActivityTitle}>No Recent Reports</Text>
               <Text style={styles.emptyActivityDesc}>Any reports you file will show up here as live status logs.</Text>
             </View>
@@ -813,38 +813,38 @@ return (
       >
         {/* Tab 1: Home */}
         <TouchableOpacity style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} activeOpacity={0.7}>
-          <Ionicons name="home" size={22} color="#007AFF" />
+          <AppIcon name="home" size={22} color="#007AFF" />
           <Text style={{ fontSize: 9, fontFamily: theme.fonts.bold, color: '#007AFF', marginTop: 2 }}>Home</Text>
           <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#007AFF', marginTop: 2 }} />
         </TouchableOpacity>
 
         {/* Tab 2: Docs */}
         <TouchableOpacity style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} onPress={() => navigation.navigate('FileComplaint')} activeOpacity={0.7}>
-          <Ionicons name="document-text-outline" size={22} color="#64748B" />
+          <AppIcon name="document-text-outline" size={22} color="#64748B" />
           <Text style={{ fontSize: 9, fontFamily: theme.fonts.semiBold, color: '#64748B', marginTop: 2 }}>Docs</Text>
         </TouchableOpacity>
 
         {/* Tab 3: Ticket */}
         <TouchableOpacity style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} onPress={() => navigation.navigate('TrackComplaints')} activeOpacity={0.7}>
-          <Ionicons name="ticket-outline" size={22} color="#64748B" />
+          <AppIcon name="ticket-outline" size={22} color="#64748B" />
           <Text style={{ fontSize: 9, fontFamily: theme.fonts.semiBold, color: '#64748B', marginTop: 2 }}>Ticket</Text>
         </TouchableOpacity>
 
         {/* Tab 4: Megaphone / Advisories Icon */}
         <TouchableOpacity style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} onPress={() => navigation.navigate('Announcements')} activeOpacity={0.7}>
-          <Ionicons name="megaphone-outline" size={22} color="#64748B" />
+          <AppIcon name="megaphone-outline" size={22} color="#64748B" />
           <Text style={{ fontSize: 9, fontFamily: theme.fonts.semiBold, color: '#64748B', marginTop: 2 }}>Advisories</Text>
         </TouchableOpacity>
 
         {/* Tab 5: Settings Icon (RIGHT BESIDE MEGAPHONE!) */}
         <TouchableOpacity style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} onPress={handleProfilePress} activeOpacity={0.7}>
-          <Ionicons name="settings-sharp" size={22} color="#007AFF" />
+          <AppIcon name="settings-sharp" size={22} color="#007AFF" />
           <Text style={{ fontSize: 9, fontFamily: theme.fonts.bold, color: '#007AFF', marginTop: 2 }}>Settings</Text>
         </TouchableOpacity>
 
         {/* Tab 6: Profile */}
         <TouchableOpacity style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} onPress={handleProfilePress} activeOpacity={0.7}>
-          <Ionicons name="person-outline" size={22} color="#64748B" />
+          <AppIcon name="person-outline" size={22} color="#64748B" />
           <Text style={{ fontSize: 9, fontFamily: theme.fonts.semiBold, color: '#64748B', marginTop: 2 }}>Profile</Text>
         </TouchableOpacity>
       </View>
@@ -877,14 +877,14 @@ return (
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Resident Options</Text>
                 <TouchableOpacity onPress={() => setProfileModalVisible(false)}>
-                  <Ionicons name="close" size={20} color="#0B1C3F" />
+                  <AppIcon name="close" size={20} color="#0B1C3F" />
                 </TouchableOpacity>
               </View>
 
               {/* Profile Info Row */}
               <View style={styles.modalUserSection}>
                 <View style={styles.modalAvatarLarge}>
-                  <Ionicons name="person" size={20} color="#ffffff" />
+                  <AppIcon name="person" size={20} color="#ffffff" />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.modalUserName}>{userName}</Text>
@@ -902,7 +902,7 @@ return (
                     navigation.navigate('ComplaintHistory');
                   }}
                 >
-                  <Ionicons name="archive-outline" size={15} color="#001e66" style={{ marginRight: 6 }} />
+                  <AppIcon name="archive-outline" size={15} color="#001e66" style={{ marginRight: 6 }} />
                   <Text style={styles.modalBtnSecondaryText}>Resolved Tickets History</Text>
                 </TouchableOpacity>
 
@@ -914,7 +914,7 @@ return (
                     navigation.navigate('ManageAccount');
                   }}
                 >
-                  <Ionicons name="settings-outline" size={15} color="#ffffff" style={{ marginRight: 6 }} />
+                  <AppIcon name="settings-outline" size={15} color="#ffffff" style={{ marginRight: 6 }} />
                   <Text style={styles.modalBtnPrimaryText}>Manage Account</Text>
                 </TouchableOpacity>
 
@@ -926,7 +926,7 @@ return (
                     await handleLogout();
                   }}
                 >
-                  <Ionicons name="log-out-outline" size={15} color="#FF3B30" style={{ marginRight: 6 }} />
+                  <AppIcon name="log-out-outline" size={15} color="#FF3B30" style={{ marginRight: 6 }} />
                   <Text style={styles.modalBtnDangerText}>Log Out Account</Text>
                 </TouchableOpacity>
               </View>
@@ -956,14 +956,14 @@ return (
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Notifications & Updates</Text>
               <TouchableOpacity onPress={() => setNotificationsModalVisible(false)}>
-                <Ionicons name="close" size={20} color="#0B1C3F" />
+                <AppIcon name="close" size={20} color="#0B1C3F" />
               </TouchableOpacity>
             </View>
 
             {/* Notifications Scrollable List */}
             {notifications.length === 0 ? (
               <View style={styles.emptyNotifications}>
-                <Ionicons name="notifications-off-outline" size={48} color="#94a3b8" />
+                <AppIcon name="notifications-off-outline" size={48} color="#94a3b8" />
                 <Text style={styles.emptyNotificationsText}>No updates or notifications yet.</Text>
               </View>
             ) : (
@@ -1017,7 +1017,7 @@ return (
                       ]}
                     >
                       <View style={[styles.notificationIconContainer, { backgroundColor: iconBg }]}>
-                        <Ionicons name={iconName} size={18} color={iconColor} />
+                        <AppIcon name={iconName} size={18} color={iconColor} />
                       </View>
                       <View style={styles.notificationContent}>
                         <Text style={styles.notificationTitle}>{item.title}</Text>

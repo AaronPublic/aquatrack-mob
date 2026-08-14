@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, RefreshControl, Alert, ScrollView } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
-import { Ionicons } from '@expo/vector-icons';
+import AppIcon from '../../components/AppIcon';
 import styles from './SubAdminComplaints.styles';
 import TechHeader from './TechHeader';
 
@@ -307,7 +307,7 @@ export default function SubAdminComplaints({ navigation }) {
                     elevation: 2,
                   }}
                 >
-                  <Ionicons name="search" size={18} color="#0C4F8B" style={{ marginRight: 10 }} />
+                  <AppIcon name="search" size={18} color="#0C4F8B" style={{ marginRight: 10 }} />
                   <TextInput
                     style={{
                       flex: 1,
@@ -321,7 +321,7 @@ export default function SubAdminComplaints({ navigation }) {
                   />
                   {search.length > 0 && (
                     <TouchableOpacity onPress={() => setSearch('')} activeOpacity={0.7} style={{ padding: 2 }}>
-                      <Ionicons name="close-circle" size={18} color="#94A3B8" />
+                      <AppIcon name="close-circle" size={18} color="#94A3B8" />
                     </TouchableOpacity>
                   )}
                 </View>

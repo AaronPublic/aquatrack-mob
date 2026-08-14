@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
-import { Ionicons } from '@expo/vector-icons';
+import AppIcon from '../../components/AppIcon';
 import { LinearGradient } from 'expo-linear-gradient';
 import styles from './SubAdminHomePage.styles';
 
@@ -162,7 +162,7 @@ export default function SubAdminHomePage({ navigation }) {
             <Text style={styles.techNameTitle}>FT-{techName.split(' ')[0]}</Text>
           </View>
           <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
-            <Ionicons name="log-out-outline" size={16} color="#FF3B30" />
+            <AppIcon name="log-out-outline" size={16} color="#FF3B30" />
             <Text style={styles.logoutText}>Logout</Text>
           </TouchableOpacity>
         </View>
@@ -230,7 +230,7 @@ export default function SubAdminHomePage({ navigation }) {
           </View>
         ) : (
           <View style={styles.emptyTrackerBox}>
-            <Ionicons name="construct-outline" size={24} color="#8E8E93" style={{ marginBottom: 6 }} />
+            <AppIcon name="construct-outline" size={24} color="#8E8E93" style={{ marginBottom: 6 }} />
             <Text style={styles.emptyTrackerTitle}>No Active Jobs Assigned</Text>
             <Text style={styles.emptyTrackerDesc}>You are currently available for dispatch work orders.</Text>
           </View>
@@ -248,7 +248,7 @@ export default function SubAdminHomePage({ navigation }) {
             >
               <View style={styles.cardHeaderRow}>
                 <View style={[styles.iconWrapper, { backgroundColor: 'rgba(0, 174, 239, 0.1)' }]}>
-                  <Ionicons name="chatbubbles" size={18} color="#00aeef" />
+                  <AppIcon name="chatbubbles" size={18} color="#00aeef" />
                 </View>
                 {metrics.pendingTriage > 0 && (
                   <View style={styles.badgeContainer}>
@@ -268,7 +268,7 @@ export default function SubAdminHomePage({ navigation }) {
             >
               <View style={styles.cardHeaderRow}>
                 <View style={[styles.iconWrapper, { backgroundColor: 'rgba(0, 30, 102, 0.1)' }]}>
-                  <Ionicons name="pulse" size={18} color="#001e66" />
+                  <AppIcon name="pulse" size={18} color="#001e66" />
                 </View>
               </View>
               <Text style={styles.cardTitle}>IoT Telemetry</Text>
@@ -285,7 +285,7 @@ export default function SubAdminHomePage({ navigation }) {
             >
               <View style={styles.cardHeaderRow}>
                 <View style={[styles.iconWrapper, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
-                  <Ionicons name="megaphone" size={18} color="#f59e0b" />
+                  <AppIcon name="megaphone" size={18} color="#f59e0b" />
                 </View>
               </View>
               <Text style={styles.cardTitle}>Advisories</Text>
@@ -300,7 +300,7 @@ export default function SubAdminHomePage({ navigation }) {
             >
               <View style={styles.cardHeaderRow}>
                 <View style={[styles.iconWrapper, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
-                  <Ionicons name="call" size={18} color="#10b981" />
+                  <AppIcon name="call" size={18} color="#10b981" />
                 </View>
               </View>
               <Text style={styles.cardTitle}>Dispatch Room</Text>

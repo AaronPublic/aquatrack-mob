@@ -10,7 +10,7 @@ A production-ready mobile application built for water anomaly reporting and fiel
 - **Framework**: React Native 0.86.0 via Expo SDK 57
 - **Styling**: NativeWind v4 (Tailwind CSS utility engine for React Native)
 - **Navigation**: React Navigation v6 — `@react-navigation/native-stack` + `@react-navigation/bottom-tabs`
-- **Icons**: `@expo/vector-icons` (Ionicons)
+- **Icons**: `lucide-react-native` via the central `components/AppIcon.js` wrapper (legacy Ionicons name strings, e.g. `'arrow-back'`, `'document-text-outline'`, are mapped to Lucide components — static and dynamic `name={...}` usages both work)
 - **Typography**: Plus Jakarta Sans (via `@expo-google-fonts/plus-jakarta-sans`) as the global default font; Geist Mono for numeric readouts
 - **Animations**: `react-native-reanimated` + `react-native-gesture-handler`
 
@@ -21,7 +21,7 @@ A production-ready mobile application built for water anomaly reporting and fiel
 ### Hardware & Geospatial
 - **Geo-Location**: `expo-location` — real-time WGS84 coordinates
 - **Media Capture**: `expo-image-picker` — camera and gallery access
-- **Interactive Maps**: `react-native-maps` — draggable markers and map canvases
+- **Interactive Maps**: `@rnmapbox/maps` (Mapbox Maps SDK v11) — draggable red pin and camera follow on native (Android/iOS); OSM iframe fallback for web. Mapbox requires a custom/dev build (NOT Expo Go). `react-native-maps` is installed but unused.
 
 ### Backend Integration
 - **Database & Auth**: `@supabase/supabase-js` with AsyncStorage session adapter
@@ -247,3 +247,19 @@ Secondary screens also received the `{ navigation }` prop to enable notification
 ### Push Notification Favicon Branding (`app.json`)
 - **Native Notification Icon:** Configured the `notification` manifest property inside `app.json` to load `./assets/favicon.png` as the native notification status icon badge instead of the general application logo.
 - **Brand Accents:** Styled the notification icon background color dynamically to match the official AquaTrack brand color tint (`#00aeef`).
+
+## Session Changelog (August 15, 2026)
+
+### Icon Migration — `@expo/vector-icons` → `lucide-react-native`
+- Added `lucide-react-native` (1.31.0) + `react-native-svg` (15.15.4). Created the central `components/AppIcon.js` wrapper: it accepts the same `name`/`size`/`color`/`style` props as Ionicons and maps the legacy Ionicons name strings (e.g. `'arrow-back'` → `ArrowLeft`, `'construct-outline'` → `Wrench`, `'pulse'` → `Activity`, `'water'` → `Droplets`) to Lucide components; unknown names fall back to `AlertCircle`. `@expo/vector-icons` fully removed from app code (still listed in `package.json` deps).
+- Migrated 16 files: all consumer pages, all sub-admin pages, auth pages, and `src/navigation/RootNavigator.js`. `npx expo export --platform web` compiles clean.
+- Requires a **native rebuild** (`react-native-svg` is a native module): `npx expo prebuild --platform android --clean` → recreate `android/local.properties` → `npm run android` (hot reload will not pick it up).
+
+### Mapbox Map Restored in `FileComplaint.js`
+- The interactive Mapbox map (uncommitted work) was accidentally reverted by a `git checkout`; recovered byte-for-byte from the Metro cache. Rebuilt: `MapboxGL.MapView` + `MapboxGL.Camera` (ref `cameraRef`, `zoomLevel: 14`) + draggable red `PointAnnotation` (`id="complaint-pin"`, `onDragEnd` → `handlePinDragEnd` which re-runs `/api/locate-barangay`). Handlers: `focusMapOn`, `handleMapLoaded`, `handlePinDragEnd`.
+- Web target unchanged: OSM iframe via `WebMap` + "Awaiting Location" placeholder. Native Mapbox is guarded by `Platform.OS === 'web'`. Removed `react-native-maps` imports, the `hasNativeMap` flag, and the Yandex static-image fallback entirely.
+- `cameraRef`/`mapReadyRef` approach — never `setTimeout` for camera focus.
+
+### Technician Location Tracking Fix (`SubAdminHome.js`)
+- Also recovered from the Metro cache (this fix was uncommitted too and lost in the same checkout). `Location.getCurrentPositionAsync()` is now wrapped in `try/catch` with `Location.getLastKnownPositionAsync()` as fallback; if no location is available at all, live tracking is skipped with a `console.warn` instead of the effect silently failing.
+- Verified present at `SubAdminHome.js:179-191` and the bundle compiles.

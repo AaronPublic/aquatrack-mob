@@ -18,7 +18,7 @@ import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import styles from './Login.styles';
 import { useAuthStore } from '../../src/store/useAuthStore';
-import { Ionicons } from '@expo/vector-icons';
+import AppIcon from '../../components/AppIcon';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -287,7 +287,7 @@ export default function Login({ navigation, route }) {
             </View>
 
             <View style={styles.cityBadge}>
-              <Ionicons name="water-outline" size={13} color="#E0F2FE" style={{ marginRight: 4 }} />
+              <AppIcon name="water-outline" size={13} color="#E0F2FE" style={{ marginRight: 4 }} />
               <Text style={styles.brandSubtitle}>CITY OF SAN FERNANDO</Text>
             </View>
 
@@ -316,7 +316,7 @@ export default function Login({ navigation, route }) {
             {/* Global Error Banner */}
             {error && (
               <View style={styles.errorBox}>
-                <Ionicons name="alert-circle-outline" size={18} color="#D32F2F" style={{ marginRight: 6 }} />
+                <AppIcon name="alert-circle-outline" size={18} color="#D32F2F" style={{ marginRight: 6 }} />
                 <Text style={styles.errorBoxText}>{error}</Text>
               </View>
             )}
@@ -329,7 +329,7 @@ export default function Login({ navigation, route }) {
                   style={styles.idleLoginBtn}
                   onPress={handleOpenLogin}
                 >
-                  <Ionicons name="log-in-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <AppIcon name="log-in-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
                   <Text style={styles.idleLoginBtnText}>LOGIN</Text>
                 </TouchableOpacity>
 
@@ -338,7 +338,7 @@ export default function Login({ navigation, route }) {
                   style={styles.idleRegisterBtn}
                   onPress={handleOpenRegister}
                 >
-                  <Ionicons name="person-add-outline" size={20} color="#2196F3" style={{ marginRight: 8 }} />
+                  <AppIcon name="person-add-outline" size={20} color="#2196F3" style={{ marginRight: 8 }} />
                   <Text style={styles.idleRegisterBtnText}>REGISTER</Text>
                 </TouchableOpacity>
 
@@ -366,7 +366,7 @@ export default function Login({ navigation, route }) {
                     style={styles.backBtn}
                     onPress={handleBackToLanding}
                   >
-                    <Ionicons name="arrow-back" size={20} color="#2196F3" />
+                    <AppIcon name="arrow-back" size={20} color="#2196F3" />
                     <Text style={styles.backBtnText}>Back</Text>
                   </TouchableOpacity>
                   <Text style={styles.formHeaderTitle}>LOGIN</Text>
@@ -379,7 +379,7 @@ export default function Login({ navigation, route }) {
                     style={[styles.subSelectorBtn, authMethod === 'PASSWORD' && styles.subSelectorBtnActive]}
                     onPress={() => { setAuthMethod('PASSWORD'); setError(null); }}
                   >
-                    <Ionicons 
+                    <AppIcon 
                       name="key-outline" 
                       size={14} 
                       color={authMethod === 'PASSWORD' ? '#2196F3' : '#64748B'} 
@@ -395,7 +395,7 @@ export default function Login({ navigation, route }) {
                     style={[styles.subSelectorBtn, authMethod === 'BILLING' && styles.subSelectorBtnActive]}
                     onPress={() => { setAuthMethod('BILLING'); setError(null); }}
                   >
-                    <Ionicons 
+                    <AppIcon 
                       name="qr-code-outline" 
                       size={14} 
                       color={authMethod === 'BILLING' ? '#2196F3' : '#64748B'} 
@@ -413,7 +413,7 @@ export default function Login({ navigation, route }) {
                     <View style={styles.fieldGroup}>
                       <Text style={styles.fieldLabel}>EMAIL ADDRESS</Text>
                       <View style={styles.fieldInputWrapper}>
-                        <Ionicons name="mail-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
+                        <AppIcon name="mail-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
                         <TextInput
                           style={styles.fieldInput}
                           placeholder="e.g. resident@sanfernando.gov.ph"
@@ -432,7 +432,7 @@ export default function Login({ navigation, route }) {
                     <View style={styles.fieldGroup}>
                       <Text style={styles.fieldLabel}>PASSWORD</Text>
                       <View style={styles.fieldInputWrapper}>
-                        <Ionicons name="lock-closed-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
+                        <AppIcon name="lock-closed-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
                         <TextInput
                           style={styles.fieldInput}
                           placeholder="Enter password"
@@ -446,7 +446,7 @@ export default function Login({ navigation, route }) {
                           onPress={() => setShowPassword(!showPassword)}
                           style={styles.fieldIconRight}
                         >
-                          <Ionicons 
+                          <AppIcon 
                             name={showPassword ? "eye-off-outline" : "eye-outline"} 
                             size={20} 
                             color="#64748B" 
@@ -461,7 +461,7 @@ export default function Login({ navigation, route }) {
                     <View style={styles.fieldGroup}>
                       <Text style={styles.fieldLabel}>BILLING ID</Text>
                       <View style={styles.fieldInputWrapper}>
-                        <Ionicons name="receipt-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
+                        <AppIcon name="receipt-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
                         <TextInput
                           style={[styles.fieldInput, { fontFamily: 'GeistMono-Regular' }]}
                           placeholder="BILL-SF904128"
@@ -484,7 +484,7 @@ export default function Login({ navigation, route }) {
                         <ActivityIndicator color="#FFFFFF" size="small" />
                       ) : (
                         <>
-                          <Ionicons name="scan-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                          <AppIcon name="scan-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
                           <Text style={styles.qrScanBtnText}>SIMULATE QR SCAN</Text>
                         </>
                       )}
@@ -504,7 +504,7 @@ export default function Login({ navigation, route }) {
                   ) : (
                     <>
                       <Text style={styles.primaryActionText}>SIGN IN</Text>
-                      <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+                      <AppIcon name="arrow-forward" size={18} color="#FFFFFF" />
                     </>
                   )}
                 </TouchableOpacity>
@@ -526,7 +526,7 @@ export default function Login({ navigation, route }) {
                     style={styles.backBtn}
                     onPress={handleBackToLanding}
                   >
-                    <Ionicons name="arrow-back" size={20} color="#2196F3" />
+                    <AppIcon name="arrow-back" size={20} color="#2196F3" />
                     <Text style={styles.backBtnText}>BACK</Text>
                   </TouchableOpacity>
                   <Text style={styles.formHeaderTitle}>REGISTER</Text>
@@ -536,7 +536,7 @@ export default function Login({ navigation, route }) {
                 <View style={styles.fieldGroup}>
                   <Text style={styles.fieldLabel}>FULL NAME</Text>
                   <View style={styles.fieldInputWrapper}>
-                    <Ionicons name="person-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
+                    <AppIcon name="person-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
                     <TextInput
                       style={styles.fieldInput}
                       placeholder="Juan dela Cruz"
@@ -551,7 +551,7 @@ export default function Login({ navigation, route }) {
                 <View style={styles.fieldGroup}>
                   <Text style={styles.fieldLabel}>EMAIL ADDRESS</Text>
                   <View style={styles.fieldInputWrapper}>
-                    <Ionicons name="mail-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
+                    <AppIcon name="mail-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
                     <TextInput
                       style={styles.fieldInput}
                       placeholder="juan@domain.com"
@@ -568,7 +568,7 @@ export default function Login({ navigation, route }) {
                 <View style={styles.fieldGroup}>
                   <Text style={styles.fieldLabel}>PASSWORD</Text>
                   <View style={styles.fieldInputWrapper}>
-                    <Ionicons name="lock-closed-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
+                    <AppIcon name="lock-closed-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
                     <TextInput
                       style={styles.fieldInput}
                       placeholder="e.g. Pass1234*"
@@ -582,7 +582,7 @@ export default function Login({ navigation, route }) {
                       onPress={() => setRegShowPassword(!regShowPassword)}
                       style={styles.fieldIconRight}
                     >
-                      <Ionicons 
+                      <AppIcon 
                         name={regShowPassword ? "eye-off-outline" : "eye-outline"} 
                         size={20} 
                         color="#64748B" 
@@ -598,7 +598,7 @@ export default function Login({ navigation, route }) {
                 <View style={styles.fieldGroup}>
                   <Text style={styles.fieldLabel}>CONFIRM PASSWORD</Text>
                   <View style={styles.fieldInputWrapper}>
-                    <Ionicons name="checkmark-circle-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
+                    <AppIcon name="checkmark-circle-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
                     <TextInput
                       style={styles.fieldInput}
                       placeholder="Re-enter password"
@@ -623,7 +623,7 @@ export default function Login({ navigation, route }) {
                   ) : (
                     <>
                       <Text style={styles.primaryActionText}>CREATE ACCOUNT</Text>
-                      <Ionicons name="person-add-outline" size={18} color="#FFFFFF" />
+                      <AppIcon name="person-add-outline" size={18} color="#FFFFFF" />
                     </>
                   )}
                 </TouchableOpacity>
@@ -684,7 +684,7 @@ export default function Login({ navigation, route }) {
                 marginBottom: 16,
               }}
             >
-              <Ionicons name="shield-outline" size={30} color="#EF4444" />
+              <AppIcon name="shield-outline" size={30} color="#EF4444" />
             </View>
 
             {/* Modal Title & Message */}

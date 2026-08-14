@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
 import { api } from '../../src/config/api';
-import { Ionicons } from '@expo/vector-icons';
+import AppIcon from '../../components/AppIcon';
 import styles from './SubAdminAdvisories.styles';
 import TechHeader from './TechHeader';
 

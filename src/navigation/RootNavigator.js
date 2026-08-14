@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
+import AppIcon from '../../components/AppIcon';
 import { supabase } from '../config/supabase';
 import { theme } from '../config/theme';
 import { useAuthStore } from '../store/useAuthStore';
@@ -87,7 +87,7 @@ function ConsumerTabNavigator() {
           
           return (
             <View style={{ alignItems: 'center', justifyContent: 'center', height: '100%', paddingTop: 4 }}>
-              <Ionicons name={iconName} size={20} color={color} />
+              <AppIcon name={iconName} size={20} color={color} />
               {focused && (
                 <View 
                   style={{ 
@@ -158,7 +158,7 @@ function SubAdminTabNavigator() {
           
           return (
             <View style={{ alignItems: 'center', justifyContent: 'center', height: '100%', paddingTop: 4 }}>
-              <Ionicons name={iconName} size={20} color={color} />
+              <AppIcon name={iconName} size={20} color={color} />
               {focused && (
                 <View 
                   style={{ 

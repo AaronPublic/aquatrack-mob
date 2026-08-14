@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
-import { Ionicons } from '@expo/vector-icons';
+import AppIcon from '../../components/AppIcon';
 import styles from './SubAdminTelemetry.styles';
 import TechHeader from './TechHeader';
 

@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "checkJs": false,
+    "allowJs": true,
+    "maxNodeModuleJsDepth": 0,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "esnext",
+    "jsx": "react-native"
+  },
+  "exclude": ["node_modules", "android", "ios", "dist", ".expo"]
+}

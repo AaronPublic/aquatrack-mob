@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { supabase } from '../../src/config/supabase';
-import { Ionicons } from '@expo/vector-icons';
+import AppIcon from '../../components/AppIcon';
 import styles from './ComplaintHistory.styles';
 import TechHeader from '../subadminpages/TechHeader';
 
@@ -102,7 +102,7 @@ export default function ComplaintHistory({ navigation }) {
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="archive-outline" size={48} color="#8E8E93" style={{ marginBottom: 12 }} />
+              <AppIcon name="archive-outline" size={48} color="#8E8E93" style={{ marginBottom: 12 }} />
               <Text style={styles.emptyTitle}>No Resolved Tickets</Text>
               <Text style={styles.emptySubtitle}>Any tickets filed that are resolved by field staff will be archived here.</Text>
             </View>

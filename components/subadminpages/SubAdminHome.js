@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, Animated } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
-import { Ionicons } from '@expo/vector-icons';
+import AppIcon from '../../components/AppIcon';
 import styles from './SubAdminHome.styles';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useTechNotificationStore } from '../../src/store/useTechNotificationStore';
@@ -176,9 +176,19 @@ export default function SubAdminHome({ navigation }) {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') return;
 
-        const initialLoc = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
+        let initialLoc = null;
+        try {
+          initialLoc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+        } catch (locErr) {
+          initialLoc = await Location.getLastKnownPositionAsync();
+        }
+
+        if (!initialLoc) {
+          console.warn('Technician location unavailable — live tracking skipped');
+          return;
+        }
 
         const { data: { session } } = await supabase.auth.getSession();
         if (session && isMounted) {
@@ -372,7 +382,7 @@ export default function SubAdminHome({ navigation }) {
           </View>
         ) : (
           <View style={[styles.emptyTrackerBox, { marginBottom: 20, borderRadius: 24 }]}>
-            <Ionicons name="construct-outline" size={24} color="#8E8E93" style={{ marginBottom: 6 }} />
+            <AppIcon name="construct-outline" size={24} color="#8E8E93" style={{ marginBottom: 6 }} />
             <Text style={styles.emptyTrackerTitle}>No Active Jobs Assigned</Text>
             <Text style={styles.emptyTrackerDesc}>You are currently available for dispatch work orders.</Text>
           </View>
@@ -402,7 +412,7 @@ export default function SubAdminHome({ navigation }) {
             >
               <View style={styles.cardHeaderRow}>
                 <View style={[styles.iconWrapper, { backgroundColor: 'rgba(0, 174, 239, 0.1)' }]}>
-                  <Ionicons name="chatbubbles" size={18} color="#00aeef" />
+                  <AppIcon name="chatbubbles" size={18} color="#00aeef" />
                 </View>
                 {metrics.pendingTriage > 0 && (
                   <View style={styles.badgeContainer}>
@@ -432,7 +442,7 @@ export default function SubAdminHome({ navigation }) {
             >
               <View style={styles.cardHeaderRow}>
                 <View style={[styles.iconWrapper, { backgroundColor: 'rgba(0, 30, 102, 0.1)' }]}>
-                  <Ionicons name="pulse" size={18} color="#001e66" />
+                  <AppIcon name="pulse" size={18} color="#001e66" />
                 </View>
               </View>
               <Text style={styles.cardTitle}>IoT Telemetry</Text>
@@ -459,7 +469,7 @@ export default function SubAdminHome({ navigation }) {
             >
               <View style={styles.cardHeaderRow}>
                 <View style={[styles.iconWrapper, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
-                  <Ionicons name="megaphone" size={18} color="#f59e0b" />
+                  <AppIcon name="megaphone" size={18} color="#f59e0b" />
                 </View>
               </View>
               <Text style={styles.cardTitle}>Advisories</Text>
@@ -484,7 +494,7 @@ export default function SubAdminHome({ navigation }) {
             >
               <View style={styles.cardHeaderRow}>
                 <View style={[styles.iconWrapper, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
-                  <Ionicons name="call" size={18} color="#10b981" />
+                  <AppIcon name="call" size={18} color="#10b981" />
                 </View>
               </View>
               <Text style={styles.cardTitle}>Dispatch Room</Text>
@@ -522,14 +532,14 @@ export default function SubAdminHome({ navigation }) {
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Technician Options</Text>
                 <TouchableOpacity onPress={() => setProfileModalVisible(false)}>
-                  <Ionicons name="close" size={20} color="#0B1C3F" />
+                  <AppIcon name="close" size={20} color="#0B1C3F" />
                 </TouchableOpacity>
               </View>
 
               {/* Profile Info Row */}
               <View style={styles.modalUserSection}>
                 <View style={styles.modalAvatarLarge}>
-                  <Ionicons name="person" size={20} color="#ffffff" />
+                  <AppIcon name="person" size={20} color="#ffffff" />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.modalUserName}>{techName}</Text>
@@ -547,7 +557,7 @@ export default function SubAdminHome({ navigation }) {
                     navigation.navigate('ManageAccount');
                   }}
                 >
-                  <Ionicons name="settings-outline" size={15} color="#ffffff" style={{ marginRight: 6 }} />
+                  <AppIcon name="settings-outline" size={15} color="#ffffff" style={{ marginRight: 6 }} />
                   <Text style={styles.modalBtnPrimaryText}>Manage Account</Text>
                 </TouchableOpacity>
 
@@ -559,7 +569,7 @@ export default function SubAdminHome({ navigation }) {
                     await handleLogout();
                   }}
                 >
-                  <Ionicons name="log-out-outline" size={15} color="#FF3B30" style={{ marginRight: 6 }} />
+                  <AppIcon name="log-out-outline" size={15} color="#FF3B30" style={{ marginRight: 6 }} />
                   <Text style={styles.modalBtnDangerText}>Log Out Account</Text>
                 </TouchableOpacity>
               </View>

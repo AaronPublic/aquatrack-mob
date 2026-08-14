@@ -3,15 +3,23 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, ActivityInd
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import MapView, { Marker } from 'react-native-maps';
+import MapboxGL from '@rnmapbox/maps';
+import { MAPBOX_ACCESS_TOKEN, MAPBOX_STYLE_URL } from '../../src/config/mapbox';
 import { api } from '../../src/config/api';
 import { supabase } from '../../src/config/supabase';
-import { Ionicons } from '@expo/vector-icons';
+import AppIcon from '../../components/AppIcon';
 import styles from './FileComplaint.styles';
 import homeStyles from './ConsumerHome.styles';
 import { useNotificationStore } from '../../src/store/useNotificationStore';
 
-const hasNativeMap = false; // Set to false to prevent Google Maps native crash due to empty API keys in AndroidManifest
+// Mapbox native access token — set at module load (web build uses the OSM iframe below instead)
+if (Platform.OS !== 'web') {
+  try {
+    MapboxGL.setAccessToken(MAPBOX_ACCESS_TOKEN);
+  } catch (err) {
+    console.warn('[Mapbox] setAccessToken failed:', err?.message);
+  }
+}
 
 const WebMap = ({ latitude, longitude }) => {
   if (Platform.OS !== 'web') return null;
@@ -56,6 +64,43 @@ export default function FileComplaint({ navigation }) {
   const [userName, setUserName] = useState('Pedro');
   const [notificationsModalVisible, setNotificationsModalVisible] = useState(false);
   const { notifications, unreadCount, markAllAsRead, dismissNotification } = useNotificationStore();
+
+  const cameraRef = useRef(null);
+  const mapReadyRef = useRef(false);
+  const focusMapOn = (lat, lng) => {
+    if (cameraRef.current && mapReadyRef.current) {
+      cameraRef.current.setCamera({
+        centerCoordinate: [lng, lat],
+        zoomLevel: 14,
+        animationDuration: 300
+      });
+    }
+  };
+  const handleMapLoaded = () => {
+    mapReadyRef.current = true;
+    focusMapOn(location.latitude, location.longitude);
+  };
+  const handlePinDragEnd = (payload) => {
+    const coords = payload?.geometry?.coordinates;
+    if (!coords || coords.length < 2) return;
+    const newCoords = {
+      latitude: coords[1],
+      longitude: coords[0]
+    };
+    setLocation(newCoords);
+    api.post('/api/locate-barangay', {
+      latitude: newCoords.latitude,
+      longitude: newCoords.longitude
+    }).then((locData) => {
+      if (locData && locData.barangay) {
+        setBarangay(locData.barangay);
+        setOutOfScope(false);
+      } else {
+        setBarangay("Unknown Area");
+        setOutOfScope(true);
+      }
+    });
+  };
 
   const handleOpenNotifications = () => {
     setNotificationsModalVisible(true);
@@ -147,6 +192,7 @@ export default function FileComplaint({ navigation }) {
         setHasLocation(true);
         setBarangay(locData.barangay);
         setOutOfScope(false);
+        focusMapOn(newCoords.latitude, newCoords.longitude);
         return { coords: newCoords, barangay: locData.barangay, outOfScope: false };
       } else {
         setBarangay('Unknown Area');
@@ -339,7 +385,7 @@ export default function FileComplaint({ navigation }) {
               borderColor: 'rgba(255, 255, 255, 0.28)'
             }}
           >
-            <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+            <AppIcon name="arrow-back" size={22} color="#FFFFFF" />
           </TouchableOpacity>
 
           {/* Right Header Controls (Notification Bell) */}
@@ -349,7 +395,7 @@ export default function FileComplaint({ navigation }) {
               onPress={handleOpenNotifications}
               style={homeStyles.notificationBell}
             >
-              <Ionicons name="notifications-outline" size={20} color="#ffffff" />
+              <AppIcon name="notifications-outline" size={20} color="#ffffff" />
               {unreadCount > 0 && <View style={homeStyles.notificationBadge} />}
             </TouchableOpacity>
           </View>
@@ -361,7 +407,7 @@ export default function FileComplaint({ navigation }) {
             File A Report
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 6 }}>
-            <Ionicons name="alert-circle-outline" size={14} color="#7DD3FC" />
+            <AppIcon name="alert-circle-outline" size={14} color="#7DD3FC" />
             <Text style={{ color: '#BAE6FD', fontSize: 12, fontWeight: '600' }}>
               Report water utility & infrastructure anomalies
             </Text>
@@ -421,71 +467,53 @@ export default function FileComplaint({ navigation }) {
           }}
         >
           <View className="w-full h-48 rounded-2xl overflow-hidden border border-[#E2E8F5] mb-4">
-            {hasNativeMap ? (
-              <MapView
-                style={{ width: '100%', height: '100%' }}
-                initialRegion={{
-                  latitude: location.latitude,
-                  longitude: location.longitude,
-                  latitudeDelta: 0.05,
-                  longitudeDelta: 0.05,
-                }}
-                region={{
-                  latitude: location.latitude,
-                  longitude: location.longitude,
-                  latitudeDelta: 0.015,
-                  longitudeDelta: 0.015,
-                }}
-              >
-                {hasLocation && (
-                  <Marker
-                    coordinate={location}
-                    draggable
-                    onDragEnd={(e) => {
-                      const newCoords = e.nativeEvent.coordinate;
-                      setLocation(newCoords);
-                      api.post('/api/locate-barangay', {
-                        latitude: newCoords.latitude,
-                        longitude: newCoords.longitude,
-                      }).then((locData) => {
-                        if (locData && locData.barangay) {
-                          setBarangay(locData.barangay);
-                          setOutOfScope(false);
-                        } else {
-                          setBarangay("Unknown Area");
-                          setOutOfScope(true);
-                        }
-                      });
-                    }}
-                    pinColor="red"
-                  />
-                )}
-              </MapView>
-            ) : (
-              Platform.OS === 'web' && hasLocation ? (
+            {hasLocation ? (
+              Platform.OS === 'web' ? (
                 <WebMap latitude={location.latitude} longitude={location.longitude} />
               ) : (
-                <View className="flex-1 bg-[#F8FAFC] items-center justify-center p-4">
-                  {hasLocation ? (
-                    <Image
-                      source={{
-                        uri: `https://static-maps.yandex.ru/1.x/?ll=${location.longitude},${location.latitude}&size=450,200&z=14&l=map&pt=${location.longitude},${location.latitude},pm2rdl`
+                <MapboxGL.MapView
+                  style={{ flex: 1 }}
+                  styleURL={MAPBOX_STYLE_URL}
+                  logoEnabled
+                  compassEnabled
+                  onDidFinishLoadingMap={handleMapLoaded}
+                >
+                  <MapboxGL.Camera ref={cameraRef} zoomLevel={14} />
+                  <MapboxGL.PointAnnotation
+                    id="complaint-pin"
+                    coordinate={[location.longitude, location.latitude]}
+                    draggable
+                    onDragEnd={handlePinDragEnd}
+                  >
+                    <View
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: 11,
+                        backgroundColor: '#EF4444',
+                        borderWidth: 3,
+                        borderColor: '#FFFFFF',
+                        shadowColor: '#EF4444',
+                        shadowOpacity: 0.6,
+                        shadowRadius: 6,
+                        shadowOffset: { width: 0, height: 0 },
+                        elevation: 4,
                       }}
-                      className="w-full h-full rounded-2xl"
-                      style={{ resizeMode: 'cover' }}
                     />
-                  ) : (
-                    <View className="items-center p-4">
-                      <Text className="text-[#0B2240] font-black text-sm mb-1 text-center">
-                        Awaiting Location
-                      </Text>
-                      <Text className="text-[#627D98] font-medium text-xs text-center leading-relaxed">
-                        Your current location will be captured automatically when you submit your complaint.
-                      </Text>
-                    </View>
-                  )}
-                </View>
+                  </MapboxGL.PointAnnotation>
+                </MapboxGL.MapView>
               )
+            ) : (
+              <View className="flex-1 bg-[#F8FAFC] items-center justify-center p-4">
+                <View className="items-center p-4">
+                  <Text className="text-[#0B2240] font-black text-sm mb-1 text-center">
+                    Awaiting Location
+                  </Text>
+                  <Text className="text-[#627D98] font-medium text-xs text-center leading-relaxed">
+                    Your current location will be captured automatically when you submit your complaint.
+                  </Text>
+                </View>
+              </View>
             )}
           </View>
 
@@ -529,7 +557,7 @@ export default function FileComplaint({ navigation }) {
               }}
             >
               <View className="flex-row items-center mb-3">
-                <Ionicons name="sparkles" size={16} color="#4F46E5" style={{ marginRight: 6 }} />
+                <AppIcon name="sparkles" size={16} color="#4F46E5" style={{ marginRight: 6 }} />
                 <Text className="text-[#4F46E5] font-black text-sm uppercase tracking-wider">Diagnosis Details</Text>
               </View>
               
@@ -579,7 +607,7 @@ export default function FileComplaint({ navigation }) {
             }}
             className="border rounded-2xl p-4 flex-row items-center justify-center"
           >
-            <Ionicons 
+            <AppIcon 
               name={photoUri ? "checkmark-circle" : "camera"} 
               size={18} 
               color={photoUri ? '#10B981' : '#009FDE'} 
@@ -604,7 +632,7 @@ export default function FileComplaint({ navigation }) {
                 onPress={() => setPhotoUri(null)}
                 className="absolute top-2 right-2 bg-black/60 p-1.5 rounded-full"
               >
-                <Ionicons name="close" size={16} color="#FFFFFF" />
+                <AppIcon name="close" size={16} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           )}
@@ -653,7 +681,7 @@ export default function FileComplaint({ navigation }) {
           <View className="bg-white w-full max-w-sm rounded-3xl p-6 items-center shadow-xl border border-[#E2E8F5]">
             
             <View className="bg-[#ECFDF5] border border-[#10B981]/20 p-4 rounded-full mb-4 items-center justify-center">
-              <Ionicons name="checkmark-circle" size={48} color="#10B981" />
+              <AppIcon name="checkmark-circle" size={48} color="#10B981" />
             </View>
 
             <Text className="text-[#0B2240] font-black text-lg text-center leading-snug mb-1">
@@ -720,13 +748,13 @@ export default function FileComplaint({ navigation }) {
             <View style={homeStyles.modalHeader}>
               <Text style={homeStyles.modalTitle}>Notifications & Updates</Text>
               <TouchableOpacity onPress={() => setNotificationsModalVisible(false)}>
-                <Ionicons name="close" size={20} color="#0B1C3F" />
+                <AppIcon name="close" size={20} color="#0B1C3F" />
               </TouchableOpacity>
             </View>
 
             {notifications.length === 0 ? (
               <View style={homeStyles.emptyNotifications}>
-                <Ionicons name="notifications-off-outline" size={48} color="#94a3b8" />
+                <AppIcon name="notifications-off-outline" size={48} color="#94a3b8" />
                 <Text style={homeStyles.emptyNotificationsText}>No updates or notifications yet.</Text>
               </View>
             ) : (
@@ -780,7 +808,7 @@ export default function FileComplaint({ navigation }) {
                       ]}
                     >
                       <View style={[homeStyles.notificationIconContainer, { backgroundColor: iconBg }]}>
-                        <Ionicons name={iconName} size={18} color={iconColor} />
+                        <AppIcon name={iconName} size={18} color={iconColor} />
                       </View>
                       <View style={homeStyles.notificationContent}>
                         <Text style={homeStyles.notificationTitle}>{item.title}</Text>

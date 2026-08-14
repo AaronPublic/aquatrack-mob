@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, RefreshControl, Alert, TouchableOpacity, Image, LayoutAnimation, Platform, UIManager, Modal, ScrollView } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
-import { Ionicons } from '@expo/vector-icons';
+import AppIcon from '../../components/AppIcon';
 import { LinearGradient } from 'expo-linear-gradient';
 import styles from './TrackComplaints.styles';
 import homeStyles from './ConsumerHome.styles';
@@ -176,7 +176,7 @@ export default function TrackComplaints({ navigation }) {
                 step.active ? styles.stepDotActive : styles.stepDotInactive
               ]}>
                 {step.key === 'RESOLVED' && currentStatus === 'RESOLVED' ? (
-                  <Ionicons name="checkmark" size={10} color="#fff" />
+                  <AppIcon name="checkmark" size={10} color="#fff" />
                 ) : step.active ? (
                   <View style={styles.stepDotInner} />
                 ) : null}
@@ -312,7 +312,7 @@ export default function TrackComplaints({ navigation }) {
 
             <View style={styles.expandToggle}>
               <Text style={styles.expandToggleText}>Tap to collapse</Text>
-              <Ionicons name="chevron-up" size={14} color="#8E8E93" />
+              <AppIcon name="chevron-up" size={14} color="#8E8E93" />
             </View>
           </View>
         ) : (
@@ -322,7 +322,7 @@ export default function TrackComplaints({ navigation }) {
             </View>
             <View style={styles.expandToggle}>
               <Text style={styles.expandToggleText}>Details</Text>
-              <Ionicons name="chevron-down" size={14} color="#8E8E93" />
+              <AppIcon name="chevron-down" size={14} color="#8E8E93" />
             </View>
           </View>
         )}
@@ -384,7 +384,7 @@ export default function TrackComplaints({ navigation }) {
               borderColor: 'rgba(255, 255, 255, 0.28)'
             }}
           >
-            <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+            <AppIcon name="arrow-back" size={22} color="#FFFFFF" />
           </TouchableOpacity>
 
           {/* Right Header Controls (Notification Bell) */}
@@ -394,7 +394,7 @@ export default function TrackComplaints({ navigation }) {
               onPress={handleOpenNotifications}
               style={homeStyles.notificationBell}
             >
-              <Ionicons name="notifications-outline" size={20} color="#ffffff" />
+              <AppIcon name="notifications-outline" size={20} color="#ffffff" />
               {unreadCount > 0 && <View style={homeStyles.notificationBadge} />}
             </TouchableOpacity>
           </View>
@@ -406,7 +406,7 @@ export default function TrackComplaints({ navigation }) {
             Track Tickets
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 6 }}>
-            <Ionicons name="ticket-outline" size={14} color="#7DD3FC" />
+            <AppIcon name="ticket-outline" size={14} color="#7DD3FC" />
             <Text style={{ color: '#BAE6FD', fontSize: 12, fontWeight: '600' }}>
               Track live ticket progress & dispatch logs
             </Text>
@@ -467,7 +467,7 @@ export default function TrackComplaints({ navigation }) {
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="ticket-outline" size={48} color="#8E8E93" style={{ marginBottom: 12 }} />
+              <AppIcon name="ticket-outline" size={48} color="#8E8E93" style={{ marginBottom: 12 }} />
               <Text style={styles.emptyTitle}>No Tickets Found</Text>
               <Text style={styles.emptySubtitle}>
                 {activeTab === 'ALL'
@@ -502,14 +502,14 @@ export default function TrackComplaints({ navigation }) {
             <View style={homeStyles.modalHeader}>
               <Text style={homeStyles.modalTitle}>Notifications & Updates</Text>
               <TouchableOpacity onPress={() => setNotificationsModalVisible(false)}>
-                <Ionicons name="close" size={20} color="#0B1C3F" />
+                <AppIcon name="close" size={20} color="#0B1C3F" />
               </TouchableOpacity>
             </View>
 
             {/* Notifications Scrollable List */}
             {notifications.length === 0 ? (
               <View style={homeStyles.emptyNotifications}>
-                <Ionicons name="notifications-off-outline" size={48} color="#94a3b8" />
+                <AppIcon name="notifications-off-outline" size={48} color="#94a3b8" />
                 <Text style={homeStyles.emptyNotificationsText}>No updates or notifications yet.</Text>
               </View>
             ) : (
@@ -563,7 +563,7 @@ export default function TrackComplaints({ navigation }) {
                       ]}
                     >
                       <View style={[homeStyles.notificationIconContainer, { backgroundColor: iconBg }]}>
-                        <Ionicons name={iconName} size={18} color={iconColor} />
+                        <AppIcon name={iconName} size={18} color={iconColor} />
                       </View>
                       <View style={homeStyles.notificationContent}>
                         <Text style={homeStyles.notificationTitle}>{item.title}</Text>

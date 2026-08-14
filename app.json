@@ -23,6 +23,12 @@
     },
     "plugins": [
       [
+        "@rnmapbox/maps",
+        {
+          "RNMapboxMapsVersion": "11.23.1"
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {

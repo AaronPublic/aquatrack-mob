@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
-import { Ionicons } from '@expo/vector-icons';
+import AppIcon from '../../components/AppIcon';
 import styles from './ManageAccount.styles';
 import TechHeader from '../subadminpages/TechHeader';
 
@@ -202,7 +202,7 @@ export default function ManageAccount({ navigation }) {
                   Account Password
                 </Text>
                 <View style={[styles.inputWrapper, { borderRadius: 16, borderColor: '#E2E8F0', height: 50 }]}>
-                  <Ionicons name="lock-closed-outline" size={16} color="#0C4F8B" style={styles.inputIcon} />
+                  <AppIcon name="lock-closed-outline" size={16} color="#0C4F8B" style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
                     placeholder="Enter current password"
@@ -214,7 +214,7 @@ export default function ManageAccount({ navigation }) {
                     onSubmitEditing={handleVerifyPassword}
                   />
                   <TouchableOpacity onPress={() => setShowCurrentPassword(!showCurrentPassword)}>
-                    <Ionicons 
+                    <AppIcon 
                       name={showCurrentPassword ? "eye-off-outline" : "eye-outline"} 
                       size={18} 
                       color="#64748B" 
@@ -270,7 +270,7 @@ export default function ManageAccount({ navigation }) {
                 Full Name
               </Text>
               <View style={[styles.inputWrapper, { borderRadius: 16, borderColor: '#E2E8F0', height: 50 }]}>
-                <Ionicons name="person-outline" size={16} color="#0C4F8B" style={styles.inputIcon} />
+                <AppIcon name="person-outline" size={16} color="#0C4F8B" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Juan dela Cruz"
@@ -286,7 +286,7 @@ export default function ManageAccount({ navigation }) {
                 Email Address
               </Text>
               <View style={[styles.inputWrapper, { borderRadius: 16, borderColor: '#E2E8F0', height: 50 }]}>
-                <Ionicons name="mail-outline" size={16} color="#0C4F8B" style={styles.inputIcon} />
+                <AppIcon name="mail-outline" size={16} color="#0C4F8B" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="juan@gmail.com"
@@ -318,7 +318,7 @@ export default function ManageAccount({ navigation }) {
                 New Password (Optional)
               </Text>
               <View style={[styles.inputWrapper, { borderRadius: 16, borderColor: '#E2E8F0', height: 50 }]}>
-                <Ionicons name="lock-closed-outline" size={16} color="#0C4F8B" style={styles.inputIcon} />
+                <AppIcon name="lock-closed-outline" size={16} color="#0C4F8B" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Fill in to change password"
@@ -329,7 +329,7 @@ export default function ManageAccount({ navigation }) {
                   autoCapitalize="none"
                 />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  <Ionicons 
+                  <AppIcon 
                     name={showPassword ? "eye-off-outline" : "eye-outline"} 
                     size={18} 
                     color="#64748B" 
@@ -345,7 +345,7 @@ export default function ManageAccount({ navigation }) {
                   Confirm New Password
                 </Text>
                 <View style={[styles.inputWrapper, { borderRadius: 16, borderColor: '#E2E8F0', height: 50 }]}>
-                  <Ionicons name="lock-closed-outline" size={16} color="#0C4F8B" style={styles.inputIcon} />
+                  <AppIcon name="lock-closed-outline" size={16} color="#0C4F8B" style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
                     placeholder="Repeat new password"

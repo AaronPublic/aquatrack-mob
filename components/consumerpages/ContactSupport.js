@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, Image, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import AppIcon from '../../components/AppIcon';
 import styles from './ContactSupport.styles';
 import homeStyles from './ConsumerHome.styles';
 
@@ -50,7 +50,7 @@ export default function ContactSupport({ navigation }) {
         <View style={homeStyles.brandRow}>
           {/* Left: AquaTrack Multi-Colored Logo */}
           <View style={homeStyles.logoContainer}>
-            <Ionicons name="water" size={26} color="#7DD3FC" />
+            <AppIcon name="water" size={26} color="#7DD3FC" />
             <Text style={homeStyles.brandTitleText}>
               <Text style={{ color: '#FFFFFF' }}>AQ</Text>
               <Text style={{ color: '#FBBF24' }}>U</Text>
@@ -64,7 +64,7 @@ export default function ContactSupport({ navigation }) {
         <View style={homeStyles.greetingContainer}>
           <Text style={homeStyles.greetingText}>Contact Support</Text>
           <View style={homeStyles.locationPill}>
-            <Ionicons name="call-outline" size={13} color="#E0F2FE" />
+            <AppIcon name="call-outline" size={13} color="#E0F2FE" />
             <Text style={homeStyles.locationText}>City Water District hotlines & branch directory</Text>
           </View>
         </View>
@@ -73,7 +73,7 @@ export default function ContactSupport({ navigation }) {
       <View style={styles.contentPadding}>
         <View style={styles.card}>
           <View style={styles.sectionHeaderRow}>
-            <Ionicons name="flash-outline" size={18} color="#2196F3" style={{ marginRight: 6 }} />
+            <AppIcon name="flash-outline" size={18} color="#2196F3" style={{ marginRight: 6 }} />
             <Text style={styles.sectionTitle}>Emergency Channels</Text>
           </View>
           
@@ -110,7 +110,7 @@ export default function ContactSupport({ navigation }) {
 
         <View style={styles.card}>
           <View style={styles.sectionHeaderRow}>
-            <Ionicons name="business-outline" size={18} color="#2196F3" style={{ marginRight: 6 }} />
+            <AppIcon name="business-outline" size={18} color="#2196F3" style={{ marginRight: 6 }} />
             <Text style={styles.sectionTitle}>District Branches</Text>
           </View>
 

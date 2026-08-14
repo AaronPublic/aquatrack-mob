@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, ScrollView, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import AppIcon from '../../components/AppIcon';
 import homeStyles from './SubAdminHome.styles';
 import { useTechNotificationStore } from '../../src/store/useTechNotificationStore';
 import { supabase } from '../../src/config/supabase';
@@ -115,11 +115,11 @@ export default function TechHeader({
                   borderColor: 'rgba(255, 255, 255, 0.28)'
                 }}
               >
-                <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+                <AppIcon name="arrow-back" size={20} color="#FFFFFF" />
               </TouchableOpacity>
             )}
             <View style={homeStyles.logoContainer}>
-              <Ionicons name="water" size={26} color="#7DD3FC" />
+              <AppIcon name="water" size={26} color="#7DD3FC" />
               <Text style={homeStyles.brandTitleText}>
                 <Text style={{ color: '#FFFFFF' }}>AQ</Text>
                 <Text style={{ color: '#FBBF24' }}>U</Text>
@@ -137,7 +137,7 @@ export default function TechHeader({
               onPress={handleOpenNotifications}
               style={homeStyles.notificationBell}
             >
-              <Ionicons name="notifications-outline" size={18} color="#ffffff" />
+              <AppIcon name="notifications-outline" size={18} color="#ffffff" />
               {unreadCount > 0 && <View style={homeStyles.notificationBadge} />}
             </TouchableOpacity>
 
@@ -151,7 +151,7 @@ export default function TechHeader({
                 {displayTechName}
               </Text>
               <View style={homeStyles.avatarContainer}>
-                <Ionicons name="person" size={14} color="#ffffff" />
+                <AppIcon name="person" size={14} color="#ffffff" />
                 <View style={homeStyles.activeDot} />
               </View>
             </TouchableOpacity>
@@ -169,7 +169,7 @@ export default function TechHeader({
 
             {pageDesc && (
               <View style={homeStyles.locationPill}>
-                {!showBack && <Ionicons name="location-outline" size={13} color="#E0F2FE" />}
+                {!showBack && <AppIcon name="location-outline" size={13} color="#E0F2FE" />}
                 <Text style={[homeStyles.locationText, showBack && { marginLeft: 0 }]}>{pageDesc}</Text>
               </View>
             )}
@@ -253,14 +253,14 @@ export default function TechHeader({
             {/* Header */}
             <View style={homeStyles.notifModalHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Ionicons name="notifications" size={20} color="#0C4F8B" />
+                <AppIcon name="notifications" size={20} color="#0C4F8B" />
                 <Text style={homeStyles.notifModalTitle}>Technician Alerts</Text>
               </View>
               <TouchableOpacity
                 onPress={() => setNotificationsVisible(false)}
                 style={homeStyles.notifModalCloseBtn}
               >
-                <Ionicons name="close" size={18} color="#64748B" />
+                <AppIcon name="close" size={18} color="#64748B" />
               </TouchableOpacity>
             </View>
 
@@ -268,7 +268,7 @@ export default function TechHeader({
             <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
               {notifications.length === 0 ? (
                 <View style={homeStyles.notifEmptyBox}>
-                  <Ionicons name="notifications-off-outline" size={36} color="#CBD5E1" />
+                  <AppIcon name="notifications-off-outline" size={36} color="#CBD5E1" />
                   <Text style={homeStyles.notifEmptyText}>No notifications at this time.</Text>
                 </View>
               ) : (
@@ -283,7 +283,7 @@ export default function TechHeader({
                     activeOpacity={0.7}
                   >
                     <View style={homeStyles.notifIconContainer}>
-                      <Ionicons
+                      <AppIcon
                         name={
                           item.type === 'new_complaint'
                             ? 'warning-outline'
@@ -323,13 +323,13 @@ export default function TechHeader({
             <View style={homeStyles.modalHeader}>
               <Text style={homeStyles.modalTitle}>Technician Profile</Text>
               <TouchableOpacity onPress={() => setProfileModalVisible(false)}>
-                <Ionicons name="close" size={20} color="#0B1C3F" />
+                <AppIcon name="close" size={20} color="#0B1C3F" />
               </TouchableOpacity>
             </View>
 
             <View style={homeStyles.modalUserSection}>
               <View style={homeStyles.modalAvatarLarge}>
-                <Ionicons name="person" size={20} color="#ffffff" />
+                <AppIcon name="person" size={20} color="#ffffff" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={homeStyles.modalUserName}>{fullTechName}</Text>
@@ -345,7 +345,7 @@ export default function TechHeader({
                   navigation?.navigate('ManageAccount');
                 }}
               >
-                <Ionicons name="settings-outline" size={15} color="#ffffff" style={{ marginRight: 6 }} />
+                <AppIcon name="settings-outline" size={15} color="#ffffff" style={{ marginRight: 6 }} />
                 <Text style={homeStyles.modalBtnPrimaryText}>Manage Account</Text>
               </TouchableOpacity>
 
@@ -362,7 +362,7 @@ export default function TechHeader({
                   }
                 }}
               >
-                <Ionicons name="log-out-outline" size={15} color="#FF3B30" style={{ marginRight: 6 }} />
+                <AppIcon name="log-out-outline" size={15} color="#FF3B30" style={{ marginRight: 6 }} />
                 <Text style={homeStyles.modalBtnDangerText}>Log Out Account</Text>
               </TouchableOpacity>
             </View>

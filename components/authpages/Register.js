@@ -15,7 +15,7 @@ import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import styles from './Login.styles';
 import { useAuthStore } from '../../src/store/useAuthStore';
-import { Ionicons } from '@expo/vector-icons';
+import AppIcon from '../../components/AppIcon';
 
 export default function Register({ navigation }) {
   const [name, setName] = useState('');
@@ -130,7 +130,7 @@ export default function Register({ navigation }) {
             />
 
             <View style={styles.cityBadge}>
-              <Ionicons name="water-outline" size={13} color="#E0F2FE" style={{ marginRight: 4 }} />
+              <AppIcon name="water-outline" size={13} color="#E0F2FE" style={{ marginRight: 4 }} />
               <Text style={styles.brandSubtitle}>CITY OF SAN FERNANDO</Text>
             </View>
 
@@ -162,7 +162,7 @@ export default function Register({ navigation }) {
                 style={styles.backBtn}
                 onPress={() => navigation.navigate('Login')}
               >
-                <Ionicons name="arrow-back" size={20} color="#2196F3" />
+                <AppIcon name="arrow-back" size={20} color="#2196F3" />
                 <Text style={styles.backBtnText}>Back</Text>
               </TouchableOpacity>
               <Text style={styles.formHeaderTitle}>REGISTER</Text>
@@ -170,7 +170,7 @@ export default function Register({ navigation }) {
 
             {error && (
               <View style={styles.errorBox}>
-                <Ionicons name="alert-circle-outline" size={18} color="#D32F2F" style={{ marginRight: 6 }} />
+                <AppIcon name="alert-circle-outline" size={18} color="#D32F2F" style={{ marginRight: 6 }} />
                 <Text style={styles.errorBoxText}>{error}</Text>
               </View>
             )}
@@ -180,7 +180,7 @@ export default function Register({ navigation }) {
               <View style={styles.fieldGroup}>
                 <Text style={styles.fieldLabel}>FULL NAME</Text>
                 <View style={styles.fieldInputWrapper}>
-                  <Ionicons name="person-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
+                  <AppIcon name="person-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
                   <TextInput
                     style={styles.fieldInput}
                     placeholder="Juan dela Cruz"
@@ -195,7 +195,7 @@ export default function Register({ navigation }) {
               <View style={styles.fieldGroup}>
                 <Text style={styles.fieldLabel}>EMAIL ADDRESS</Text>
                 <View style={styles.fieldInputWrapper}>
-                  <Ionicons name="mail-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
+                  <AppIcon name="mail-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
                   <TextInput
                     style={styles.fieldInput}
                     placeholder="juan@domain.com"
@@ -212,7 +212,7 @@ export default function Register({ navigation }) {
               <View style={styles.fieldGroup}>
                 <Text style={styles.fieldLabel}>PASSWORD</Text>
                 <View style={styles.fieldInputWrapper}>
-                  <Ionicons name="lock-closed-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
+                  <AppIcon name="lock-closed-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
                   <TextInput
                     style={styles.fieldInput}
                     placeholder="Must include A, a, 1, and *"
@@ -226,7 +226,7 @@ export default function Register({ navigation }) {
                     onPress={() => setShowPassword(!showPassword)}
                     style={styles.fieldIconRight}
                   >
-                    <Ionicons 
+                    <AppIcon 
                       name={showPassword ? "eye-off-outline" : "eye-outline"} 
                       size={20} 
                       color="#64748B" 
@@ -242,7 +242,7 @@ export default function Register({ navigation }) {
               <View style={styles.fieldGroup}>
                 <Text style={styles.fieldLabel}>CONFIRM PASSWORD</Text>
                 <View style={styles.fieldInputWrapper}>
-                  <Ionicons name="checkmark-circle-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
+                  <AppIcon name="checkmark-circle-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
                   <TextInput
                     style={styles.fieldInput}
                     placeholder="Confirm account password"
@@ -267,7 +267,7 @@ export default function Register({ navigation }) {
                 ) : (
                   <>
                     <Text style={styles.primaryActionText}>CREATE ACCOUNT</Text>
-                    <Ionicons name="person-add-outline" size={18} color="#FFFFFF" />
+                    <AppIcon name="person-add-outline" size={18} color="#FFFFFF" />
                   </>
                 )}
               </TouchableOpacity>
