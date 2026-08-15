@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, Alert, Modal, Animated } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
+import * as Location from 'expo-location';
 import AppIcon from '../../components/AppIcon';
 import { LinearGradient } from 'expo-linear-gradient';
 import styles from './ConsumerHome.styles';
@@ -78,8 +79,143 @@ const calculateWQI = (reading) => {
   return Math.round(score);
 };
 
+const WEAK_PRESSURE_PSI = 10;
+const NEIGHBORHOOD_ALERT_THRESHOLD = 3;
+const NEIGHBORHOOD_FALLBACK_RADIUS_METERS = 2000;
+const BARANGAY_KEYS = ['dolores', 'pilar', 'calulut', 'sindalan', 'agustin'];
+
+const getBarangayKey = (nameOrAddress) => {
+  const lower = (nameOrAddress || '').toLowerCase();
+  for (const key of BARANGAY_KEYS) {
+    if (lower.includes(key)) return key;
+  }
+  return lower.split(' ')[0] || '';
+};
+
+const BARANGAY_LABELS = {
+  dolores: 'Dolores',
+  pilar: 'Del Pilar',
+  calulut: 'Calulut',
+  sindalan: 'Sindalan',
+  agustin: 'San Agustin',
+};
+
+const getBarangayLabel = (nameOrAddress) => {
+  const key = getBarangayKey(nameOrAddress);
+  if (!key) return '';
+  return BARANGAY_LABELS[key] || (key.charAt(0).toUpperCase() + key.slice(1));
+};
+
+const haversineDistanceMeters = (lat1, lon1, lat2, lon2) => {
+  const R = 6371000;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+};
+
+const isWeakPressure = (node, latestByNode) => {
+  const reading = latestByNode[node.id];
+  return !!reading && reading.pressure < WEAK_PRESSURE_PSI;
+};
+
+const buildNeighborhoodAlert = ({ nodes, latestByNode, chosenNodeId, complaints }) => {
+  if (!nodes || !nodes.length || !chosenNodeId) return null;
+
+  const chosenNode = nodes.find((n) => n.id === chosenNodeId);
+  if (!chosenNode) return null;
+
+  const barangayKey = getBarangayKey(chosenNode.name);
+
+  const barangayNodes = nodes.filter((n) => getBarangayKey(n.name) === barangayKey);
+
+  let nearbyNodes = [...barangayNodes];
+
+  if (nearbyNodes.length < NEIGHBORHOOD_ALERT_THRESHOLD) {
+    const others = nodes
+      .filter((n) => !nearbyNodes.includes(n))
+      .map((n) => ({
+        node: n,
+        distance: haversineDistanceMeters(chosenNode.latitude, chosenNode.longitude, n.latitude, n.longitude),
+      }))
+      .sort((a, b) => a.distance - b.distance);
+
+    for (const { node, distance } of others) {
+      if (distance > NEIGHBORHOOD_FALLBACK_RADIUS_METERS) break;
+      nearbyNodes.push(node);
+    }
+  }
+
+  const weakPressureCount = nearbyNodes.filter((n) => isWeakPressure(n, latestByNode)).length;
+  const barangayWeakCount = barangayNodes.filter((n) => isWeakPressure(n, latestByNode)).length;
+  const allBarangayAffected = barangayNodes.length >= 2 && barangayWeakCount === barangayNodes.length;
+  const nodeAlert = weakPressureCount >= NEIGHBORHOOD_ALERT_THRESHOLD || allBarangayAffected ? weakPressureCount : 0;
+
+  const nearbyComplaints = (complaints || []).filter((c) => {
+    const barangay = (c.barangay || '').toLowerCase();
+    return barangay.includes(barangayKey) || barangayKey.includes(barangay);
+  });
+
+  const categoryCounts = {};
+  nearbyComplaints.forEach((c) => {
+    if (c.category) categoryCounts[c.category] = (categoryCounts[c.category] || 0) + 1;
+  });
+
+  let topCategory = null;
+  let topCategoryCount = 0;
+  Object.entries(categoryCounts).forEach(([category, count]) => {
+    if (count > topCategoryCount) {
+      topCategoryCount = count;
+      topCategory = category;
+    }
+  });
+  const complaintAlert = topCategoryCount >= NEIGHBORHOOD_ALERT_THRESHOLD ? { category: topCategory, count: topCategoryCount } : null;
+
+  if (nodeAlert && complaintAlert) {
+    return { kind: 'combined', nodeCount: nodeAlert, complaintCount: complaintAlert.count, category: complaintAlert.category };
+  }
+  if (nodeAlert) {
+    return { kind: 'pressure', nodeCount: nodeAlert, complaintCount: 0 };
+  }
+  if (complaintAlert) {
+    return { kind: 'complaints', nodeCount: 0, complaintCount: complaintAlert.count, category: complaintAlert.category };
+  }
+  return null;
+};
+
+const NEIGHBORHOOD_COPY = {
+  PIPELINE_BREACH_PRESSURE_DROP: { title: 'Several Neighbors Reported Low Water Pressure', text: 'residents in your area reported low or no water pressure. Crews may already be on-site.' },
+  HIGH_TURBIDITY: { title: 'Several Neighbors Reported Murky Water', text: 'residents in your area reported murky or dirty water.' },
+  HIGH_MINERAL_CONTENT_TDS: { title: 'Several Neighbors Reported Unusual Water Taste', text: 'residents in your area reported an unusual taste or high mineral content.' },
+  CHEMICAL_DISCOLORATION_CONTAMINATION: { title: 'Several Neighbors Reported Discolored Water', text: 'residents in your area reported discolored or strong-smelling water.' },
+  UNCLASSIFIED_INFRASTRUCTURE_ANOMALY: { title: 'Water Issue Reported Across Your Area', text: 'residents in your area reported a water issue. Crews may already be on-site.' },
+};
+
+const buildNeighborhoodCopy = (alert) => {
+  if (!alert) return null;
+  if (alert.kind === 'pressure' || alert.kind === 'combined') {
+    const neighborsNote = alert.complaintCount > 0
+      ? ` ${alert.complaintCount} neighbors also reported it.`
+      : ' Crews may already be on-site.';
+    return {
+      title: 'Low or No Water Pressure in Your Area',
+      text: `${alert.nodeCount} nearby monitoring stations report low to no water pressure.${neighborsNote}`,
+    };
+  }
+  const copy = NEIGHBORHOOD_COPY[alert.category] || NEIGHBORHOOD_COPY.UNCLASSIFIED_INFRASTRUCTURE_ANOMALY;
+  return {
+    title: copy.title,
+    text: `${alert.complaintCount} ${copy.text}`,
+  };
+};
+
 export default function ConsumerHome({ navigation }) {
   const [userName, setUserName] = useState('Pedro'); // Default fallback to "Pedro" per spec
+  const [userLocation, setUserLocation] = useState('City of San Fernando • Dolores');
+  const [gpsLocation, setGpsLocation] = useState(null);
   const [advisories, setAdvisories] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [recentComplaints, setRecentComplaints] = useState([]);
@@ -87,6 +223,7 @@ export default function ConsumerHome({ navigation }) {
   const [notificationsModalVisible, setNotificationsModalVisible] = useState(false);
   const { notifications, unreadCount, fetchNotifications, markAllAsRead, dismissNotification } = useNotificationStore();
   const [dismissedAlerts, setDismissedAlerts] = useState([]);
+  const [neighborhoodAlert, setNeighborhoodAlert] = useState(null);
   const [metrics, setMetrics] = useState({ total: 25, pending: 9, active: 8, resolved: 8 });
   const [waterIndexData, setWaterIndexData] = useState({
     nodeName: 'DOLORES EDGE NODE',
@@ -132,6 +269,41 @@ export default function ConsumerHome({ navigation }) {
       }
     };
     loadDismissed();
+  }, []);
+
+  // GPS-based location detection (non-blocking: any failure keeps the existing fallback)
+  useEffect(() => {
+    let cancelled = false;
+    const detectFromGps = async () => {
+      try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          const ask = await Location.requestForegroundPermissionsAsync();
+          if (ask.status !== 'granted') return;
+        }
+        let current = null;
+        try {
+          current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        } catch (err) {
+          const last = await Location.getLastKnownPositionAsync();
+          if (last) current = last;
+        }
+        if (!current || cancelled) return;
+        const locData = await api.post('/api/locate-barangay', {
+          latitude: current.coords.latitude,
+          longitude: current.coords.longitude,
+        });
+        if (!cancelled && locData && locData.barangay && locData.barangay !== 'Unknown Area') {
+          setGpsLocation(`City of San Fernando • ${locData.barangay}`);
+        }
+      } catch (err) {
+        console.warn('GPS location detection unavailable:', err?.message);
+      }
+    };
+    detectFromGps();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleOpenNotifications = () => {
@@ -185,6 +357,17 @@ export default function ConsumerHome({ navigation }) {
               .select('*')
               .order('timestamp', { ascending: false });
 
+            const latestByNode = {};
+            (readings || []).forEach((r) => {
+              if (!latestByNode[r.nodeId]) latestByNode[r.nodeId] = r;
+            });
+
+            const { data: neighborhoodComplaints } = await supabase
+              .from('Complaint')
+              .select('id, category, barangay, status')
+              .neq('status', 'RESOLVED')
+              .limit(300);
+
             if (nodes && nodes.length > 0) {
               const userBarangay = profile?.address || '';
               
@@ -200,6 +383,20 @@ export default function ConsumerHome({ navigation }) {
 
               const latestReading = readings?.find(r => r.nodeId === chosenNode.id) || null;
               const computedWqi = calculateWQI(latestReading);
+
+              const addressLabel = getBarangayLabel(profile?.address);
+              const nodeLabel = getBarangayLabel(chosenNode.name);
+              const locationLabel = addressLabel || nodeLabel;
+              if (locationLabel) {
+                setUserLocation(`City of San Fernando • ${locationLabel}`);
+              }
+
+              setNeighborhoodAlert(buildNeighborhoodAlert({
+                nodes,
+                latestByNode,
+                chosenNodeId: chosenNode.id,
+                complaints: neighborhoodComplaints || [],
+              }));
               
               let statusText = 'STABLE STATE';
               let description = 'Satisfactory pressure and quality. Safe for daily household tasks and normal usage.';
@@ -317,22 +514,33 @@ export default function ConsumerHome({ navigation }) {
             }
           );
 
-        // Add telemetry reading listener with nodeId filter (Option A!)
-        if (chosenNodeId) {
-          channel = channel.on(
-            'postgres_changes',
-            {
-              event: 'INSERT',
-              schema: 'public',
-              table: 'TelemetryReading',
-              filter: `nodeId=eq.${chosenNodeId}`
-            },
-            (payload) => {
-              console.log(`Realtime telemetry change for node ${chosenNodeId}:`, payload);
-              fetchProfileAndAdvisories();
-            }
-          );
-        }
+        // Realtime telemetry for all nodes (refreshes WQI + neighborhood awareness)
+        channel = channel.on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'TelemetryReading'
+          },
+          (payload) => {
+            console.log('Realtime telemetry change:', payload);
+            fetchProfileAndAdvisories();
+          }
+        );
+
+        // Realtime neighborhood complaints for awareness clustering
+        channel = channel.on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'Complaint'
+          },
+          (payload) => {
+            console.log('Realtime complaint change:', payload);
+            fetchProfileAndAdvisories();
+          }
+        );
 
         channel.subscribe();
       }
@@ -417,6 +625,8 @@ export default function ConsumerHome({ navigation }) {
   };
 
   const activeAlerts = alerts.filter(ad => !dismissedAlerts.includes(ad.id));
+  const activeNeighborhoodAlert = neighborhoodAlert && !dismissedAlerts.includes('neighborhood-alert') ? neighborhoodAlert : null;
+  const neighborhoodCopy = buildNeighborhoodCopy(activeNeighborhoodAlert);
 return (
     <View style={styles.container}>
       {/* Top 30% Blue Gradient Header Card Component */}
@@ -433,11 +643,14 @@ return (
         {/* Brand Row */}
         <View style={styles.brandRow}>
           {/* Upper Left: Light Blue Water Droplet + Custom Colored AQUATRACK Logo */}
-          <View style={styles.logoContainer}>
-            <AppIcon name="water" size={26} color="#7DD3FC" />
+          <View style={[styles.logoContainer, { gap: 0 }]}>
+            <Image
+              source={require('../../assets/MOB-LOGO.png')}
+              style={{ width: 44, height: 44, resizeMode: 'contain' }}
+            />
             <Text style={styles.brandTitleText}>
               <Text style={{ color: '#FFFFFF' }}>AQ</Text>
-              <Text style={{ color: '#FBBF24' }}>U</Text>
+              <Text style={{ color: '#ffd800' }}>U</Text>
               <Text style={{ color: '#EF4444' }}>A</Text>
               <Text style={{ color: '#FFFFFF' }}>TRACK</Text>
             </Text>
@@ -474,7 +687,7 @@ return (
         <View style={styles.greetingContainer}>
           <Text style={styles.greetingText}>Hello, {userName}</Text>
           <View style={styles.locationPill}>
-            <Text style={[styles.locationText, { marginLeft: 0 }]}>City of San Fernando • Dolores</Text>
+            <Text style={[styles.locationText, { marginLeft: 0 }]}>{gpsLocation || userLocation}</Text>
           </View>
         </View>
 
@@ -531,6 +744,45 @@ return (
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Neighborhood Awareness Banner (3+ nearby nodes with zero pressure / clustered complaints) */}
+        {activeNeighborhoodAlert && neighborhoodCopy && (
+          <TouchableOpacity
+            onPress={() => {
+              handleDismissAlert('neighborhood-alert');
+              navigation.navigate('Announcements');
+            }}
+            activeOpacity={0.9}
+            style={{
+              backgroundColor: '#FFF5F5',
+              borderWidth: 1.5,
+              borderColor: '#FEC2C2',
+              borderRadius: 18,
+              padding: 16,
+              marginBottom: 16,
+              flexDirection: 'row',
+              alignItems: 'start',
+              shadowColor: '#EF4444',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.1,
+              shadowRadius: 8,
+              elevation: 2,
+            }}
+          >
+            <View className="bg-red-100 p-2 rounded-xl mr-3 items-center justify-center">
+              <AppIcon name="warning" size={18} color="#EF4444" />
+            </View>
+
+            <View className="flex-1">
+              <View className="flex-row items-center justify-between">
+                <Text className="text-[#EF4444] font-black text-[10px] uppercase tracking-widest">NEIGHBORHOOD AWARENESS ALARM</Text>
+                <View className="w-1.5 h-1.5 rounded-full bg-[#EF4444]" />
+              </View>
+              <Text className="text-[#0B2240] font-black text-sm mt-1.5 leading-snug">{neighborhoodCopy.title}</Text>
+              <Text className="text-[#627D98] font-semibold text-xs mt-0.5 leading-relaxed">{neighborhoodCopy.text}</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* Critical System Alert Banner (conditional based on warnings) */}
         {activeAlerts.length > 0 && (
           <TouchableOpacity 
@@ -739,7 +991,8 @@ return (
                 month: 'short',
                 day: 'numeric',
                 hour: '2-digit',
-                minute: '2-digit'
+                minute: '2-digit',
+                timeZone: 'Asia/Manila'
               });
               return (
                 <TouchableOpacity 
@@ -1004,6 +1257,7 @@ return (
                     day: 'numeric',
                     hour: '2-digit',
                     minute: '2-digit',
+                    timeZone: 'Asia/Manila',
                   });
 
                   return (

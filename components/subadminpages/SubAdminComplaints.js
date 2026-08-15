@@ -152,6 +152,19 @@ export default function SubAdminComplaints({ navigation }) {
   };
 
   const renderTicketItem = ({ item }) => {
+    if (item.__sectionHeader) {
+      return (
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionHeaderText}>{item.__sectionHeader}</Text>
+          <View style={styles.sectionCountBadge}>
+            <Text style={styles.sectionCountText}>
+              {item.__sectionCount} {item.__sectionCount === 1 ? 'item' : 'items'}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
     const urgencyCfg = getUrgencyStyle(item.urgency) || getUrgencyStyle('MEDIUM');
     const isAssignedToMe = currentUser && item.assignedToId === currentUser.id;
     const assigneeName = item.assignedToId ? (techProfiles[item.assignedToId] || "Assigned Tech") : null;
@@ -184,7 +197,7 @@ export default function SubAdminComplaints({ navigation }) {
           <Text style={styles.cardSummary}>{item.summary || "Resident Complaint"}</Text>
           <Text style={styles.cardDesc}>{item.rawText}</Text>
           <Text style={styles.metaText}>
-            ID: AQ-{item.id ? item.id.slice(0, 4).toUpperCase() : 'N/A'} | Date: {new Date(item.createdAt).toLocaleDateString()}
+            ID: AQ-{item.id ? item.id.slice(0, 4).toUpperCase() : 'N/A'} | Date: {new Date(item.createdAt).toLocaleDateString(undefined, { timeZone: 'Asia/Manila' })}
           </Text>
         </View>
 
@@ -224,6 +237,22 @@ export default function SubAdminComplaints({ navigation }) {
             Assigned: <Text style={styles.assignedName}>{assigneeName ? (isAssignedToMe ? "You" : assigneeName) : "Unassigned"}</Text>
           </Text>
         </View>
+
+        {/* Claim unassigned ticket */}
+        {!item.assignedToId && currentUser && (
+          <TouchableOpacity
+            style={styles.claimBtn}
+            activeOpacity={0.8}
+            disabled={updatingId === item.id}
+            onPress={() => handleAssignToMe(item.id)}
+          >
+            {updatingId === item.id ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.claimBtnText}>Claim This Ticket</Text>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
@@ -260,6 +289,26 @@ export default function SubAdminComplaints({ navigation }) {
       return dateB - dateA;
     });
 
+  // Group into sections: My Active -> Other Active/Unassigned -> Complaint Audit (my resolved)
+  const currentUserId = currentUser ? currentUser.id : null;
+  const activeTickets = filteredComplaints.filter((c) => c.status !== 'RESOLVED');
+  const resolvedTickets = filteredComplaints.filter((c) => c.status === 'RESOLVED');
+
+  const myActive = activeTickets.filter((c) => c.assignedToId === currentUserId);
+  const otherActive = activeTickets.filter((c) => c.assignedToId !== currentUserId);
+  const myResolved = resolvedTickets.filter((c) => c.assignedToId === currentUserId);
+
+  const groupedSections = [];
+  if (myActive.length > 0) groupedSections.push({ label: 'My Active Tickets', items: myActive });
+  if (otherActive.length > 0) groupedSections.push({ label: 'Other Active / Unassigned', items: otherActive });
+  if (myResolved.length > 0) groupedSections.push({ label: 'Complaint Audit', items: myResolved });
+
+  const listData = [];
+  groupedSections.forEach((section) => {
+    listData.push({ __sectionHeader: section.label, __sectionCount: section.items.length });
+    section.items.forEach((item) => listData.push(item));
+  });
+
   return (
     <View style={[styles.container, { backgroundColor: '#F2F5FA' }]}>
       <TechHeader
@@ -276,8 +325,8 @@ export default function SubAdminComplaints({ navigation }) {
       ) : (
         <FlatList
           style={{ flex: 1, marginTop: 12 }}
-          data={filteredComplaints}
-          keyExtractor={(item) => item.id}
+          data={listData}
+          keyExtractor={(item, index) => (item.__sectionHeader ? `section-${item.__sectionHeader}-${index}` : item.id)}
           renderItem={renderTicketItem}
           ListHeaderComponent={
             <View style={{ paddingHorizontal: 18, paddingTop: 4 }}>

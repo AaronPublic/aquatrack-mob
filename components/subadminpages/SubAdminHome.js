@@ -2,12 +2,41 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, Animated } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
+import { MapPin, ClipboardList, Wrench } from 'lucide-react-native';
 import AppIcon from '../../components/AppIcon';
 import styles from './SubAdminHome.styles';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useTechNotificationStore } from '../../src/store/useTechNotificationStore';
 import TechHeader from './TechHeader';
 import * as Location from 'expo-location';
+
+const haversineMeters = (lat1, lng1, lat2, lng2) => {
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const earthRadiusM = 6371000;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return earthRadiusM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+// Matches the web triage-complaint rule: a diagnostic alert is only created when
+// a node is within this distance of the report (find_nearby_anomalies, 500m).
+const NEARBY_NODE_THRESHOLD_METERS = 500;
+
+const extractRecommendedAction = (alert) => {
+  if (!alert || !alert.geminiAnalysis) return null;
+  let analysis = alert.geminiAnalysis;
+  if (typeof analysis === 'string') {
+    try {
+      analysis = JSON.parse(analysis);
+    } catch (e) {
+      return null;
+    }
+  }
+  return (analysis && analysis.recommendedAction) || null;
+};
 
 export default function SubAdminHome({ navigation }) {
   const [techName, setTechName] = useState('Technician');
@@ -58,6 +87,17 @@ export default function SubAdminHome({ navigation }) {
       const profile = await api.post('/api/auth/profile', { userId: session.user.id });
       if (profile?.name) setTechName(profile.name);
 
+      // 0. Fetch telemetry nodes once (nearest-node matching + IoT alert count)
+      let nodeList = [];
+      try {
+        const nodeRes = await api.get('/api/admin/nodes');
+        if (nodeRes && nodeRes.success && nodeRes.nodes) {
+          nodeList = nodeRes.nodes;
+        }
+      } catch (e) {
+        console.error("Failed to fetch telemetry nodes:", e);
+      }
+
       // 1. Fetch active work order OR assigned complaint assigned to this technician
       const { data: workOrders } = await supabase
         .from('WorkOrder')
@@ -74,7 +114,7 @@ export default function SubAdminHome({ navigation }) {
           sourceType: 'WorkOrder',
           location: wo.alert?.nodeId ? `Telemetry Node ID: ${wo.alert.nodeId}` : "Assigned Field Site",
           description: wo.notes || "Investigate clustered consumer complaints and diagnostic telemetry anomalies.",
-          instructions: "Inspect pipeline structures, take photos of repairs, and log notes before resolving.",
+          recommendedAction: extractRecommendedAction(wo.alert),
           imageUrl: wo.imageUrl || null
         });
         setHasActiveJob(true);
@@ -90,13 +130,64 @@ export default function SubAdminHome({ navigation }) {
 
         if (activeComplaints && activeComplaints.length > 0) {
           const complaint = activeComplaints[0];
+          let recommendedAction = null;
+
+          // Prefer the exact diagnostic alert created from this complaint (complaintId link).
+          // Fall back to the nearest-node lookup for alerts created before the link existed.
+          try {
+            const { data: linkedAlert, error: linkedError } = await supabase
+              .from('DiagnosticAlert')
+              .select('geminiAnalysis')
+              .eq('complaintId', complaint.id)
+              .order('createdAt', { ascending: false })
+              .limit(1);
+
+            if (!linkedError && linkedAlert && linkedAlert.length > 0) {
+              recommendedAction = extractRecommendedAction(linkedAlert[0]);
+            }
+          } catch (linkErr) {
+            console.error("Failed to load linked diagnostic alert:", linkErr);
+          }
+
+          if (!recommendedAction && nodeList.length > 0 && complaint.latitude != null && complaint.longitude != null) {
+            // Fallback: locate this complaint's diagnostic alert via its nearest telemetry node.
+            // Only trust a genuinely nearby node — otherwise there is no alert for this complaint.
+            let nearestNode = null;
+            let minDistance = Infinity;
+            nodeList.forEach((n) => {
+              if (n.latitude == null || n.longitude == null) return;
+              const d = haversineMeters(complaint.latitude, complaint.longitude, n.latitude, n.longitude);
+              if (d < minDistance) {
+                minDistance = d;
+                nearestNode = n;
+              }
+            });
+
+            if (nearestNode && minDistance <= NEARBY_NODE_THRESHOLD_METERS) {
+              try {
+                const { data: alertRows, error: alertError } = await supabase
+                  .from('DiagnosticAlert')
+                  .select('geminiAnalysis')
+                  .eq('nodeId', nearestNode.id)
+                  .order('createdAt', { ascending: false })
+                  .limit(1);
+
+                if (!alertError && alertRows && alertRows.length > 0) {
+                  recommendedAction = extractRecommendedAction(alertRows[0]);
+                }
+              } catch (alertErr) {
+                console.error("Failed to load diagnostic alert:", alertErr);
+              }
+            }
+          }
+
           setJobStatus(complaint.status);
           setJobDetails({
             id: complaint.id,
             sourceType: 'Complaint',
             location: complaint.barangay ? `Brgy. ${complaint.barangay}` : "Municipal Field Site",
             description: complaint.summary || complaint.rawText || "Assigned Resident Water Complaint",
-            instructions: complaint.rawText || "Inspect resident report location, perform field maintenance, and update resolution.",
+            recommendedAction,
             imageUrl: complaint.photoUrl || complaint.imageUrl || null
           });
           setHasActiveJob(true);
@@ -134,10 +225,9 @@ export default function SubAdminHome({ navigation }) {
         .eq('engineerId', session.user.id)
         .neq('status', 'RESOLVED');
 
-      const nodeRes = await api.get('/api/admin/nodes');
       let activeAlerts = 0;
-      if (nodeRes && nodeRes.success && nodeRes.nodes) {
-        activeAlerts = nodeRes.nodes.filter(n => n.status !== 'ONLINE').length;
+      if (nodeList.length > 0) {
+        activeAlerts = nodeList.filter(n => n.status !== 'ONLINE').length;
       }
 
       setMetrics({
@@ -333,58 +423,64 @@ export default function SubAdminHome({ navigation }) {
       <ScrollView style={[styles.scrollView, { marginTop: 12 }]} contentContainerStyle={styles.scrollContent}>
         {/* Active Work Order tracking panel */}
         {hasActiveJob && jobDetails ? (
-          <View style={{ marginBottom: 20 }}>
-            <Text style={{ color: '#64748B', fontWeight: '800', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, paddingHorizontal: 4 }}>
+          <View className="mb-5">
+            <Text className="text-[#64748B] font-extrabold text-[11px] uppercase tracking-[1px] mb-2.5 px-1">
               LATEST ASSIGNMENT
             </Text>
-            <View 
-              style={[
-                styles.trackerCard,
-                {
-                  shadowColor: '#0B2240',
-                  shadowOffset: { width: 0, height: 6 },
-                  shadowOpacity: 0.07,
-                  shadowRadius: 14,
-                  elevation: 4,
-                  borderRadius: 24,
-                }
-              ]}
-            >
-              <View style={styles.trackerHeader}>
-                <View style={{ flex: 1, marginRight: 8 }}>
-                  <Text style={styles.trackerLabel}>Incident ID</Text>
-                  <Text style={styles.trackerTitle}>AQ-{jobDetails.id ? jobDetails.id.slice(0, 4).toUpperCase() : 'N/A'}</Text>
+            <View className="bg-white border border-[#E2E8F5] rounded-3xl p-5 shadow-sm">
+              <View className="flex-row items-start justify-between mb-1">
+                <View className="flex-1 mr-2">
+                  <View className="flex-1">
+                    <Text className="text-[#8E8E93] font-bold text-[9px] uppercase tracking-wider">Incident ID</Text>
+                    <Text className="text-[#0B2240] font-extrabold text-sm mt-0.5">AQ-{jobDetails.id ? jobDetails.id.slice(0, 4).toUpperCase() : 'N/A'}</Text>
+                  </View>
                 </View>
-                <View style={[styles.statusBadgeSmall, { backgroundColor: currentStatusCfg.bg, borderColor: currentStatusCfg.border }]}>
-                  <Text style={[styles.statusTextSmall, { color: currentStatusCfg.text }]}>
+
+                <View
+                  className="flex-row items-center rounded-full px-2.5 py-1 border ml-2"
+                  style={{ backgroundColor: currentStatusCfg.bg, borderColor: currentStatusCfg.border }}
+                >
+                  <Text className="text-[9px] font-black uppercase tracking-wider" style={{ color: currentStatusCfg.text }}>
                     {currentStatusCfg.label}
                   </Text>
                 </View>
               </View>
 
-              <View style={styles.woBody}>
-                <View style={styles.woDetailItem}>
-                  <Text style={styles.detailLabel}>Location</Text>
-                  <Text style={styles.detailValue}>{jobDetails.location}</Text>
+              <View className="mt-3 space-y-3">
+                <View className="flex-row items-start mb-4">
+                  <View className="w-7 h-7 rounded-lg bg-[#F8FAFC] border border-[#E2E8F5] items-center justify-center mr-2.5">
+                    <MapPin size={14} color="#0C4F8B" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-[#8E8E93] font-bold text-[9px] uppercase tracking-wider">Location</Text>
+                    <Text className="text-[#0B2240] font-extrabold text-[13px] mt-0.5 leading-[18px]">{jobDetails.location}</Text>
+                  </View>
                 </View>
 
-                <View style={styles.woDetailItem}>
-                  <Text style={styles.detailLabel}>Diagnostic Details</Text>
-                  <Text style={styles.detailText}>{jobDetails.description}</Text>
-                </View>
+                <View className="flex-1 mb-4">
+                    <Text className="text-[#8E8E93] font-bold text-[9px] uppercase tracking-wider">Diagnostic Details</Text>
+                    <Text className="text-[#525F7F] text-xs leading-[18px] font-medium mt-0.5">{jobDetails.description}</Text>
+                  </View>
 
-                <View style={styles.instructionsBox}>
-                  <Text style={styles.instructionsTitle}>Recommended Instructions</Text>
-                  <Text style={styles.instructionsText}>"{jobDetails.instructions}"</Text>
-                </View>
+                {jobDetails.recommendedAction ? (
+                  <View className="bg-[#F8FAFC] border border-[#E2E8F5] rounded-2xl p-3.5">
+                    <View className="flex-row items-center mb-1.5">
+                      <ClipboardList size={14} color="#0C4F8B" style={{ marginRight: 6 }} />
+                      <Text className="text-[#0C4F8B] font-black text-[9px] uppercase tracking-wider">Recommended Instructions</Text>
+                    </View>
+                    <Text className="text-[#525F7F] text-xs leading-[18px] font-medium">"{jobDetails.recommendedAction}"</Text>
+                  </View>
+                ) : null}
               </View>
             </View>
           </View>
         ) : (
-          <View style={[styles.emptyTrackerBox, { marginBottom: 20, borderRadius: 24 }]}>
-            <AppIcon name="construct-outline" size={24} color="#8E8E93" style={{ marginBottom: 6 }} />
-            <Text style={styles.emptyTrackerTitle}>No Active Jobs Assigned</Text>
-            <Text style={styles.emptyTrackerDesc}>You are currently available for dispatch work orders.</Text>
+          <View className="bg-white border border-[#E2E8F5] rounded-3xl p-6 items-center shadow-sm mb-5">
+            <View className="w-12 h-12 rounded-2xl bg-[#F1F5F9] items-center justify-center mb-3">
+              <Wrench size={22} color="#8E8E93" />
+            </View>
+            <Text className="text-[#0B1C3F] font-bold text-sm">No Active Jobs Assigned</Text>
+            <Text className="text-[#8E8E93] text-xs text-center mt-1">You are currently available for dispatch work orders.</Text>
           </View>
         )}
 

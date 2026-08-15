@@ -50,7 +50,8 @@ export default function ComplaintHistory({ navigation }) {
     const formattedDate = new Date(item.createdAt).toLocaleDateString(undefined, {
       month: 'short',
       day: 'numeric',
-      year: 'numeric'
+      year: 'numeric',
+      timeZone: 'Asia/Manila'
     });
 
     return (

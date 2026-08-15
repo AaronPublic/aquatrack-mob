@@ -208,7 +208,8 @@ export default function TrackComplaints({ navigation }) {
       day: 'numeric',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'Asia/Manila'
     });
 
     const techName = item.assignedToId ? (techProfiles[item.assignedToId] || "Assigned Technician") : null;
@@ -550,6 +551,7 @@ export default function TrackComplaints({ navigation }) {
                     day: 'numeric',
                     hour: '2-digit',
                     minute: '2-digit',
+                    timeZone: 'Asia/Manila',
                   });
 
                   return (

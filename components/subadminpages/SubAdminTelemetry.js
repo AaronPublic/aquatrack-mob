@@ -57,6 +57,15 @@ export default function SubAdminTelemetry({ navigation }) {
           [newReading.nodeId]: newReading
         }));
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'TelemetryNode' }, (payload) => {
+        setNodes(prev => {
+          if (payload.eventType === 'DELETE') {
+            return prev.filter(n => n.id !== payload.old.id);
+          }
+          const updated = payload.new;
+          return prev.map(n => n.id === updated.id ? { ...n, ...updated } : n);
+        });
+      })
       .subscribe();
 
     return () => {
@@ -82,8 +91,10 @@ export default function SubAdminTelemetry({ navigation }) {
 
   const renderNodeItem = ({ item }) => {
     const statusCfg = getNodeStatusCfg(item.status);
-    const lastRead = readings[item.id] || { ph: 7.2, turbidity: 1.5, tds: 180, pressure: 38.5, timestamp: new Date() };
-    const formattedTime = new Date(lastRead.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const lastRead = readings[item.id] || null;
+    const formattedTime = lastRead
+      ? new Date(lastRead.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })
+      : '—';
 
     return (
       <View 
@@ -110,34 +121,40 @@ export default function SubAdminTelemetry({ navigation }) {
           </View>
         </View>
 
-        <View style={styles.metricsGrid}>
-          <View style={styles.metricItem}>
-            <Text style={styles.metricLabel}>Water pH</Text>
-            <Text style={styles.metricValue}>{lastRead.ph?.toFixed(2) || '7.0'}</Text>
-          </View>
+        {lastRead ? (
+          <View style={styles.metricsGrid}>
+            <View style={styles.metricItem}>
+              <Text style={styles.metricLabel}>Water pH</Text>
+              <Text style={styles.metricValue}>{lastRead.ph != null ? lastRead.ph.toFixed(2) : '—'}</Text>
+            </View>
 
-          <View style={styles.metricItem}>
-            <Text style={styles.metricLabel}>Turbidity</Text>
-            <Text style={styles.metricValue}>{lastRead.turbidity?.toFixed(2) || '1.0'} NTU</Text>
-          </View>
+            <View style={styles.metricItem}>
+              <Text style={styles.metricLabel}>Turbidity</Text>
+              <Text style={styles.metricValue}>{lastRead.turbidity != null ? `${lastRead.turbidity.toFixed(2)} NTU` : '—'}</Text>
+            </View>
 
-          <View style={styles.metricItem}>
-            <Text style={styles.metricLabel}>TDS Minerals</Text>
-            <Text style={styles.metricValue}>{lastRead.tds?.toFixed(0) || '150'} ppm</Text>
-          </View>
+            <View style={styles.metricItem}>
+              <Text style={styles.metricLabel}>TDS Minerals</Text>
+              <Text style={styles.metricValue}>{lastRead.tds != null ? `${lastRead.tds.toFixed(0)} ppm` : '—'}</Text>
+            </View>
 
-          <View style={styles.metricItem}>
-            <Text style={styles.metricLabel}>Pressure</Text>
-            <Text style={[
-              styles.metricValue, 
-              lastRead.pressure < 25 && { color: '#ef4444' }
-            ]}>
-              {lastRead.pressure?.toFixed(1) || '40.0'} psi
-            </Text>
+            <View style={styles.metricItem}>
+              <Text style={styles.metricLabel}>Pressure</Text>
+              <Text style={[
+                styles.metricValue,
+                lastRead.pressure != null && lastRead.pressure < 25 && { color: '#ef4444' }
+              ]}>
+                {lastRead.pressure != null ? `${lastRead.pressure.toFixed(1)} psi` : '—'}
+              </Text>
+            </View>
           </View>
-        </View>
+        ) : (
+          <View style={styles.noReadingBox}>
+            <Text style={styles.noReadingText}>No available readings for this IoT node</Text>
+          </View>
+        )}
 
-        <Text style={styles.metaFooter}>Last report: {formattedTime}</Text>
+        <Text style={styles.metaFooter}>{lastRead ? `Last report: ${formattedTime}` : 'No reports received yet'}</Text>
       </View>
     );
   };

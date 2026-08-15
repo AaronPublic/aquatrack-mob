@@ -88,6 +88,21 @@ const rawStyles = {
     fontWeight: '900',
     color: theme.colors.primary,
   },
+  noReadingBox: {
+    backgroundColor: '#F5F7FA',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noReadingText: {
+    fontSize: 11,
+    color: theme.colors.textMuted,
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
   metaFooter: {
     marginTop: 10,
     fontSize: 11,

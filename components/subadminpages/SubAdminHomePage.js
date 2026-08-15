@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
+import { MapPin, Clock, Play, CheckCircle2, ChevronRight, Wrench } from 'lucide-react-native';
 import AppIcon from '../../components/AppIcon';
 import { LinearGradient } from 'expo-linear-gradient';
 import styles from './SubAdminHomePage.styles';
@@ -191,48 +192,85 @@ export default function SubAdminHomePage({ navigation }) {
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Active Work Order tracking panel */}
         {hasActiveJob && jobDetails ? (
-          <View style={{ marginBottom: 20 }}>
-            <Text style={styles.sectionHeader}>Latest Assignment</Text>
-            <TouchableOpacity 
-              style={styles.trackerCard}
+          <View className="mb-6">
+            <Text className="text-[#8E8E93] font-black text-[10px] uppercase tracking-[2px] mb-3 px-1">Latest Assignment</Text>
+            <TouchableOpacity
+              className="bg-white border border-[#E2E8F5] rounded-3xl p-5 shadow-sm active:scale-[0.99]"
               onPress={() => navigation.navigate('SubAdminHomeDetail')}
               activeOpacity={0.9}
             >
-              <View style={styles.trackerHeader}>
-                <View style={{ flex: 1, marginRight: 8 }}>
-                  <Text style={styles.trackerLabel}>Location</Text>
-                  <Text style={styles.trackerTitle} numberOfLines={1}>{jobDetails.location}</Text>
+              <View className="flex-row items-start justify-between">
+                <View className="flex-1 mr-2">
+                  <View className="flex-row items-center">
+                    <View className="w-10 h-10 rounded-2xl bg-[#EFF6FF] border border-[#BFDBFE] items-center justify-center mr-3">
+                      <MapPin size={18} color="#0C4F8B" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-[#8E8E93] font-bold text-[9px] uppercase tracking-wider">Location</Text>
+                      <Text className="text-[#0B2240] font-extrabold text-sm mt-0.5" numberOfLines={1}>{jobDetails.location}</Text>
+                    </View>
+                  </View>
                 </View>
-                <View style={[styles.statusBadgeSmall, { backgroundColor: jobStatus === 'ASSIGNED' ? '#fef3c7' : '#eff6ff' }]}>
-                  <View style={[styles.statusDotSmall, { backgroundColor: jobStatus === 'ASSIGNED' ? '#f59e0b' : '#3b82f6' }]} />
-                  <Text style={[styles.statusTextSmall, { color: jobStatus === 'ASSIGNED' ? '#b45309' : '#1d4ed8' }]}>
+
+                <View
+                  className={[
+                    'flex-row items-center rounded-full px-2.5 py-1 border ml-2',
+                    jobStatus === 'ASSIGNED' ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200',
+                  ].join(' ')}
+                >
+                  {jobStatus === 'ASSIGNED' ? (
+                    <Clock size={11} color="#B45309" style={{ marginRight: 4 }} />
+                  ) : (
+                    <Play size={11} color="#1D4ED8" style={{ marginRight: 4 }} />
+                  )}
+                  <Text
+                    className={[
+                      'text-[9px] font-black uppercase tracking-wider',
+                      jobStatus === 'ASSIGNED' ? 'text-[#B45309]' : 'text-[#1D4ED8]',
+                    ].join(' ')}
+                  >
                     {jobStatus === 'ASSIGNED' ? 'Assigned' : 'In Progress'}
                   </Text>
                 </View>
               </View>
 
-              <Text style={styles.trackerDesc} numberOfLines={2}>
+              <Text className="text-[#525F7F] text-xs leading-[16px] font-medium mt-4" numberOfLines={2}>
                 {jobDetails.description}
               </Text>
 
-              <View style={styles.trackerActions}>
+              <View className="border-t border-[#F1F5F9] pt-3 mt-4 flex-row items-center">
                 {jobStatus === 'ASSIGNED' ? (
-                  <TouchableOpacity style={styles.btnAction} onPress={() => handleUpdateStatus('IN_PROGRESS')} activeOpacity={0.8}>
-                    <Text style={styles.btnActionText}>Start Assignment</Text>
+                  <TouchableOpacity
+                    className="bg-[#0C4F8B] h-[38px] rounded-xl flex-1 items-center justify-center flex-row"
+                    onPress={() => handleUpdateStatus('IN_PROGRESS')}
+                    activeOpacity={0.8}
+                  >
+                    <Play size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text className="text-white font-bold text-[11px] uppercase tracking-wider">Start Assignment</Text>
                   </TouchableOpacity>
                 ) : (
-                  <TouchableOpacity style={[styles.btnAction, { backgroundColor: '#10b981' }]} onPress={() => handleUpdateStatus('RESOLVED')} activeOpacity={0.8}>
-                    <Text style={styles.btnActionText}>Mark as Resolved</Text>
+                  <TouchableOpacity
+                    className="bg-[#10B981] h-[38px] rounded-xl flex-1 items-center justify-center flex-row"
+                    onPress={() => handleUpdateStatus('RESOLVED')}
+                    activeOpacity={0.8}
+                  >
+                    <CheckCircle2 size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text className="text-white font-bold text-[11px] uppercase tracking-wider">Mark as Resolved</Text>
                   </TouchableOpacity>
                 )}
+                <View className="w-9 h-9 ml-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F5] items-center justify-center">
+                  <ChevronRight size={18} color="#94A3B8" />
+                </View>
               </View>
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.emptyTrackerBox}>
-            <AppIcon name="construct-outline" size={24} color="#8E8E93" style={{ marginBottom: 6 }} />
-            <Text style={styles.emptyTrackerTitle}>No Active Jobs Assigned</Text>
-            <Text style={styles.emptyTrackerDesc}>You are currently available for dispatch work orders.</Text>
+          <View className="bg-white border border-[#E2E8F5] rounded-3xl p-6 items-center shadow-sm mb-6">
+            <View className="w-12 h-12 rounded-2xl bg-[#F1F5F9] items-center justify-center mb-3">
+              <Wrench size={22} color="#8E8E93" />
+            </View>
+            <Text className="text-[#0B1C3F] font-bold text-sm">No Active Jobs Assigned</Text>
+            <Text className="text-[#8E8E93] text-xs text-center mt-1">You are currently available for dispatch work orders.</Text>
           </View>
         )}
 

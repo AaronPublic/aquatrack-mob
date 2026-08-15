@@ -118,11 +118,14 @@ export default function TechHeader({
                 <AppIcon name="arrow-back" size={20} color="#FFFFFF" />
               </TouchableOpacity>
             )}
-            <View style={homeStyles.logoContainer}>
-              <AppIcon name="water" size={26} color="#7DD3FC" />
+            <View style={[homeStyles.logoContainer, { gap: 0 }]}>
+              <Image
+                source={require('../../assets/MOB-LOGO.png')}
+                style={{ width: 44, height: 44, resizeMode: 'contain' }}
+              />
               <Text style={homeStyles.brandTitleText}>
                 <Text style={{ color: '#FFFFFF' }}>AQ</Text>
-                <Text style={{ color: '#FBBF24' }}>U</Text>
+                <Text style={{ color: '#ffd800' }}>U</Text>
                 <Text style={{ color: '#EF4444' }}>A</Text>
                 <Text style={{ color: '#FFFFFF' }}>TRACK</Text>
               </Text>
