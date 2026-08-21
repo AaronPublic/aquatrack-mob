@@ -35,8 +35,39 @@ A production-ready mobile application built for water anomaly reporting and fiel
 ## 🚀 Setup & Launch (For Team Members)
 
 ### Prerequisites
-- **Node.js** and **npm** installed
-- **Android Studio** with the Android SDK and a configured emulator (or a physical Android device)
+
+To successfully run and build the native Android application on Windows, you must configure the following dependencies and environment settings:
+
+#### 1. Java Development Kit (JDK 17)
+Expo SDK 57 / React Native 0.86 requires **JDK 17**.
+- Download and install JDK 17 (e.g., from [Eclipse Temurin](https://adoptium.net/temurin/releases/?version=17) or Oracle).
+- Set the `JAVA_HOME` environment variable to point to your JDK installation directory (e.g., `C:\Program Files\Eclipse Foundation\jdk-17.x.x.x-hotspot` or `C:\Program Files\Java\jdk-17`).
+
+#### 2. Android Studio & Android SDK
+- Install [Android Studio](https://developer.android.com/studio).
+- Open Android Studio and complete the SDK setup. By default, the SDK is installed under `C:\Users\<Your-Username>\AppData\Local\Android\Sdk`.
+- Go to **Tools → SDK Manager → SDK Tools** (bottom-right: check **Show Package Details**):
+  - Ensure **Android SDK Command-line Tools (latest)** is checked and installed (crucial for Expo CLI).
+  - Ensure **Android SDK Platform-Tools** and **Android Emulator** are installed.
+- Under the **SDK Platforms** tab, ensure you have an API Level platform installed (e.g., **Android 15.0 ("VanillaIceCream") / API 35** or Android 14.0 / API 34).
+
+#### 3. Android NDK (Version 27.1.12297006)
+To avoid the common Windows Gradle crash `NDK did not have a source.properties file`, install this specific NDK version:
+1. In Android Studio **SDK Manager → SDK Tools**, check **Show Package Details** at the bottom-right.
+2. Scroll to and expand **NDK (Side-by-side)**.
+3. Check and install version **`27.1.12297006`**.
+4. *(If you hit NDK issues later, uncheck the NDK package to uninstall it, click Apply, and then re-check and reinstall version `27.1.12297006`).*
+
+#### 4. Environment Variables (Windows)
+Configure the following variables in your Windows system settings (Search for "Edit the system environment variables" in Start):
+- **User or System Variables**:
+  - `ANDROID_HOME`: `C:\Users\<Your-Username>\AppData\Local\Android\Sdk`
+  - `JAVA_HOME`: `C:\Program Files\Java\jdk-17` (adjust to match your exact JDK path)
+- **Path Variable**: Add the following paths to your system/user `Path` list:
+  - `%ANDROID_HOME%\platform-tools` (makes the `adb` command available globally)
+  - `%ANDROID_HOME%\cmdline-tools\latest\bin` (helps Expo locate native tools)
+  - `%JAVA_HOME%\bin`
+
 
 ### 1. Install Dependencies
 ```bash
@@ -55,6 +86,52 @@ export const API_BASE_URL = Platform.select({
 });
 ```
 > Run `ipconfig` in Command Prompt and look for the **IPv4 Address** under your active Wi-Fi adapter.
+
+---
+
+## 📱 Running the Android Development Build (`npm run android`)
+
+To build the native Android application and run it on a simulator/emulator or a connected physical device with live hot-reloading:
+
+### Step 1 — Verify Prerequisites & Setup
+Ensure you have completed all the steps in the **Setup & Launch** section (installed dependencies, downloaded `google-services.json`, set your API IP, and set up your system environment variables/NDK version).
+
+### Step 2 — Generate Native Android Project (Clean Build)
+If you have just cloned the repository, updated native config/plugins in `app.json`, or want to ensure a completely clean state:
+```bash
+npx expo prebuild --platform android --clean
+```
+
+### Step 3 — Recreate `local.properties`
+The prebuild command will wipe and regenerate the `android/` folder, which deletes `android/local.properties`. Recreate it:
+```powershell
+Set-Content -Path android\local.properties -Value "sdk.dir=C\:/Users/<Your-Username>/AppData/Local/Android/Sdk"
+```
+*(Verify your file matches `sdk.dir=C\:/Users/AJ/AppData/Local/Android/Sdk` using forward slashes or an escaped colon. Run `echo $env:USERNAME` to confirm your username).*
+
+### Step 4 — Open Emulator or Connect Physical Device
+- **Emulator**: Start your configured virtual device from Android Studio's Device Manager.
+- **Physical Device**: Connect it via USB with **USB Debugging** enabled.
+- Verify the device/emulator is detected by running:
+  ```bash
+  adb devices
+  ```
+
+### Step 5 — Build and Launch the App
+Run the following script command at the root of `aquatrack-mob`:
+```bash
+npm run android
+```
+This command runs `expo run:android` which will:
+1. Compile the native Android build via Gradle.
+2. Install the custom development build onto your device/emulator.
+3. Automatically launch the Metro bundler server to sync and hot-reload code updates.
+
+### Step 6 — Enable USB Port Forwarding (For Physical Devices)
+If you are testing on a physical device connected via USB, run the following to forward the Metro port:
+```bash
+adb reverse tcp:8081 tcp:8081
+```
 
 ---
 
