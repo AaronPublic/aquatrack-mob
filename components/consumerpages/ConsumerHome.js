@@ -46,7 +46,7 @@ const formatCategory = (cat) => {
 };
 
 const calculateWQI = (reading) => {
-  if (!reading) return 84; // Fallback default
+  if (!reading) return null; // No reading available — let the caller handle No Data state
   let score = 0;
   
   // pH (Max 30)
@@ -226,12 +226,12 @@ export default function ConsumerHome({ navigation }) {
   const [neighborhoodAlert, setNeighborhoodAlert] = useState(null);
   const [metrics, setMetrics] = useState({ total: 25, pending: 9, active: 8, resolved: 8 });
   const [waterIndexData, setWaterIndexData] = useState({
-    nodeName: 'DOLORES EDGE NODE',
-    wqi: 84,
-    statusText: 'STABLE STATE',
-    description: 'Satisfactory pressure and quality. Safe for daily household tasks and normal usage.',
-    statusColor: '#007AFF',
-    statusBg: 'rgba(0, 122, 255, 0.08)'
+    nodeName: 'DETECTING NEAREST NODE...',
+    wqi: null,
+    statusText: 'LOADING',
+    description: 'Fetching nearest sensor data for your location…',
+    statusColor: '#94A3B8',
+    statusBg: 'rgba(148, 163, 184, 0.08)'
   });
 
   const profileSlideAnim = useRef(new Animated.Value(280)).current;
@@ -351,7 +351,10 @@ export default function ConsumerHome({ navigation }) {
 
           // Fetch Telemetry Nodes and Readings to calculate dynamic Water Health Index
           try {
-            const { data: nodes } = await supabase.from('TelemetryNode').select('*');
+            const { data: nodes } = await supabase
+              .from('TelemetryNode')
+              .select('*')
+              .order('name', { ascending: true });
             const { data: readings } = await supabase
               .from('TelemetryReading')
               .select('*')
@@ -398,12 +401,14 @@ export default function ConsumerHome({ navigation }) {
                 complaints: neighborhoodComplaints || [],
               }));
               
-              let statusText = 'STABLE STATE';
-              let description = 'Satisfactory pressure and quality. Safe for daily household tasks and normal usage.';
-              let statusColor = '#007AFF'; // Blue
-              let statusBg = 'rgba(0, 122, 255, 0.08)';
+              let statusText = 'NO DATA';
+              let description = 'No sensor readings available for the nearest node yet.';
+              let statusColor = '#94A3B8'; // Slate grey
+              let statusBg = 'rgba(148, 163, 184, 0.08)';
 
-              if (computedWqi >= 85) {
+              if (computedWqi === null) {
+                // No reading for this node — keep No Data defaults above
+              } else if (computedWqi >= 85) {
                 statusText = 'OPTIMAL STATE';
                 description = 'Excellent water quality and pressure. Highly safe for drinking and all general household uses.';
                 statusColor = '#10B981'; // Emerald
@@ -473,7 +478,10 @@ export default function ConsumerHome({ navigation }) {
         const userBarangay = profile?.address || '';
 
         // Fetch nodes
-        const { data: nodes } = await supabase.from('TelemetryNode').select('id, name');
+        const { data: nodes } = await supabase
+          .from('TelemetryNode')
+          .select('id, name')
+          .order('name', { ascending: true });
         let chosenNodeId = null;
         if (nodes && nodes.length > 0) {
           let chosenNode = nodes[0];
@@ -956,7 +964,7 @@ return (
               className="w-16 h-16 rounded-full border-4 items-center justify-center bg-[#F8FAFC]"
             >
               <Text className="text-[#0B2240] font-black text-xl font-mono">
-                {waterIndexData.wqi}
+                {waterIndexData.wqi !== null ? waterIndexData.wqi : '--'}
               </Text>
             </View>
 

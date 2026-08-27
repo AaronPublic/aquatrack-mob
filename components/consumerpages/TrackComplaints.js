@@ -35,6 +35,7 @@ export default function TrackComplaints({ navigation }) {
   const [userName, setUserName] = useState('Pedro');
   const [metrics, setMetrics] = useState({ total: 25, pending: 9, active: 8, resolved: 8 });
   const [notificationsModalVisible, setNotificationsModalVisible] = useState(false);
+  const [selectedQrId, setSelectedQrId] = useState(null);
   const { notifications, unreadCount, fetchNotifications, markAllAsRead, dismissNotification } = useNotificationStore();
 
   const handleOpenNotifications = () => {
@@ -266,7 +267,22 @@ export default function TrackComplaints({ navigation }) {
             <View style={styles.metaRow}>
               <View style={styles.metaItem}>
                 <Text style={styles.metaLabel}>Ticket ID</Text>
-                <Text style={styles.metaValueMono}>AQ-{item.id ? item.id.slice(0, 4).toUpperCase() : 'N/A'}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.metaValueMono}>AQ-{item.id ? item.id.slice(0, 4).toUpperCase() : 'N/A'}</Text>
+                  <TouchableOpacity
+                    onPress={() => setSelectedQrId(item.id)}
+                    style={{
+                      padding: 5,
+                      backgroundColor: 'rgba(0, 174, 239, 0.08)',
+                      borderRadius: 6,
+                      borderWidth: 1,
+                      borderColor: 'rgba(0, 174, 239, 0.15)'
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <AppIcon name="qr-code" size={14} color="#00aeef" />
+                  </TouchableOpacity>
+                </View>
               </View>
               <View style={styles.metaItem}>
                 <Text style={styles.metaLabel}>Barangay</Text>
@@ -580,6 +596,93 @@ export default function TrackComplaints({ navigation }) {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      {/* QR Code Presentation Overlay */}
+      {!!selectedQrId && (
+        <TouchableOpacity 
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 30, 102, 0.6)',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+            zIndex: 1000
+          }}
+          activeOpacity={1}
+          onPress={() => setSelectedQrId(null)}
+        >
+          <TouchableOpacity 
+            style={{
+              backgroundColor: '#fff',
+              borderRadius: 32,
+              padding: 24,
+              width: '100%',
+              maxWidth: 320,
+              alignItems: 'center',
+              shadowColor: '#0B2240',
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.15,
+              shadowRadius: 20,
+              elevation: 10,
+              borderWidth: 1,
+              borderColor: '#f1f5f9'
+            }}
+            activeOpacity={1}
+          >
+            <TouchableOpacity
+              onPress={() => setSelectedQrId(null)}
+              style={{
+                position: 'absolute',
+                top: 16,
+                right: 16,
+                width: 32,
+                height: 32,
+                backgroundColor: '#f1f5f9',
+                borderRadius: 16,
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <AppIcon name="close" size={14} color="#64748b" />
+            </TouchableOpacity>
+
+            <Text style={{ fontSize: 16, fontWeight: '900', color: '#001e66', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 12 }}>Complaint QR Code</Text>
+            <Text style={{ fontSize: 11, fontFamily: 'monospace', fontWeight: 'bold', color: '#94a3b8', marginTop: 4 }}>
+              AQ-{selectedQrId ? selectedQrId.slice(0, 8).toUpperCase() : ''}
+            </Text>
+
+            <View style={{
+              marginVertical: 20,
+              padding: 12,
+              backgroundColor: '#fff',
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: '#f1f5f9',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.05,
+              shadowRadius: 6,
+              elevation: 2
+            }}>
+              {selectedQrId && (
+                <Image
+                  source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${selectedQrId}` }}
+                  style={{ width: 180, height: 180 }}
+                  resizeMode="contain"
+                />
+              )}
+            </View>
+
+            <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'center', lineHeight: 16, fontWeight: '600' }}>
+              Show this QR code to the technician once the work is completed to verify and automatically resolve the ticket.
+            </Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }

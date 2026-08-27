@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, Animated } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, Animated, TextInput, Image } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import { MapPin, ClipboardList, Wrench } from 'lucide-react-native';
@@ -75,6 +75,8 @@ export default function SubAdminHome({ navigation }) {
   const [hasActiveJob, setHasActiveJob] = useState(false);
   const [jobStatus, setJobStatus] = useState('ASSIGNED'); // ASSIGNED, IN_PROGRESS, RESOLVED
   const [jobDetails, setJobDetails] = useState(null);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [scanInput, setScanInput] = useState('');
 
   // Dashboard Metrics
   const [metrics, setMetrics] = useState({ activeJobs: 0, pendingTriage: 0, telemetryAlerts: 0 });
@@ -259,59 +261,45 @@ export default function SubAdminHome({ navigation }) {
 
   useEffect(() => {
     let isMounted = true;
-    let subscription = null;
+    let intervalId = null;
 
     const startLocationTracking = async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') return;
 
-        let initialLoc = null;
-        try {
-          initialLoc = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
-        } catch (locErr) {
-          initialLoc = await Location.getLastKnownPositionAsync();
-        }
-
-        if (!initialLoc) {
-          console.warn('Technician location unavailable — live tracking skipped');
-          return;
-        }
-
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session && isMounted) {
-          await api.post('/api/auth/location', {
-            userId: session.user.id,
-            latitude: initialLoc.coords.latitude,
-            longitude: initialLoc.coords.longitude,
-          });
-        }
-
-        subscription = await Location.watchPositionAsync(
-          {
-            accuracy: Location.Accuracy.Balanced,
-            distanceInterval: 50,
-            timeInterval: 60000,
-          },
-          async (newLoc) => {
-            if (!isMounted) return;
+        const updatePosition = async () => {
+          try {
+            let currentLoc = null;
             try {
+              currentLoc = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced,
+              });
+            } catch (locErr) {
+              currentLoc = await Location.getLastKnownPositionAsync();
+            }
+
+            if (currentLoc && isMounted) {
               const currentSession = await supabase.auth.getSession();
               const uId = currentSession?.data?.session?.user?.id;
               if (uId) {
                 await api.post('/api/auth/location', {
                   userId: uId,
-                  latitude: newLoc.coords.latitude,
-                  longitude: newLoc.coords.longitude,
+                  latitude: currentLoc.coords.latitude,
+                  longitude: currentLoc.coords.longitude,
                 });
               }
-            } catch (err) {
-              console.error('Error updating live technician coordinates:', err);
             }
+          } catch (err) {
+            console.error('Error updating live technician coordinates:', err);
           }
-        );
+        };
+
+        // Update once immediately
+        await updatePosition();
+
+        // Check every 60 seconds
+        intervalId = setInterval(updatePosition, 60000);
       } catch (err) {
         console.error('Failed to initialize technician location tracker:', err);
       }
@@ -321,7 +309,7 @@ export default function SubAdminHome({ navigation }) {
 
     return () => {
       isMounted = false;
-      if (subscription) subscription.remove();
+      if (intervalId) clearInterval(intervalId);
     };
   }, []);
 
@@ -338,17 +326,28 @@ export default function SubAdminHome({ navigation }) {
             try {
               if (jobDetails) {
                 const targetTable = jobDetails.sourceType === 'Complaint' ? 'Complaint' : 'WorkOrder';
-                const updatePayload = {
-                  status: newStatus,
-                  ...(newStatus === 'RESOLVED' ? { resolvedAt: new Date().toISOString() } : {})
-                };
+                
+                if (targetTable === 'Complaint') {
+                  const res = await api.put('/api/admin/complaints', {
+                    id: jobDetails.id,
+                    status: newStatus,
+                    isEnRoute: newStatus === 'ONGOING'
+                  });
+                  if (!res || !res.success) {
+                    throw new Error(res?.error || "Failed to update status via API");
+                  }
+                } else {
+                  const updatePayload = {
+                    status: newStatus,
+                    ...(newStatus === 'RESOLVED' ? { resolvedAt: new Date().toISOString() } : {})
+                  };
+                  const { error } = await supabase
+                    .from(targetTable)
+                    .update(updatePayload)
+                    .eq('id', jobDetails.id);
 
-                const { error } = await supabase
-                  .from(targetTable)
-                  .update(updatePayload)
-                  .eq('id', jobDetails.id);
-
-                if (error) throw error;
+                  if (error) throw error;
+                }
               }
               setJobStatus(newStatus);
               if (newStatus === 'RESOLVED') {
@@ -362,6 +361,55 @@ export default function SubAdminHome({ navigation }) {
         }
       ]
     );
+  };
+
+  const handleConfirmScan = async (scannedId) => {
+    if (!scannedId) {
+      Alert.alert("Error", "Please scan or enter a Ticket ID.");
+      return;
+    }
+    
+    const normalizedScanned = scannedId.replace(/^AQ-/i, '').trim().toLowerCase();
+    const normalizedJobId = jobDetails.id.trim().toLowerCase();
+    const shortJobId = jobDetails.id.slice(0, 8).toLowerCase();
+
+    if (normalizedScanned === normalizedJobId || normalizedScanned === shortJobId || jobDetails.id.toLowerCase().startsWith(normalizedScanned)) {
+      setIsScannerOpen(false);
+      try {
+        if (jobDetails) {
+          const targetTable = jobDetails.sourceType === 'Complaint' ? 'Complaint' : 'WorkOrder';
+          
+          if (targetTable === 'Complaint') {
+            const res = await api.put('/api/admin/complaints', {
+              id: jobDetails.id,
+              status: 'RESOLVED'
+            });
+            if (!res || !res.success) {
+              throw new Error(res?.error || "Failed to update status via API");
+            }
+          } else {
+            const updatePayload = {
+              status: 'RESOLVED',
+              resolvedAt: new Date().toISOString()
+            };
+            const { error } = await supabase
+              .from(targetTable)
+              .update(updatePayload)
+              .eq('id', jobDetails.id);
+
+            if (error) throw error;
+          }
+        }
+        setJobStatus('RESOLVED');
+        setHasActiveJob(false);
+        Alert.alert("Verification Success", "QR Code verified successfully. Complaint ticket has been resolved.");
+        loadDashboardData();
+      } catch (err) {
+        Alert.alert("Status Update Failed", err.message);
+      }
+    } else {
+      Alert.alert("Invalid QR Code", "Scanned code does not match this job's Ticket ID. Please try again.");
+    }
   };
 
   const handleLogout = async () => {
@@ -471,6 +519,44 @@ export default function SubAdminHome({ navigation }) {
                     <Text className="text-[#525F7F] text-xs leading-[18px] font-medium">"{jobDetails.recommendedAction}"</Text>
                   </View>
                 ) : null}
+                {/* Job Status Actions */}
+                <View style={{ borderTopWidth: 1, borderColor: '#F1F5F9', paddingTop: 16, marginTop: 16, flexDirection: 'row', alignItems: 'center' }}>
+                  {jobStatus !== 'ONGOING' ? (
+                    <TouchableOpacity
+                      style={{
+                        backgroundColor: '#001e66',
+                        height: 44,
+                        borderRadius: 14,
+                        flex: 1,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexDirection: 'row'
+                      }}
+                      onPress={() => handleUpdateStatus('ONGOING')}
+                      activeOpacity={0.8}
+                    >
+                      <AppIcon name="arrow-forward" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                      <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>Start Job Assignment</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={{
+                        backgroundColor: '#10B981',
+                        height: 44,
+                        borderRadius: 14,
+                        flex: 1,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexDirection: 'row'
+                      }}
+                      onPress={() => setIsScannerOpen(true)}
+                      activeOpacity={0.8}
+                    >
+                      <AppIcon name="scan-outline" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                      <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>Scan QR to Resolve</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             </View>
           </View>
@@ -601,78 +687,162 @@ export default function SubAdminHome({ navigation }) {
       </ScrollView>
 
       {/* Profile actions Modal overlay */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={profileModalVisible}
-        onRequestClose={() => setProfileModalVisible(false)}
-      >
-        <TouchableOpacity 
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setProfileModalVisible(false)}
+      {profileModalVisible && (
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={profileModalVisible}
+          onRequestClose={() => setProfileModalVisible(false)}
         >
-          <Animated.View 
-            style={{ 
-              width: '100%', 
-              opacity: profileFadeAnim, 
-              transform: [{ translateY: profileSlideAnim }] 
-            }}
+          <TouchableOpacity 
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setProfileModalVisible(false)}
           >
-            <TouchableOpacity 
-              style={styles.modalContent}
-              activeOpacity={1}
-              onPress={(e) => e.stopPropagation()}
+            <Animated.View 
+              style={{ 
+                width: '100%', 
+                opacity: profileFadeAnim, 
+                transform: [{ translateY: profileSlideAnim }] 
+              }}
             >
-              {/* Modal Header */}
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Technician Options</Text>
-                <TouchableOpacity onPress={() => setProfileModalVisible(false)}>
-                  <AppIcon name="close" size={20} color="#0B1C3F" />
-                </TouchableOpacity>
-              </View>
-
-              {/* Profile Info Row */}
-              <View style={styles.modalUserSection}>
-                <View style={styles.modalAvatarLarge}>
-                  <AppIcon name="person" size={20} color="#ffffff" />
+              <TouchableOpacity 
+                style={styles.modalContent}
+                activeOpacity={1}
+                onPress={(e) => e.stopPropagation()}
+              >
+                {/* Modal Header */}
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Technician Options</Text>
+                  <TouchableOpacity onPress={() => setProfileModalVisible(false)}>
+                    <AppIcon name="close" size={20} color="#0B1C3F" />
+                  </TouchableOpacity>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.modalUserName}>{techName}</Text>
-                  <Text style={styles.modalUserRole}>Field Technician</Text>
+
+                {/* Profile Info Row */}
+                <View style={styles.modalUserSection}>
+                  <View style={styles.modalAvatarLarge}>
+                    <AppIcon name="person" size={20} color="#ffffff" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.modalUserName}>{techName}</Text>
+                    <Text style={styles.modalUserRole}>Field Technician</Text>
+                  </View>
                 </View>
-              </View>
 
-              {/* Action Buttons */}
-              <View style={styles.modalActions}>
-                {/* Manage Account */}
-                <TouchableOpacity 
-                  style={styles.modalBtnPrimary}
-                  onPress={() => {
-                    setProfileModalVisible(false);
-                    navigation.navigate('ManageAccount');
-                  }}
-                >
-                  <AppIcon name="settings-outline" size={15} color="#ffffff" style={{ marginRight: 6 }} />
-                  <Text style={styles.modalBtnPrimaryText}>Manage Account</Text>
-                </TouchableOpacity>
+                {/* Action Buttons */}
+                <View style={styles.modalActions}>
+                  {/* Manage Account */}
+                  <TouchableOpacity 
+                    style={styles.modalBtnPrimary}
+                    onPress={() => {
+                      setProfileModalVisible(false);
+                      navigation.navigate('ManageAccount');
+                    }}
+                  >
+                    <AppIcon name="settings-outline" size={15} color="#ffffff" style={{ marginRight: 6 }} />
+                    <Text style={styles.modalBtnPrimaryText}>Manage Account</Text>
+                  </TouchableOpacity>
 
-                {/* Log Out */}
-                <TouchableOpacity 
-                  style={styles.modalBtnDanger}
-                  onPress={async () => {
-                    setProfileModalVisible(false);
-                    await handleLogout();
-                  }}
-                >
-                  <AppIcon name="log-out-outline" size={15} color="#FF3B30" style={{ marginRight: 6 }} />
-                  <Text style={styles.modalBtnDangerText}>Log Out Account</Text>
-                </TouchableOpacity>
-              </View>
+                  {/* Log Out */}
+                  <TouchableOpacity 
+                    style={styles.modalBtnDanger}
+                    onPress={async () => {
+                      setProfileModalVisible(false);
+                      await handleLogout();
+                    }}
+                  >
+                    <AppIcon name="log-out-outline" size={15} color="#FF3B30" style={{ marginRight: 6 }} />
+                    <Text style={styles.modalBtnDangerText}>Log Out Account</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
+          </TouchableOpacity>
+        </Modal>
+      )}
+
+      {/* QR Code Scanner Simulation Overlay */}
+      {isScannerOpen && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#090d16', justifyContent: 'space-between', padding: 24, zIndex: 1000 }}>
+          {/* Header */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 65 }}>
+            <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>Scan QR Code</Text>
+            <TouchableOpacity 
+              onPress={() => setIsScannerOpen(false)}
+              style={{ width: 36, height: 36, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 18, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <AppIcon name="close" size={16} color="#fff" />
             </TouchableOpacity>
-          </Animated.View>
-        </TouchableOpacity>
-      </Modal>
+          </View>
+
+          {/* Viewfinder Mockup */}
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginVertical: 32 }}>
+            <View style={{
+              width: 250,
+              height: 250,
+              borderWidth: 2,
+              borderColor: '#00aeef',
+              borderRadius: 24,
+              backgroundColor: 'rgba(255,255,255,0.03)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative'
+            }}>
+              {/* Corner brackets */}
+              <View style={{ position: 'absolute', top: -2, left: -2, width: 20, height: 20, borderTopWidth: 4, borderLeftWidth: 4, borderColor: '#00aeef', borderTopLeftRadius: 12 }} />
+              <View style={{ position: 'absolute', top: -2, right: -2, width: 20, height: 20, borderTopWidth: 4, borderRightWidth: 4, borderColor: '#00aeef', borderTopRightRadius: 12 }} />
+              <View style={{ position: 'absolute', bottom: -2, left: -2, width: 20, height: 20, borderBottomWidth: 4, borderLeftWidth: 4, borderColor: '#00aeef', borderBottomLeftRadius: 12 }} />
+              <View style={{ position: 'absolute', bottom: -2, right: -2, width: 20, height: 20, borderBottomWidth: 4, borderRightWidth: 4, borderColor: '#00aeef', borderBottomRightRadius: 12 }} />
+              
+              <AppIcon name="scan-outline" size={64} color="rgba(0,174,239,0.3)" />
+            </View>
+            <Text style={{ color: '#94a3b8', fontSize: 11, textAlign: 'center', marginTop: 20, fontWeight: '600' }}>
+              Align the resident's QR code within the frame to scan.
+            </Text>
+          </View>
+
+          {/* Manual Entry Form */}
+          <View style={{ marginBottom: 40 }}>
+            <Text style={{ color: '#94a3b8', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
+              Manual Ticket ID / Scan Entry
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TextInput
+                style={{
+                  flex: 1,
+                  backgroundColor: 'rgba(255,255,255,0.06)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.1)',
+                  borderRadius: 12,
+                  paddingHorizontal: 16,
+                  height: 48,
+                  color: '#fff',
+                  fontSize: 13,
+                  fontWeight: 'bold'
+                }}
+                value={scanInput}
+                onChangeText={setScanInput}
+                placeholder="Enter AQ-XXXXXX Code"
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                autoCapitalize="characters"
+              />
+              <TouchableOpacity
+                onPress={() => handleConfirmScan(scanInput)}
+                style={{
+                  backgroundColor: '#00aeef',
+                  borderRadius: 12,
+                  paddingHorizontal: 20,
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }}
+              >
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase' }}>Verify</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 }

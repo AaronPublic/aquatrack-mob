@@ -47,6 +47,7 @@ import {
   X,
   XCircle,
   Zap,
+  QrCode,
 } from 'lucide-react-native';
 
 /**
@@ -99,6 +100,7 @@ const ICON_MAP = {
   pulse: Activity,
   'pulse-outline': Activity,
   'receipt-outline': Receipt,
+  'qr-code': QrCode,
   'scan-outline': ScanLine,
   search: Search,
   'search-outline': Search,

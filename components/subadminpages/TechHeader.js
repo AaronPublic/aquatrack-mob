@@ -237,141 +237,145 @@ export default function TechHeader({
       )}
 
       {/* ── Notifications Modal ────────────────────────────────────── */}
-      <Modal
-        visible={notificationsVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setNotificationsVisible(false)}
-      >
-        <TouchableOpacity
-          style={homeStyles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setNotificationsVisible(false)}
+      {notificationsVisible && (
+        <Modal
+          visible={notificationsVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setNotificationsVisible(false)}
         >
-          <TouchableOpacity 
-            activeOpacity={1} 
-            style={homeStyles.notifModalCard}
-            onPress={(e) => e.stopPropagation?.()}
+          <TouchableOpacity
+            style={homeStyles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setNotificationsVisible(false)}
           >
-            {/* Header */}
-            <View style={homeStyles.notifModalHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <AppIcon name="notifications" size={20} color="#0C4F8B" />
-                <Text style={homeStyles.notifModalTitle}>Technician Alerts</Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setNotificationsVisible(false)}
-                style={homeStyles.notifModalCloseBtn}
-              >
-                <AppIcon name="close" size={18} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-
-            {/* List */}
-            <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
-              {notifications.length === 0 ? (
-                <View style={homeStyles.notifEmptyBox}>
-                  <AppIcon name="notifications-off-outline" size={36} color="#CBD5E1" />
-                  <Text style={homeStyles.notifEmptyText}>No notifications at this time.</Text>
+            <TouchableOpacity 
+              activeOpacity={1} 
+              style={homeStyles.notifModalCard}
+              onPress={(e) => e.stopPropagation?.()}
+            >
+              {/* Header */}
+              <View style={homeStyles.notifModalHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <AppIcon name="notifications" size={20} color="#0C4F8B" />
+                  <Text style={homeStyles.notifModalTitle}>Technician Alerts</Text>
                 </View>
-              ) : (
-                notifications.map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[
-                      homeStyles.notifItem,
-                      item.unread && homeStyles.notifItemUnread,
-                    ]}
-                    onPress={() => handleNotificationPress(item)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={homeStyles.notifIconContainer}>
-                      <AppIcon
-                        name={
-                          item.type === 'new_complaint'
-                            ? 'warning-outline'
-                            : 'megaphone-outline'
-                        }
-                        size={18}
-                        color="#0C4F8B"
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={homeStyles.notifItemTitle}>{item.title}</Text>
-                      <Text style={homeStyles.notifItemBody}>{item.body}</Text>
-                      <Text style={homeStyles.notifItemTime}>{item.time}</Text>
-                    </View>
-                    {item.unread && <View style={homeStyles.notifUnreadDot} />}
-                  </TouchableOpacity>
-                ))
-              )}
-            </ScrollView>
+                <TouchableOpacity
+                  onPress={() => setNotificationsVisible(false)}
+                  style={homeStyles.notifModalCloseBtn}
+                >
+                  <AppIcon name="close" size={18} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+
+              {/* List */}
+              <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+                {notifications.length === 0 ? (
+                  <View style={homeStyles.notifEmptyBox}>
+                    <AppIcon name="notifications-off-outline" size={36} color="#CBD5E1" />
+                    <Text style={homeStyles.notifEmptyText}>No notifications at this time.</Text>
+                  </View>
+                ) : (
+                  notifications.map((item) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[
+                        homeStyles.notifItem,
+                        item.unread && homeStyles.notifItemUnread,
+                      ]}
+                      onPress={() => handleNotificationPress(item)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={homeStyles.notifIconContainer}>
+                        <AppIcon
+                          name={
+                            item.type === 'new_complaint'
+                              ? 'warning-outline'
+                              : 'megaphone-outline'
+                          }
+                          size={18}
+                          color="#0C4F8B"
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={homeStyles.notifItemTitle}>{item.title}</Text>
+                        <Text style={homeStyles.notifItemBody}>{item.body}</Text>
+                        <Text style={homeStyles.notifItemTime}>{item.time}</Text>
+                      </View>
+                      {item.unread && <View style={homeStyles.notifUnreadDot} />}
+                    </TouchableOpacity>
+                  ))
+                )}
+              </ScrollView>
+            </TouchableOpacity>
           </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+        </Modal>
+      )}
 
       {/* ── Profile Modal ────────────────────────────────────────────── */}
-      <Modal
-        visible={profileModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setProfileModalVisible(false)}
-      >
-        <TouchableOpacity
-          style={homeStyles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setProfileModalVisible(false)}
+      {profileModalVisible && (
+        <Modal
+          visible={profileModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setProfileModalVisible(false)}
         >
-          <TouchableOpacity activeOpacity={1} style={homeStyles.modalContent}>
-            <View style={homeStyles.modalHeader}>
-              <Text style={homeStyles.modalTitle}>Technician Profile</Text>
-              <TouchableOpacity onPress={() => setProfileModalVisible(false)}>
-                <AppIcon name="close" size={20} color="#0B1C3F" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={homeStyles.modalUserSection}>
-              <View style={homeStyles.modalAvatarLarge}>
-                <AppIcon name="person" size={20} color="#ffffff" />
+          <TouchableOpacity
+            style={homeStyles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setProfileModalVisible(false)}
+          >
+            <TouchableOpacity activeOpacity={1} style={homeStyles.modalContent}>
+              <View style={homeStyles.modalHeader}>
+                <Text style={homeStyles.modalTitle}>Technician Profile</Text>
+                <TouchableOpacity onPress={() => setProfileModalVisible(false)}>
+                  <AppIcon name="close" size={20} color="#0B1C3F" />
+                </TouchableOpacity>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={homeStyles.modalUserName}>{fullTechName}</Text>
-                <Text style={homeStyles.modalUserRole}>Field Technician</Text>
+
+              <View style={homeStyles.modalUserSection}>
+                <View style={homeStyles.modalAvatarLarge}>
+                  <AppIcon name="person" size={20} color="#ffffff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={homeStyles.modalUserName}>{fullTechName}</Text>
+                  <Text style={homeStyles.modalUserRole}>Field Technician</Text>
+                </View>
               </View>
-            </View>
 
-            <View style={homeStyles.modalActions}>
-              <TouchableOpacity 
-                style={homeStyles.modalBtnPrimary}
-                onPress={() => {
-                  setProfileModalVisible(false);
-                  navigation?.navigate('ManageAccount');
-                }}
-              >
-                <AppIcon name="settings-outline" size={15} color="#ffffff" style={{ marginRight: 6 }} />
-                <Text style={homeStyles.modalBtnPrimaryText}>Manage Account</Text>
-              </TouchableOpacity>
+              <View style={homeStyles.modalActions}>
+                <TouchableOpacity 
+                  style={homeStyles.modalBtnPrimary}
+                  onPress={() => {
+                    setProfileModalVisible(false);
+                    navigation?.navigate('ManageAccount');
+                  }}
+                >
+                  <AppIcon name="settings-outline" size={15} color="#ffffff" style={{ marginRight: 6 }} />
+                  <Text style={homeStyles.modalBtnPrimaryText}>Manage Account</Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={homeStyles.modalBtnDanger}
-                onPress={async () => {
-                  setProfileModalVisible(false);
-                  await useAuthStore.getState().signOut();
-                  if (navigation) {
-                    navigation.reset({
-                      index: 0,
-                      routes: [{ name: 'Login' }],
-                    });
-                  }
-                }}
-              >
-                <AppIcon name="log-out-outline" size={15} color="#FF3B30" style={{ marginRight: 6 }} />
-                <Text style={homeStyles.modalBtnDangerText}>Log Out Account</Text>
-              </TouchableOpacity>
-            </View>
+                <TouchableOpacity 
+                  style={homeStyles.modalBtnDanger}
+                  onPress={async () => {
+                    setProfileModalVisible(false);
+                    await useAuthStore.getState().signOut();
+                    if (navigation) {
+                      navigation.reset({
+                        index: 0,
+                        routes: [{ name: 'Login' }],
+                      });
+                    }
+                  }}
+                >
+                  <AppIcon name="log-out-outline" size={15} color="#FF3B30" style={{ marginRight: 6 }} />
+                  <Text style={homeStyles.modalBtnDangerText}>Log Out Account</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
           </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+        </Modal>
+      )}
     </>
   );
 }
