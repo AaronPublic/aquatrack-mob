@@ -46,17 +46,18 @@ export default function SubAdminComplaints({ navigation }) {
         setCurrentUser(session.user);
       }
 
-      // Fetch all complaints from API
-      const result = await api.get('/api/admin/complaints');
+      // Fetch all complaints and tech profiles in parallel
+      const [result, { data: users, error: userError }] = await Promise.all([
+        api.get('/api/admin/complaints'),
+        supabase
+          .from('User')
+          .select('id, name')
+          .in('role', ['FIELD_ENGINEER_TECHNICIAN', 'ADMIN'])
+      ]);
+
       if (result && result.success) {
         setComplaints(result.complaints);
       }
-
-      // Fetch tech profiles for display mappings
-      const { data: users, error: userError } = await supabase
-        .from('User')
-        .select('id, name')
-        .in('role', ['FIELD_ENGINEER_TECHNICIAN', 'ADMIN']);
 
       if (!userError && users) {
         const mapping = {};

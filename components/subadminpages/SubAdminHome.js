@@ -199,33 +199,37 @@ export default function SubAdminHome({ navigation }) {
         }
       }
 
-      // 2. Fetch metrics
-      const { count: totalLogsCount } = await supabase
-        .from('Complaint')
-        .select('*', { count: 'exact', head: true });
-
-      const { count: unclaimedCount } = await supabase
-        .from('Complaint')
-        .select('*', { count: 'exact', head: true })
-        .is('assignedToId', null)
-        .neq('status', 'RESOLVED');
-
-      const { count: assignedCount } = await supabase
-        .from('Complaint')
-        .select('*', { count: 'exact', head: true })
-        .eq('assignedToId', session.user.id)
-        .neq('status', 'RESOLVED');
-
-      const { count: resolvedCount } = await supabase
-        .from('Complaint')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'RESOLVED');
-
-      const { count: activeWoCount } = await supabase
-        .from('WorkOrder')
-        .select('*', { count: 'exact', head: true })
-        .eq('engineerId', session.user.id)
-        .neq('status', 'RESOLVED');
+      // 2. Fetch metrics in parallel
+      const [
+        { count: totalLogsCount },
+        { count: unclaimedCount },
+        { count: assignedCount },
+        { count: resolvedCount },
+        { count: activeWoCount }
+      ] = await Promise.all([
+        supabase
+          .from('Complaint')
+          .select('*', { count: 'exact', head: true }),
+        supabase
+          .from('Complaint')
+          .select('*', { count: 'exact', head: true })
+          .is('assignedToId', null)
+          .neq('status', 'RESOLVED'),
+        supabase
+          .from('Complaint')
+          .select('*', { count: 'exact', head: true })
+          .eq('assignedToId', session.user.id)
+          .neq('status', 'RESOLVED'),
+        supabase
+          .from('Complaint')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'RESOLVED'),
+        supabase
+          .from('WorkOrder')
+          .select('*', { count: 'exact', head: true })
+          .eq('engineerId', session.user.id)
+          .neq('status', 'RESOLVED')
+      ]);
 
       let activeAlerts = 0;
       if (nodeList.length > 0) {

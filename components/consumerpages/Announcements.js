@@ -65,17 +65,21 @@ export default function Announcements({ route, navigation }) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Fetch profile
-        const profile = await api.post('/api/auth/profile', { userId: session.user.id });
+        // Fetch profile and complaint counts in parallel
+        const [profile, { data: userComplaints, error: compError }] = await Promise.all([
+          api.post('/api/auth/profile', { userId: session.user.id }).catch((err) => {
+            console.warn("Bypassed profile fetch in Announcements:", err);
+            return null;
+          }),
+          supabase
+            .from('Complaint')
+            .select('id, status')
+            .eq('userId', session.user.id)
+        ]);
+
         if (profile?.name) {
           setUserName(profile.name);
         }
-
-        // Fetch complaint counts
-        const { data: userComplaints, error: compError } = await supabase
-          .from('Complaint')
-          .select('id, status')
-          .eq('userId', session.user.id);
 
         if (!compError && userComplaints) {
           const total = userComplaints.length;

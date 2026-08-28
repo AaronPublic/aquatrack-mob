@@ -19,62 +19,42 @@ export const useTechNotificationStore = create((set, get) => ({
 
       const list = [];
 
-      // ─── 1. Fetch Advisories targeted at technicians or broadcast ───────────
-      try {
-        const advisoriesData = await api.get('/api/advisories');
-        if (advisoriesData?.success && advisoriesData.advisories) {
-          const techAdvisories = advisoriesData.advisories.filter(
-            (ad) =>
-              ad.targetRole === 'broadcast' ||
-              ad.targetRole === 'technicians' ||
-              !ad.targetRole
-          );
-          techAdvisories.forEach((ad) => {
-            list.push({
-              id: `tech-ad-${ad.id}`,
-              type: 'advisory',
-              title: ad.title || 'Staff Advisory',
-              message: ad.content || ad.text || '',
-              date: new Date(ad.createdAt || ad.date || Date.now()),
-              category: ad.type || 'info',
-            });
-          });
-        }
-      } catch (err) {
-        // Fallback: query Supabase directly
-        console.warn('Falling back to Supabase for tech advisories:', err);
-        const { data } = await supabase
-          .from('Advisory')
-          .select('*')
-          .order('createdAt', { ascending: false });
-        if (data) {
-          data
-            .filter(
-              (ad) =>
-                ad.targetRole === 'broadcast' ||
-                ad.targetRole === 'technicians' ||
-                !ad.targetRole
-            )
-            .forEach((ad) => {
-              list.push({
-                id: `tech-ad-${ad.id}`,
-                type: 'advisory',
-                title: ad.title || 'Staff Advisory',
-                message: ad.content || ad.text || '',
-                date: new Date(ad.createdAt || ad.date || Date.now()),
-                category: ad.type || 'info',
-              });
-            });
-        }
-      }
+      // ─── 1 & 2. Fetch Advisories and Unassigned Complaints concurrently ───
+      const [advisoriesData, { data: newComplaints }] = await Promise.all([
+        api.get('/api/advisories').catch(async (err) => {
+          console.warn('Falling back to Supabase for tech advisories:', err);
+          const { data } = await supabase
+            .from('Advisory')
+            .select('*')
+            .order('createdAt', { ascending: false });
+          return { success: true, advisories: data || [] };
+        }),
+        supabase
+          .from('Complaint')
+          .select('id, status, createdAt, summary, category, rawText, barangay, urgency')
+          .is('assignedToId', null)
+          .order('createdAt', { ascending: false })
+          .limit(20)
+      ]);
 
-      // ─── 2. Fetch Newly Posted / Unassigned Complaints ────────────────────
-      const { data: newComplaints } = await supabase
-        .from('Complaint')
-        .select('id, status, createdAt, summary, category, rawText, barangay, urgency')
-        .is('assignedToId', null)
-        .order('createdAt', { ascending: false })
-        .limit(20);
+      if (advisoriesData?.success && advisoriesData.advisories) {
+        const techAdvisories = advisoriesData.advisories.filter(
+          (ad) =>
+            ad.targetRole === 'broadcast' ||
+            ad.targetRole === 'technicians' ||
+            !ad.targetRole
+        );
+        techAdvisories.forEach((ad) => {
+          list.push({
+            id: `tech-ad-${ad.id}`,
+            type: 'advisory',
+            title: ad.title || 'Staff Advisory',
+            message: ad.content || ad.text || '',
+            date: new Date(ad.createdAt || ad.date || Date.now()),
+            category: ad.type || 'info',
+          });
+        });
+      }
 
       if (newComplaints) {
         newComplaints.forEach((comp) => {

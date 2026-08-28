@@ -22,8 +22,9 @@ export default function SubAdminTelemetry({ navigation }) {
         // 2. Fetch the latest reading for each node from DB
         const { data: latestReadings, error: readError } = await supabase
           .from('TelemetryReading')
-          .select('*')
-          .order('timestamp', { ascending: false });
+          .select('id, nodeId, ph, turbidity, tds, pressure, timestamp')
+          .order('timestamp', { ascending: false })
+          .limit(30);
 
         if (!readError && latestReadings) {
           const latestMap = {};

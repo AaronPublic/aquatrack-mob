@@ -236,6 +236,84 @@ export default function ConsumerHome({ navigation }) {
 
   const profileSlideAnim = useRef(new Animated.Value(280)).current;
   const profileFadeAnim = useRef(new Animated.Value(0)).current;
+  const alertPulseAnim = useRef(new Animated.Value(1)).current;
+  const dotPulseAnim = useRef(new Animated.Value(0.3)).current;
+  const wqiPulseAnim = useRef(new Animated.Value(1)).current;
+  const wqiGlowAnim = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(alertPulseAnim, {
+          toValue: 1.015,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(alertPulseAnim, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    const dotLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(dotPulseAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(dotPulseAnim, {
+          toValue: 0.3,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    const wqiPulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(wqiPulseAnim, {
+          toValue: 1.04,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(wqiPulseAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    const wqiGlowLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(wqiGlowAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(wqiGlowAnim, {
+          toValue: 0.4,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    pulseLoop.start();
+    dotLoop.start();
+    wqiPulseLoop.start();
+    wqiGlowLoop.start();
+
+    return () => {
+      pulseLoop.stop();
+      dotLoop.stop();
+      wqiPulseLoop.stop();
+      wqiGlowLoop.stop();
+    };
+  }, []);
 
   useEffect(() => {
     if (profileModalVisible) {
@@ -322,131 +400,139 @@ export default function ConsumerHome({ navigation }) {
   };
 
   useEffect(() => {
+    let debounceTimer = null;
+
     const fetchProfileAndAdvisories = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          const profile = await api.post('/api/auth/profile', { userId: session.user.id });
-          if (profile?.name) {
-            setUserName(profile.name);
-          }
+        if (!session) return;
 
-          // Fetch dynamic complaints for active user
-          const { data: userComplaints, error: compError } = await supabase
+        // Fetch profile and all dependent dashboard data in parallel to eliminate sequential latency
+        const [
+          profile,
+          { data: userComplaints, error: compError },
+          { data: nodes },
+          { data: readings },
+          { data: neighborhoodComplaints },
+          advisoriesData
+        ] = await Promise.all([
+          api.post('/api/auth/profile', { userId: session.user.id }),
+          supabase
             .from('Complaint')
             .select('id, status, createdAt, summary, category, rawText')
             .eq('userId', session.user.id)
-            .order('createdAt', { ascending: false });
+            .order('createdAt', { ascending: false }),
+          supabase
+            .from('TelemetryNode')
+            .select('*')
+            .order('name', { ascending: true }),
+          supabase
+            .from('TelemetryReading')
+            .select('id, nodeId, ph, turbidity, tds, pressure, timestamp')
+            .order('timestamp', { ascending: false })
+            .limit(30),
+          supabase
+            .from('Complaint')
+            .select('id, category, barangay, status')
+            .neq('status', 'RESOLVED')
+            .limit(100),
+          api.get('/api/advisories')
+        ]);
 
-          if (!compError && userComplaints) {
-            const total = userComplaints.length;
-            const pending = userComplaints.filter(c => c.status === 'PENDING').length;
-            const active = userComplaints.filter(c => c.status === 'EVALUATING' || c.status === 'DISPATCHED' || c.status === 'ONGOING').length;
-            const resolved = userComplaints.filter(c => c.status === 'RESOLVED').length;
-            
-            // Sync with dynamic numbers only if user has logged complaints, preserving spec defaults otherwise
-            setMetrics({ total, pending, active, resolved });
-            setRecentComplaints(userComplaints.slice(0, 3));
-          }
-
-          // Fetch Telemetry Nodes and Readings to calculate dynamic Water Health Index
-          try {
-            const { data: nodes } = await supabase
-              .from('TelemetryNode')
-              .select('*')
-              .order('name', { ascending: true });
-            const { data: readings } = await supabase
-              .from('TelemetryReading')
-              .select('*')
-              .order('timestamp', { ascending: false });
-
-            const latestByNode = {};
-            (readings || []).forEach((r) => {
-              if (!latestByNode[r.nodeId]) latestByNode[r.nodeId] = r;
-            });
-
-            const { data: neighborhoodComplaints } = await supabase
-              .from('Complaint')
-              .select('id, category, barangay, status')
-              .neq('status', 'RESOLVED')
-              .limit(300);
-
-            if (nodes && nodes.length > 0) {
-              const userBarangay = profile?.address || '';
-              
-              // Match node by name match to user address, default to first node (Dolores Edge Node usually)
-              let chosenNode = nodes[0];
-              for (const node of nodes) {
-                const nodeNameFirstWord = node.name.split(' ')[0].toLowerCase();
-                if (userBarangay.toLowerCase().includes(nodeNameFirstWord)) {
-                  chosenNode = node;
-                  break;
-                }
-              }
-
-              const latestReading = readings?.find(r => r.nodeId === chosenNode.id) || null;
-              const computedWqi = calculateWQI(latestReading);
-
-              const addressLabel = getBarangayLabel(profile?.address);
-              const nodeLabel = getBarangayLabel(chosenNode.name);
-              const locationLabel = addressLabel || nodeLabel;
-              if (locationLabel) {
-                setUserLocation(`City of San Fernando • ${locationLabel}`);
-              }
-
-              setNeighborhoodAlert(buildNeighborhoodAlert({
-                nodes,
-                latestByNode,
-                chosenNodeId: chosenNode.id,
-                complaints: neighborhoodComplaints || [],
-              }));
-              
-              let statusText = 'NO DATA';
-              let description = 'No sensor readings available for the nearest node yet.';
-              let statusColor = '#94A3B8'; // Slate grey
-              let statusBg = 'rgba(148, 163, 184, 0.08)';
-
-              if (computedWqi === null) {
-                // No reading for this node — keep No Data defaults above
-              } else if (computedWqi >= 85) {
-                statusText = 'OPTIMAL STATE';
-                description = 'Excellent water quality and pressure. Highly safe for drinking and all general household uses.';
-                statusColor = '#10B981'; // Emerald
-                statusBg = '#ECFDF5';
-              } else if (computedWqi >= 70) {
-                statusText = 'STABLE STATE';
-                description = 'Satisfactory pressure and quality. Safe for daily household tasks and normal usage.';
-                statusColor = '#007AFF'; // Blue
-                statusBg = 'rgba(0, 122, 255, 0.08)';
-              } else if (computedWqi >= 50) {
-                statusText = 'MODERATE ANOMALY';
-                description = 'Mild pressure drop or mineral increase detected. Safe for utility tasks; avoid direct consumption.';
-                statusColor = '#F59E0B'; // Amber
-                statusBg = '#FEF3C7';
-              } else {
-                statusText = 'CRITICAL STATE';
-                description = 'High turbidity or severe pressure loss. Maintenance crews dispatched. Avoid usage for drinking/cooking.';
-                statusColor = '#EF4444'; // Red
-                statusBg = '#FEF2F2';
-              }
-
-              setWaterIndexData({
-                nodeName: chosenNode.name.toUpperCase(),
-                wqi: computedWqi,
-                statusText,
-                description,
-                statusColor,
-                statusBg
-              });
-            }
-          } catch (telemetryErr) {
-            console.warn("Failed to load dynamic water health index:", telemetryErr);
-          }
+        if (profile?.name) {
+          setUserName(profile.name);
         }
 
-        // Fetch advisories from API
-        const advisoriesData = await api.get('/api/advisories');
-        if (advisoriesData?.success) {
+        if (!compError && userComplaints) {
+          const total = userComplaints.length;
+          const pending = userComplaints.filter(c => c.status === 'PENDING').length;
+          const active = userComplaints.filter(c => c.status === 'EVALUATING' || c.status === 'DISPATCHED' || c.status === 'ONGOING').length;
+          const resolved = userComplaints.filter(c => c.status === 'RESOLVED').length;
+          
+          setMetrics({ total, pending, active, resolved });
+          setRecentComplaints(userComplaints.slice(0, 3));
+        }
+
+        // Calculate dynamic Water Health Index
+        try {
+          const latestByNode = {};
+          (readings || []).forEach((r) => {
+            if (!latestByNode[r.nodeId]) latestByNode[r.nodeId] = r;
+          });
+
+          if (nodes && nodes.length > 0) {
+            const userBarangay = profile?.address || '';
+            
+            let chosenNode = nodes[0];
+            for (const node of nodes) {
+              const nodeNameFirstWord = node.name.split(' ')[0].toLowerCase();
+              if (userBarangay.toLowerCase().includes(nodeNameFirstWord)) {
+                chosenNode = node;
+                break;
+              }
+            }
+
+            const latestReading = readings?.find(r => r.nodeId === chosenNode.id) || null;
+            const computedWqi = calculateWQI(latestReading);
+
+            const addressLabel = getBarangayLabel(profile?.address);
+            const nodeLabel = getBarangayLabel(chosenNode.name);
+            const locationLabel = addressLabel || nodeLabel;
+            if (locationLabel) {
+              setUserLocation(`City of San Fernando • ${locationLabel}`);
+            }
+
+            setNeighborhoodAlert(buildNeighborhoodAlert({
+              nodes,
+              latestByNode,
+              chosenNodeId: chosenNode.id,
+              complaints: neighborhoodComplaints || [],
+            }));
+            
+            let statusText = 'NO DATA';
+            let description = 'No sensor readings available for the nearest node yet.';
+            let statusColor = '#94A3B8'; // Slate grey
+            let statusBg = 'rgba(148, 163, 184, 0.08)';
+
+            if (computedWqi === null) {
+              // No reading for this node — keep No Data defaults
+            } else if (computedWqi >= 85) {
+              statusText = 'OPTIMAL STATE';
+              description = 'Excellent water quality and pressure. Highly safe for drinking and all general household uses.';
+              statusColor = '#10B981'; // Emerald
+              statusBg = '#ECFDF5';
+            } else if (computedWqi >= 70) {
+              statusText = 'STABLE STATE';
+              description = 'Satisfactory pressure and quality. Safe for daily household tasks and normal usage.';
+              statusColor = '#007AFF'; // Blue
+              statusBg = 'rgba(0, 122, 255, 0.08)';
+            } else if (computedWqi >= 50) {
+              statusText = 'MODERATE ANOMALY';
+              description = 'Mild pressure drop or mineral increase detected. Safe for utility tasks; avoid direct consumption.';
+              statusColor = '#F59E0B'; // Amber
+              statusBg = '#FEF3C7';
+            } else {
+              statusText = 'CRITICAL STATE';
+              description = 'High turbidity or severe pressure loss. Maintenance crews dispatched. Avoid usage for drinking/cooking.';
+              statusColor = '#EF4444'; // Red
+              statusBg = '#FEF2F2';
+            }
+
+            setWaterIndexData({
+              nodeName: chosenNode.name.toUpperCase(),
+              wqi: computedWqi,
+              statusText,
+              description,
+              statusColor,
+              statusBg
+            });
+          }
+        } catch (telemetryErr) {
+          console.warn("Failed to load dynamic water health index:", telemetryErr);
+        }
+
+        // Process Advisories
+        if (advisoriesData?.success && advisoriesData.advisories) {
           const publicAdvisories = advisoriesData.advisories.filter(
             (ad) => ad.targetRole === 'broadcast' || ad.targetRole === 'consumers' || !ad.targetRole
           );
@@ -455,11 +541,19 @@ export default function ConsumerHome({ navigation }) {
           const criticalAlerts = publicAdvisories.filter(ad => ad.type === 'warning');
           setAlerts(criticalAlerts);
         }
+
         // Fetch global notifications store
         fetchNotifications();
       } catch (err) {
         console.error("Failed to load home content:", err);
       }
+    };
+
+    const debouncedFetch = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        fetchProfileAndAdvisories();
+      }, 300);
     };
     
     fetchProfileAndAdvisories();
@@ -473,28 +567,6 @@ export default function ConsumerHome({ navigation }) {
     const setupRealtime = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Fetch profile to identify nearest node
-        const profile = await api.post('/api/auth/profile', { userId: session.user.id });
-        const userBarangay = profile?.address || '';
-
-        // Fetch nodes
-        const { data: nodes } = await supabase
-          .from('TelemetryNode')
-          .select('id, name')
-          .order('name', { ascending: true });
-        let chosenNodeId = null;
-        if (nodes && nodes.length > 0) {
-          let chosenNode = nodes[0];
-          for (const node of nodes) {
-            const nodeNameFirstWord = node.name.split(' ')[0].toLowerCase();
-            if (userBarangay.toLowerCase().includes(nodeNameFirstWord)) {
-              chosenNode = node;
-              break;
-            }
-          }
-          chosenNodeId = chosenNode.id;
-        }
-
         channel = supabase.channel(`home-realtime-${session.user.id}`)
           .on(
             'postgres_changes',
@@ -504,9 +576,8 @@ export default function ConsumerHome({ navigation }) {
               table: 'Complaint',
               filter: `userId=eq.${session.user.id}`
             },
-            (payload) => {
-              console.log('Realtime complaint change on home screen:', payload);
-              fetchProfileAndAdvisories();
+            () => {
+              debouncedFetch();
             }
           )
           .on(
@@ -516,39 +587,32 @@ export default function ConsumerHome({ navigation }) {
               schema: 'public',
               table: 'Advisory'
             },
-            (payload) => {
-              console.log('Realtime advisory change on home screen:', payload);
-              fetchProfileAndAdvisories();
+            () => {
+              debouncedFetch();
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'TelemetryReading'
+            },
+            () => {
+              debouncedFetch();
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'Complaint'
+            },
+            () => {
+              debouncedFetch();
             }
           );
-
-        // Realtime telemetry for all nodes (refreshes WQI + neighborhood awareness)
-        channel = channel.on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'TelemetryReading'
-          },
-          (payload) => {
-            console.log('Realtime telemetry change:', payload);
-            fetchProfileAndAdvisories();
-          }
-        );
-
-        // Realtime neighborhood complaints for awareness clustering
-        channel = channel.on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'Complaint'
-          },
-          (payload) => {
-            console.log('Realtime complaint change:', payload);
-            fetchProfileAndAdvisories();
-          }
-        );
 
         channel.subscribe();
       }
@@ -558,6 +622,7 @@ export default function ConsumerHome({ navigation }) {
     
     return () => {
       unsubscribeFocus();
+      if (debounceTimer) clearTimeout(debounceTimer);
       if (channel) {
         supabase.removeChannel(channel);
       }
@@ -754,41 +819,52 @@ return (
       >
         {/* Neighborhood Awareness Banner (3+ nearby nodes with zero pressure / clustered complaints) */}
         {activeNeighborhoodAlert && neighborhoodCopy && (
-          <TouchableOpacity
-            onPress={() => {
-              handleDismissAlert('neighborhood-alert');
-              navigation.navigate('Announcements');
-            }}
-            activeOpacity={0.9}
-            style={{
-              backgroundColor: '#FFF5F5',
-              borderWidth: 1.5,
-              borderColor: '#FEC2C2',
-              borderRadius: 18,
-              padding: 16,
-              marginBottom: 16,
-              flexDirection: 'row',
-              alignItems: 'start',
-              shadowColor: '#EF4444',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.1,
-              shadowRadius: 8,
-              elevation: 2,
-            }}
-          >
-            <View className="bg-red-100 p-2 rounded-xl mr-3 items-center justify-center">
-              <AppIcon name="warning" size={18} color="#EF4444" />
-            </View>
-
-            <View className="flex-1">
-              <View className="flex-row items-center justify-between">
-                <Text className="text-[#EF4444] font-black text-[10px] uppercase tracking-widest">NEIGHBORHOOD AWARENESS ALARM</Text>
-                <View className="w-1.5 h-1.5 rounded-full bg-[#EF4444]" />
+          <Animated.View style={{ transform: [{ scale: alertPulseAnim }] }}>
+            <TouchableOpacity
+              onPress={() => {
+                handleDismissAlert('neighborhood-alert');
+                navigation.navigate('Announcements');
+              }}
+              activeOpacity={0.9}
+              style={{
+                backgroundColor: '#FFF5F5',
+                borderWidth: 1.5,
+                borderColor: '#FEC2C2',
+                borderRadius: 18,
+                padding: 16,
+                marginBottom: 16,
+                flexDirection: 'row',
+                alignItems: 'start',
+                shadowColor: '#EF4444',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.12,
+                shadowRadius: 8,
+                elevation: 3,
+              }}
+            >
+              <View className="bg-red-100 p-2 rounded-xl mr-3 items-center justify-center">
+                <AppIcon name="warning" size={18} color="#EF4444" />
               </View>
-              <Text className="text-[#0B2240] font-black text-sm mt-1.5 leading-snug">{neighborhoodCopy.title}</Text>
-              <Text className="text-[#627D98] font-semibold text-xs mt-0.5 leading-relaxed">{neighborhoodCopy.text}</Text>
-            </View>
-          </TouchableOpacity>
+
+              <View className="flex-1">
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-[#EF4444] font-black text-[10px] uppercase tracking-widest">NEIGHBORHOOD AWARENESS ALARM</Text>
+                  <Animated.View 
+                    style={{ 
+                      width: 8, 
+                      height: 8, 
+                      borderRadius: 4, 
+                      backgroundColor: '#EF4444',
+                      opacity: dotPulseAnim,
+                      transform: [{ scale: dotPulseAnim }] 
+                    }} 
+                  />
+                </View>
+                <Text className="text-[#0B2240] font-black text-sm mt-1.5 leading-snug">{neighborhoodCopy.title}</Text>
+                <Text className="text-[#627D98] font-semibold text-xs mt-0.5 leading-relaxed">{neighborhoodCopy.text}</Text>
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
         )}
 
         {/* Critical System Alert Banner (conditional based on warnings) */}
@@ -949,7 +1025,13 @@ return (
               </Text>
             </View>
             <View className="flex-row items-center bg-[#ECFDF5] px-2.5 py-1 rounded-full border border-[#10B981]/15">
-              <View className="w-1.5 h-1.5 rounded-full bg-[#10B981] mr-1.5" />
+              <Animated.View 
+                style={{ 
+                  opacity: wqiGlowAnim,
+                  transform: [{ scale: wqiGlowAnim }] 
+                }} 
+                className="w-1.5 h-1.5 rounded-full bg-[#10B981] mr-1.5" 
+              />
               <Text className="text-[#10B981] font-black text-[8px] tracking-wider uppercase font-mono">
                 {waterIndexData.nodeName}
               </Text>
@@ -958,15 +1040,23 @@ return (
 
           {/* Card Inner Panel */}
           <View className="flex-row items-center gap-5">
-            {/* Left: Circular progress ring graphic */}
-            <View 
-              style={{ borderColor: waterIndexData.statusColor }}
+            {/* Left: Circular progress ring graphic with gentle pulsing effect */}
+            <Animated.View 
+              style={{ 
+                borderColor: waterIndexData.statusColor,
+                transform: [{ scale: wqiPulseAnim }],
+                shadowColor: waterIndexData.statusColor,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.2,
+                shadowRadius: 6,
+                elevation: 2,
+              }}
               className="w-16 h-16 rounded-full border-4 items-center justify-center bg-[#F8FAFC]"
             >
               <Text className="text-[#0B2240] font-black text-xl font-mono">
                 {waterIndexData.wqi !== null ? waterIndexData.wqi : '--'}
               </Text>
-            </View>
+            </Animated.View>
 
             {/* Right: Status Pill & Description */}
             <View className="flex-1" style={{ paddingLeft: 8 }}>
@@ -1072,7 +1162,7 @@ return (
           zIndex: 9999,
         }}
       >
-        {/* Tab 1: Home */}
+        {/* Tab 1: Home (Active Highlight) */}
         <TouchableOpacity style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} activeOpacity={0.7}>
           <AppIcon name="home" size={22} color="#007AFF" />
           <Text style={{ fontSize: 9, fontFamily: theme.fonts.bold, color: '#007AFF', marginTop: 2 }}>Home</Text>
@@ -1097,10 +1187,10 @@ return (
           <Text style={{ fontSize: 9, fontFamily: theme.fonts.semiBold, color: '#64748B', marginTop: 2 }}>Advisories</Text>
         </TouchableOpacity>
 
-        {/* Tab 5: Settings Icon (RIGHT BESIDE MEGAPHONE!) */}
+        {/* Tab 5: Settings Icon */}
         <TouchableOpacity style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} onPress={handleProfilePress} activeOpacity={0.7}>
-          <AppIcon name="settings-sharp" size={22} color="#007AFF" />
-          <Text style={{ fontSize: 9, fontFamily: theme.fonts.bold, color: '#007AFF', marginTop: 2 }}>Settings</Text>
+          <AppIcon name="settings-outline" size={22} color="#64748B" />
+          <Text style={{ fontSize: 9, fontFamily: theme.fonts.semiBold, color: '#64748B', marginTop: 2 }}>Settings</Text>
         </TouchableOpacity>
 
         {/* Tab 6: Profile */}

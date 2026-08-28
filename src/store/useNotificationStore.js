@@ -26,38 +26,31 @@ export const useNotificationStore = create((set, get) => ({
       }
       const userId = session.user.id;
 
-      // 1. Fetch advisories
+      // 1 & 2. Fetch advisories and complaints concurrently
       let advisories = [];
-      try {
-        const advisoriesData = await api.get('/api/advisories');
-        if (advisoriesData?.success && advisoriesData.advisories) {
-          advisories = advisoriesData.advisories.filter(
-            (ad) => ad.targetRole === 'broadcast' || ad.targetRole === 'consumers' || !ad.targetRole
-          );
-        }
-      } catch (err) {
-        console.warn("Failed to fetch advisories via API, falling back to Supabase directly:", err);
-        const { data } = await supabase
-          .from('Advisory')
-          .select('*')
-          .order('createdAt', { ascending: false });
-        if (data) {
-          advisories = data.filter(
-            (ad) => ad.targetRole === 'broadcast' || ad.targetRole === 'consumers' || !ad.targetRole
-          );
-        }
+      const [advisoriesData, { data: complaintsData }] = await Promise.all([
+        api.get('/api/advisories').catch(async (err) => {
+          console.warn("Failed to fetch advisories via API, falling back to Supabase directly:", err);
+          const { data } = await supabase
+            .from('Advisory')
+            .select('*')
+            .order('createdAt', { ascending: false });
+          return { success: true, advisories: data || [] };
+        }),
+        supabase
+          .from('Complaint')
+          .select('id, status, createdAt, updatedAt, summary, category, rawText')
+          .eq('userId', userId)
+          .order('createdAt', { ascending: false })
+      ]);
+
+      if (advisoriesData?.success && advisoriesData.advisories) {
+        advisories = advisoriesData.advisories.filter(
+          (ad) => ad.targetRole === 'broadcast' || ad.targetRole === 'consumers' || !ad.targetRole
+        );
       }
 
-      // 2. Fetch complaints
-      let userComplaints = [];
-      const { data: complaintsData } = await supabase
-        .from('Complaint')
-        .select('id, status, createdAt, updatedAt, summary, category, rawText')
-        .eq('userId', userId)
-        .order('createdAt', { ascending: false });
-      if (complaintsData) {
-        userComplaints = complaintsData;
-      }
+      const userComplaints = complaintsData || [];
 
       // 3. Compile list
       const list = [];

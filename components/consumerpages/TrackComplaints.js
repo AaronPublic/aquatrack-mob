@@ -61,22 +61,22 @@ export default function TrackComplaints({ navigation }) {
         return;
       }
 
-      // Fetch profile for header
-      try {
-        const profile = await api.post('/api/auth/profile', { userId: session.user.id });
-        if (profile?.name) {
-          setUserName(profile.name);
-        }
-      } catch (profileErr) {
-        console.warn("Bypassed profile fetch in TrackComplaints:", profileErr);
-      }
+      // Fetch profile and user complaints in parallel
+      const [profile, { data, error }] = await Promise.all([
+        api.post('/api/auth/profile', { userId: session.user.id }).catch((err) => {
+          console.warn("Bypassed profile fetch in TrackComplaints:", err);
+          return null;
+        }),
+        supabase
+          .from('Complaint')
+          .select('*')
+          .eq('userId', session.user.id)
+          .order('createdAt', { ascending: false })
+      ]);
 
-      // Query from Supabase directly for this resident's tickets
-      const { data, error } = await supabase
-        .from('Complaint')
-        .select('*')
-        .eq('userId', session.user.id)
-        .order('createdAt', { ascending: false });
+      if (profile?.name) {
+        setUserName(profile.name);
+      }
 
       if (error) throw error;
 
@@ -91,7 +91,7 @@ export default function TrackComplaints({ navigation }) {
       }
 
       // Proactively fetch profiles of technicians assigned to these complaints
-      const uniqueTechIds = [...new Set(data.map(c => c.assignedToId).filter(Boolean))];
+      const uniqueTechIds = [...new Set((data || []).map(c => c.assignedToId).filter(Boolean))];
       if (uniqueTechIds.length > 0) {
         const { data: profiles, error: profileErr } = await supabase
           .from('User')
@@ -118,11 +118,19 @@ export default function TrackComplaints({ navigation }) {
   };
 
   useEffect(() => {
+    let debounceTimer = null;
     fetchComplaints();
 
     const unsubscribeFocus = navigation?.addListener('focus', () => {
       fetchComplaints();
     });
+
+    const debouncedFetch = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        fetchComplaints();
+      }, 300);
+    };
 
     // Setup realtime subscription to update ticket status instantly on status updates!
     let channel;
@@ -135,9 +143,8 @@ export default function TrackComplaints({ navigation }) {
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'Complaint', filter: `userId=eq.${session.user.id}` },
-          (payload) => {
-            console.log("Realtime ticket update:", payload);
-            fetchComplaints(); // Refresh list immediately!
+          () => {
+            debouncedFetch();
           }
         )
         .subscribe();
@@ -145,6 +152,7 @@ export default function TrackComplaints({ navigation }) {
 
     return () => {
       unsubscribeFocus?.();
+      if (debounceTimer) clearTimeout(debounceTimer);
       if (channel) supabase.removeChannel(channel);
     };
   }, [navigation]);
