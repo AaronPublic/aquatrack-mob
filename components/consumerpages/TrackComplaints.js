@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, FlatList, ActivityIndicator, RefreshControl, Alert, TouchableOpacity, Image, LayoutAnimation, Platform, UIManager, Modal, ScrollView } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import styles from './TrackComplaints.styles';
 import homeStyles from './ConsumerHome.styles';
 import { useNotificationStore } from '../../src/store/useNotificationStore';
+import ConsumerNotificationModal from './ConsumerNotificationModal';
 
 if (
   Platform.OS === 'android' && 
@@ -355,15 +356,17 @@ export default function TrackComplaints({ navigation }) {
     );
   };
 
-  const filteredComplaints = complaints.filter(item => {
-    if (activeTab === 'ACTIVE') {
-      return item.status !== 'RESOLVED';
-    }
-    if (activeTab === 'RESOLVED') {
-      return item.status === 'RESOLVED';
-    }
-    return true;
-  });
+  const filteredComplaints = useMemo(() => {
+    return complaints.filter(item => {
+      if (activeTab === 'ACTIVE') {
+        return item.status !== 'RESOLVED';
+      }
+      if (activeTab === 'RESOLVED') {
+        return item.status === 'RESOLVED';
+      }
+      return true;
+    });
+  }, [complaints, activeTab]);
 
   const handleBack = () => {
     if (navigation.canGoBack()) {
@@ -456,6 +459,10 @@ export default function TrackComplaints({ navigation }) {
           data={filteredComplaints}
           keyExtractor={(item) => item.id}
           renderItem={renderTicketItem}
+          initialNumToRender={8}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS === 'android'}
           ListHeaderComponent={
             <View style={{ paddingHorizontal: 18, paddingTop: 4 }}>
               {/* Outer Gray Label */}
@@ -507,103 +514,13 @@ export default function TrackComplaints({ navigation }) {
       )}
 
       {/* Notifications Drawer Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
+      {/* Upgraded Notifications Center Modal */}
+      <ConsumerNotificationModal
         visible={notificationsModalVisible}
-        onRequestClose={() => setNotificationsModalVisible(false)}
-      >
-        <TouchableOpacity 
-          style={homeStyles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setNotificationsModalVisible(false)}
-        >
-          <TouchableOpacity 
-            style={homeStyles.notificationsModalContent}
-            activeOpacity={1}
-            onPress={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <View style={homeStyles.modalHeader}>
-              <Text style={homeStyles.modalTitle}>Notifications & Updates</Text>
-              <TouchableOpacity onPress={() => setNotificationsModalVisible(false)}>
-                <AppIcon name="close" size={20} color="#0B1C3F" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Notifications Scrollable List */}
-            {notifications.length === 0 ? (
-              <View style={homeStyles.emptyNotifications}>
-                <AppIcon name="notifications-off-outline" size={48} color="#94a3b8" />
-                <Text style={homeStyles.emptyNotificationsText}>No updates or notifications yet.</Text>
-              </View>
-            ) : (
-              <ScrollView showsVerticalScrollIndicator={false}>
-                {notifications.map((item) => {
-                  let iconName = 'notifications-outline';
-                  let iconColor = '#009FDE';
-                  let iconBg = 'rgba(0, 159, 222, 0.08)';
-
-                  if (item.type === 'advisory') {
-                    if (item.category === 'warning') {
-                      iconName = 'alert-circle-outline';
-                      iconColor = '#EF4444';
-                      iconBg = '#FEF2F2';
-                    } else {
-                      iconName = 'megaphone-outline';
-                      iconColor = '#F59E0B';
-                      iconBg = '#FEF3C7';
-                    }
-                  } else if (item.type === 'complaint_status') {
-                    if (item.status === 'RESOLVED') {
-                      iconName = 'checkmark-circle-outline';
-                      iconColor = '#10B981';
-                      iconBg = '#ECFDF5';
-                    } else if (item.status === 'ONGOING') {
-                      iconName = 'build-outline';
-                      iconColor = '#6366F1';
-                      iconBg = '#EEF2FF';
-                    } else {
-                      iconName = 'document-text-outline';
-                      iconColor = '#3B82F6';
-                      iconBg = '#EFF6FF';
-                    }
-                  }
-
-                  const timeString = item.date.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    timeZone: 'Asia/Manila',
-                  });
-
-                  return (
-                    <TouchableOpacity 
-                      key={item.id} 
-                      activeOpacity={0.7}
-                      onPress={() => handleNotificationPress(item)}
-                      style={[
-                        homeStyles.notificationItem, 
-                        !item.read && homeStyles.notificationItemUnread
-                      ]}
-                    >
-                      <View style={[homeStyles.notificationIconContainer, { backgroundColor: iconBg }]}>
-                        <AppIcon name={iconName} size={18} color={iconColor} />
-                      </View>
-                      <View style={homeStyles.notificationContent}>
-                        <Text style={homeStyles.notificationTitle}>{item.title}</Text>
-                        <Text style={homeStyles.notificationMessage}>{item.message}</Text>
-                        <Text style={homeStyles.notificationTime}>{timeString}</Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            )}
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+        onClose={() => setNotificationsModalVisible(false)}
+        notifications={notifications}
+        onNotificationPress={handleNotificationPress}
+      />
 
       {/* QR Code Presentation Overlay */}
       {!!selectedQrId && (

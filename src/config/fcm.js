@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { api } from './api';
 import { navigate } from '../navigation/navigationRef';
@@ -54,6 +55,19 @@ export async function requestUserPermission(userId) {
     if (finalStatus !== 'granted') {
       console.warn('Notification permissions denied.');
       return null;
+    }
+
+    // Set up dedicated AquaTrack Android Notification Channel
+    if (Platform.OS === 'android' && Notifications?.setNotificationChannelAsync) {
+      await Notifications.setNotificationChannelAsync('aquatrack-alerts', {
+        name: 'AquaTrack Alerts & Updates',
+        importance: Notifications.AndroidImportance?.MAX || 5,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#00aeef',
+        enableLights: true,
+        enableVibrate: true,
+        showBadge: true,
+      });
     }
 
     // Get the FCM Device token (on Android this is the raw firebase push token)

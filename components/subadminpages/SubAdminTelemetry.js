@@ -14,17 +14,18 @@ export default function SubAdminTelemetry({ navigation }) {
 
   const fetchTelemetryData = async () => {
     try {
-      // 1. Fetch nodes via API
-      const nodeRes = await api.get('/api/admin/nodes');
-      if (nodeRes && nodeRes.success) {
-        setNodes(nodeRes.nodes);
-
-        // 2. Fetch the latest reading for each node from DB
-        const { data: latestReadings, error: readError } = await supabase
+      // Fetch nodes and recent readings in parallel to cut latency in half
+      const [nodeRes, { data: latestReadings, error: readError }] = await Promise.all([
+        api.get('/api/admin/nodes'),
+        supabase
           .from('TelemetryReading')
           .select('id, nodeId, ph, turbidity, tds, pressure, timestamp')
           .order('timestamp', { ascending: false })
-          .limit(30);
+          .limit(30)
+      ]);
+
+      if (nodeRes && nodeRes.success) {
+        setNodes(nodeRes.nodes);
 
         if (!readError && latestReadings) {
           const latestMap = {};

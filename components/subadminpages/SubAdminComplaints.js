@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, RefreshControl, Alert, ScrollView, Platform } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
@@ -479,57 +479,59 @@ export default function SubAdminComplaints({ navigation }) {
     );
   };
 
-  // Filter & Sort complaints (Newest, Oldest, Urgency)
-  const filteredComplaints = complaints
-    .filter((c) => {
-      if (!search.trim()) return true;
-      const query = search.toLowerCase();
-      return (
-        c.rawText?.toLowerCase().includes(query) ||
-        (c.summary && c.summary.toLowerCase().includes(query)) ||
-        (c.barangay && c.barangay.toLowerCase().includes(query)) ||
-        (c.id && c.id.toLowerCase().includes(query))
-      );
-    })
-    .sort((a, b) => {
-      if (sortBy === 'OLDEST') {
+  // Memoize filtered and grouped listData to eliminate re-allocation overhead during scrolling
+  const listData = useMemo(() => {
+    const filtered = complaints
+      .filter((c) => {
+        if (!search.trim()) return true;
+        const query = search.toLowerCase();
+        return (
+          c.rawText?.toLowerCase().includes(query) ||
+          (c.summary && c.summary.toLowerCase().includes(query)) ||
+          (c.barangay && c.barangay.toLowerCase().includes(query)) ||
+          (c.id && c.id.toLowerCase().includes(query))
+        );
+      })
+      .sort((a, b) => {
+        if (sortBy === 'OLDEST') {
+          const dateA = new Date(a.createdAt || Date.now());
+          const dateB = new Date(b.createdAt || Date.now());
+          return dateA - dateB;
+        }
+
+        if (sortBy === 'URGENCY') {
+          const urgencyWeight = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
+          const wA = urgencyWeight[a.urgency] || 0;
+          const wB = urgencyWeight[b.urgency] || 0;
+          return wB - wA;
+        }
+
+        // Default: NEWEST
         const dateA = new Date(a.createdAt || Date.now());
         const dateB = new Date(b.createdAt || Date.now());
-        return dateA - dateB;
-      }
+        return dateB - dateA;
+      });
 
-      if (sortBy === 'URGENCY') {
-        const urgencyWeight = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
-        const wA = urgencyWeight[a.urgency] || 0;
-        const wB = urgencyWeight[b.urgency] || 0;
-        return wB - wA;
-      }
+    const currentUserId = currentUser ? currentUser.id : null;
+    const activeTickets = filtered.filter((c) => c.status !== 'RESOLVED');
+    const resolvedTickets = filtered.filter((c) => c.status === 'RESOLVED');
 
-      // Default: NEWEST
-      const dateA = new Date(a.createdAt || Date.now());
-      const dateB = new Date(b.createdAt || Date.now());
-      return dateB - dateA;
+    const myActive = activeTickets.filter((c) => c.assignedToId === currentUserId);
+    const otherActive = activeTickets.filter((c) => c.assignedToId !== currentUserId);
+    const myResolved = resolvedTickets.filter((c) => c.assignedToId === currentUserId);
+
+    const sections = [];
+    if (myActive.length > 0) sections.push({ label: 'My Active Tickets', items: myActive });
+    if (otherActive.length > 0) sections.push({ label: 'Other Active / Unassigned', items: otherActive });
+    if (myResolved.length > 0) sections.push({ label: 'Complaint Audit', items: myResolved });
+
+    const result = [];
+    sections.forEach((section) => {
+      result.push({ __sectionHeader: section.label, __sectionCount: section.items.length });
+      section.items.forEach((item) => result.push(item));
     });
-
-  // Group into sections: My Active -> Other Active/Unassigned -> Complaint Audit (my resolved)
-  const currentUserId = currentUser ? currentUser.id : null;
-  const activeTickets = filteredComplaints.filter((c) => c.status !== 'RESOLVED');
-  const resolvedTickets = filteredComplaints.filter((c) => c.status === 'RESOLVED');
-
-  const myActive = activeTickets.filter((c) => c.assignedToId === currentUserId);
-  const otherActive = activeTickets.filter((c) => c.assignedToId !== currentUserId);
-  const myResolved = resolvedTickets.filter((c) => c.assignedToId === currentUserId);
-
-  const groupedSections = [];
-  if (myActive.length > 0) groupedSections.push({ label: 'My Active Tickets', items: myActive });
-  if (otherActive.length > 0) groupedSections.push({ label: 'Other Active / Unassigned', items: otherActive });
-  if (myResolved.length > 0) groupedSections.push({ label: 'Complaint Audit', items: myResolved });
-
-  const listData = [];
-  groupedSections.forEach((section) => {
-    listData.push({ __sectionHeader: section.label, __sectionCount: section.items.length });
-    section.items.forEach((item) => listData.push(item));
-  });
+    return result;
+  }, [complaints, search, sortBy, currentUser]);
 
   return (
     <View style={[styles.container, { backgroundColor: '#F2F5FA' }]}>
@@ -550,6 +552,10 @@ export default function SubAdminComplaints({ navigation }) {
           data={listData}
           keyExtractor={(item, index) => (item.__sectionHeader ? `section-${item.__sectionHeader}-${index}` : item.id)}
           renderItem={renderTicketItem}
+          initialNumToRender={8}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS === 'android'}
           ListHeaderComponent={
             <View style={{ paddingHorizontal: 18, paddingTop: 4 }}>
               {/* Outer Gray Label */}

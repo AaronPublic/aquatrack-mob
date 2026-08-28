@@ -10,6 +10,7 @@ import { theme } from '../../src/config/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useNotificationStore } from '../../src/store/useNotificationStore';
+import ConsumerNotificationModal from './ConsumerNotificationModal';
 
 const statusConfigs = {
   PENDING: { label: "Pending Review", text: "#b45309", bg: "#fef3c7", dot: "#f59e0b" },
@@ -424,7 +425,7 @@ export default function ConsumerHome({ navigation }) {
             .order('createdAt', { ascending: false }),
           supabase
             .from('TelemetryNode')
-            .select('*')
+            .select('id, name, status, latitude, longitude')
             .order('name', { ascending: true }),
           supabase
             .from('TelemetryReading')
@@ -1286,104 +1287,13 @@ return (
         </TouchableOpacity>
       </Modal>
 
-      {/* Notifications Drawer Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
+      {/* Upgraded Notification Center Drawer Modal */}
+      <ConsumerNotificationModal
         visible={notificationsModalVisible}
-        onRequestClose={() => setNotificationsModalVisible(false)}
-      >
-        <TouchableOpacity 
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setNotificationsModalVisible(false)}
-        >
-          <TouchableOpacity 
-            style={styles.notificationsModalContent}
-            activeOpacity={1}
-            onPress={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Notifications & Updates</Text>
-              <TouchableOpacity onPress={() => setNotificationsModalVisible(false)}>
-                <AppIcon name="close" size={20} color="#0B1C3F" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Notifications Scrollable List */}
-            {notifications.length === 0 ? (
-              <View style={styles.emptyNotifications}>
-                <AppIcon name="notifications-off-outline" size={48} color="#94a3b8" />
-                <Text style={styles.emptyNotificationsText}>No updates or notifications yet.</Text>
-              </View>
-            ) : (
-              <ScrollView showsVerticalScrollIndicator={false}>
-                {notifications.map((item) => {
-                  let iconName = 'notifications-outline';
-                  let iconColor = '#009FDE';
-                  let iconBg = 'rgba(0, 159, 222, 0.08)';
-
-                  if (item.type === 'advisory') {
-                    if (item.category === 'warning') {
-                      iconName = 'alert-circle-outline';
-                      iconColor = '#EF4444';
-                      iconBg = '#FEF2F2';
-                    } else {
-                      iconName = 'megaphone-outline';
-                      iconColor = '#F59E0B';
-                      iconBg = '#FEF3C7';
-                    }
-                  } else if (item.type === 'complaint_status') {
-                    if (item.status === 'RESOLVED') {
-                      iconName = 'checkmark-circle-outline';
-                      iconColor = '#10B981';
-                      iconBg = '#ECFDF5';
-                    } else if (item.status === 'ONGOING') {
-                      iconName = 'build-outline';
-                      iconColor = '#6366F1';
-                      iconBg = '#EEF2FF';
-                    } else {
-                      iconName = 'document-text-outline';
-                      iconColor = '#3B82F6';
-                      iconBg = '#EFF6FF';
-                    }
-                  }
-
-                  const timeString = item.date.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    timeZone: 'Asia/Manila',
-                  });
-
-                  return (
-                    <TouchableOpacity 
-                      key={item.id} 
-                      activeOpacity={0.7}
-                      onPress={() => handleNotificationPress(item)}
-                      style={[
-                        styles.notificationItem, 
-                        !item.read && styles.notificationItemUnread
-                      ]}
-                    >
-                      <View style={[styles.notificationIconContainer, { backgroundColor: iconBg }]}>
-                        <AppIcon name={iconName} size={18} color={iconColor} />
-                      </View>
-                      <View style={styles.notificationContent}>
-                        <Text style={styles.notificationTitle}>{item.title}</Text>
-                        <Text style={styles.notificationMessage}>{item.message}</Text>
-                        <Text style={styles.notificationTime}>{timeString}</Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            )}
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+        onClose={() => setNotificationsModalVisible(false)}
+        notifications={notifications}
+        onNotificationPress={handleNotificationPress}
+      />
     </View>
   );
 }

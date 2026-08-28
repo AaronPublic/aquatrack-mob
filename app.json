@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "aquatrack-mob",
+    "name": "AquaTrack",
     "slug": "aquatrack-mob",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/LOGO3.png",
     "userInterfaceStyle": "light",
     "notification": {
-      "icon": "./assets/favicon.png",
+      "icon": "./assets/notification-icon.png",
       "color": "#00aeef"
     },
     "ios": {

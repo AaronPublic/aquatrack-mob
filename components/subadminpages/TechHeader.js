@@ -251,60 +251,105 @@ export default function TechHeader({
           >
             <TouchableOpacity 
               activeOpacity={1} 
-              style={homeStyles.notifModalCard}
+              style={[homeStyles.notifModalCard, { borderRadius: 28, paddingHorizontal: 20, paddingTop: 14, paddingBottom: 32 }]}
               onPress={(e) => e.stopPropagation?.()}
             >
+              {/* Drag handle */}
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#CBD5E1', alignSelf: 'center', marginBottom: 14 }} />
+
               {/* Header */}
-              <View style={homeStyles.notifModalHeader}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <AppIcon name="notifications" size={20} color="#0C4F8B" />
-                  <Text style={homeStyles.notifModalTitle}>Technician Alerts</Text>
+              <View style={[homeStyles.notifModalHeader, { paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', marginBottom: 10 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#F0F9FF', borderWidth: 1, borderColor: '#BAE6FD', justifyContent: 'center', alignItems: 'center' }}>
+                    <Image
+                      source={require('../../assets/adaptive-icon.png')}
+                      style={{ width: 22, height: 22 }}
+                      resizeMode="contain"
+                    />
+                  </View>
+                  <View>
+                    <Text style={{ fontSize: 16, fontFamily: 'PlusJakartaSans_700Bold', color: '#0B2240' }}>Field Dispatch Alerts</Text>
+                    <Text style={{ fontSize: 11, fontFamily: 'PlusJakartaSans_400Regular', color: '#64748B' }}>Live tickets & operational bulletins</Text>
+                  </View>
                 </View>
                 <TouchableOpacity
                   onPress={() => setNotificationsVisible(false)}
-                  style={homeStyles.notifModalCloseBtn}
+                  style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' }}
                 >
-                  <AppIcon name="close" size={18} color="#64748B" />
+                  <AppIcon name="close" size={16} color="#64748B" />
                 </TouchableOpacity>
               </View>
 
               {/* List */}
-              <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+              <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 4 }}>
                 {notifications.length === 0 ? (
-                  <View style={homeStyles.notifEmptyBox}>
-                    <AppIcon name="notifications-off-outline" size={36} color="#CBD5E1" />
-                    <Text style={homeStyles.notifEmptyText}>No notifications at this time.</Text>
+                  <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 40, gap: 8 }}>
+                    <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', marginBottom: 6 }}>
+                      <AppIcon name="notifications-off-outline" size={28} color="#94A3B8" />
+                    </View>
+                    <Text style={{ fontSize: 15, fontFamily: 'PlusJakartaSans_700Bold', color: '#0B2240' }}>All Caught Up!</Text>
+                    <Text style={{ fontSize: 12, fontFamily: 'PlusJakartaSans_400Regular', color: '#64748B', textAlign: 'center' }}>No pending field notifications or unassigned tickets.</Text>
                   </View>
                 ) : (
-                  notifications.map((item) => (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={[
-                        homeStyles.notifItem,
-                        item.unread && homeStyles.notifItemUnread,
-                      ]}
-                      onPress={() => handleNotificationPress(item)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={homeStyles.notifIconContainer}>
-                        <AppIcon
-                          name={
-                            item.type === 'new_complaint'
-                              ? 'warning-outline'
-                              : 'megaphone-outline'
-                          }
-                          size={18}
-                          color="#0C4F8B"
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={homeStyles.notifItemTitle}>{item.title}</Text>
-                        <Text style={homeStyles.notifItemBody}>{item.body}</Text>
-                        <Text style={homeStyles.notifItemTime}>{item.time}</Text>
-                      </View>
-                      {item.unread && <View style={homeStyles.notifUnreadDot} />}
-                    </TouchableOpacity>
-                  ))
+                  notifications.map((item) => {
+                    const isComplaint = item.type === 'new_complaint';
+                    const badgeColor = isComplaint ? '#007AFF' : '#F59E0B';
+                    const badgeBg = isComplaint ? '#EFF6FF' : '#FEF3C7';
+                    const badgeText = isComplaint ? 'NEW FIELD TICKET' : 'OPERATIONAL ADVISORY';
+                    const iconName = isComplaint ? 'warning' : 'megaphone';
+
+                    return (
+                      <TouchableOpacity
+                        key={item.id}
+                        style={{
+                          backgroundColor: '#FFFFFF',
+                          borderRadius: 16,
+                          padding: 14,
+                          borderWidth: 1,
+                          borderColor: item.unread ? '#BFDBFE' : '#E2E8F0',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          shadowColor: '#0B2240',
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.04,
+                          shadowRadius: 6,
+                          elevation: 1,
+                        }}
+                        onPress={() => handleNotificationPress(item)}
+                        activeOpacity={0.7}
+                      >
+                        {item.unread && (
+                          <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: badgeColor }} />
+                        )}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, paddingLeft: item.unread ? 4 : 0 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: badgeBg, paddingHorizontal: 7, paddingVertical: 2.5, borderRadius: 6 }}>
+                            <AppIcon name={iconName} size={10} color={badgeColor} style={{ marginRight: 4 }} />
+                            <Text style={{ fontSize: 9, fontFamily: 'PlusJakartaSans_800ExtraBold', color: badgeColor, letterSpacing: 0.5 }}>
+                              {badgeText}
+                            </Text>
+                          </View>
+                          <Text style={{ fontSize: 10, fontFamily: 'PlusJakartaSans_600SemiBold', color: '#94A3B8' }}>{item.time}</Text>
+                        </View>
+                        <Text style={{ fontSize: 13, fontFamily: 'PlusJakartaSans_700Bold', color: '#0B2240', marginBottom: 3, paddingLeft: item.unread ? 4 : 0 }}>
+                          {item.title}
+                        </Text>
+                        <Text style={{ fontSize: 12, fontFamily: 'PlusJakartaSans_400Regular', color: '#475569', lineHeight: 16, paddingLeft: item.unread ? 4 : 0, marginBottom: 8 }}>
+                          {item.body}
+                        </Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F8FAFC', paddingTop: 6, paddingLeft: item.unread ? 4 : 0 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Image
+                              source={require('../../assets/adaptive-icon.png')}
+                              style={{ width: 11, height: 11, marginRight: 4 }}
+                              resizeMode="contain"
+                            />
+                            <Text style={{ fontSize: 9, fontFamily: 'PlusJakartaSans_600SemiBold', color: '#94A3B8' }}>AquaTrack Field Dispatch</Text>
+                          </View>
+                          <AppIcon name="chevron-forward" size={13} color="#94A3B8" />
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })
                 )}
               </ScrollView>
             </TouchableOpacity>
