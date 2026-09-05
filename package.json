@@ -12,6 +12,7 @@
     "@rnmapbox/maps": "^10.3.5",
     "@supabase/supabase-js": "^2.43.4",
     "expo": "~57.0.9",
+    "expo-audio": "^57.0.4",
     "expo-build-properties": "~57.0.8",
     "expo-dev-client": "~57.0.10",
     "expo-font": "~57.0.1",

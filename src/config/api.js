@@ -52,5 +52,24 @@ export const api = {
       console.error(`API PUT ${endpoint} failed:`, err);
       throw err;
     }
+  },
+  postFormData: async (endpoint, formData) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          // Do not set Content-Type header manually for FormData so boundary is generated automatically
+        },
+        body: formData,
+      });
+      if (!res.ok) {
+        throw new Error(`HTTP Error: ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error(`API postFormData ${endpoint} failed:`, err);
+      throw err;
+    }
   }
 };

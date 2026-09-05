@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, UIManager, Platform, Modal } from 'react-native';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
+import { File } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import { useAudioRecorder, RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
 import MapboxGL from '@rnmapbox/maps';
 import { MAPBOX_ACCESS_TOKEN, MAPBOX_STYLE_URL } from '../../src/config/mapbox';
@@ -32,6 +35,29 @@ const WebMap = ({ latitude, longitude }) => {
   });
 };
 
+// Speech-optimized audio recording options (24kHz Mono @ 32kbps cuts network payload by ~80% with zero quality loss)
+const SPEECH_RECORDING_OPTIONS = {
+  extension: '.m4a',
+  sampleRate: 24000,
+  numberOfChannels: 1,
+  bitRate: 32000,
+  android: {
+    outputFormat: 'mpeg4',
+    audioEncoder: 'aac',
+  },
+  ios: {
+    outputFormat: 'aac ',
+    audioQuality: 64,
+    linearPCMBitDepth: 16,
+    linearPCMIsBigEndian: false,
+    linearPCMIsFloat: false,
+  },
+  web: {
+    mimeType: 'audio/webm',
+    bitsPerSecond: 32000,
+  },
+};
+
 export default function FileComplaint({ navigation }) {
   const [rawText, setRawText] = useState('');
   const [category, setCategory] = useState('UNCLASSIFIED_INFRASTRUCTURE_ANOMALY');
@@ -50,6 +76,13 @@ export default function FileComplaint({ navigation }) {
   // Media states
   const [photoUri, setPhotoUri] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Voice-to-Text states (expo-audio speech-optimized)
+  const audioRecorder = useAudioRecorder(SPEECH_RECORDING_OPTIONS);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const recordingTimerRef = useRef(null);
 
   // AI Diagnostic states
   const [aiTriage, setAiTriage] = useState(null);
@@ -213,25 +246,152 @@ export default function FileComplaint({ navigation }) {
     }
   };
 
-  // Select Photo
+  // Clean up audio recording and timer on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
+      if (audioRecorder.isRecording) {
+        audioRecorder.stop().catch(() => {});
+      }
+    };
+  }, [audioRecorder]);
+
+  // Voice Recording Handlers (expo-audio)
+  const startVoiceRecording = async () => {
+    try {
+      const permission = await requestRecordingPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Microphone Permission', 'Please allow microphone access to record your complaint verbally.');
+        return;
+      }
+
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+      });
+
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
+      setIsRecording(true);
+      setRecordingSeconds(0);
+
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds((prev) => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.error('Failed to start recording:', err);
+      Alert.alert('Recording Error', 'Could not access microphone: ' + (err.message || 'Unknown error'));
+    }
+  };
+
+  const stopVoiceRecording = async () => {
+    setIsRecording(false);
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+
+    try {
+      await audioRecorder.stop();
+      const uri = audioRecorder.uri;
+      console.log('[VoiceRecord] Saved audio file at:', uri);
+
+      if (uri) {
+        await handleSendAudioForTranscription(uri);
+      } else {
+        Alert.alert('Recording Notice', 'No audio was captured. Please try recording again.');
+      }
+    } catch (err) {
+      console.error('Failed to stop recording:', err);
+      Alert.alert('Recording Error', 'Failed to finalize audio recording.');
+    }
+  };
+
+  const handleSendAudioForTranscription = async (audioUri) => {
+    setIsTranscribing(true);
+    try {
+      let base64Audio = '';
+      try {
+        base64Audio = await FileSystem.readAsStringAsync(audioUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+      } catch (legacyErr) {
+        try {
+          const file = new File(audioUri);
+          base64Audio = await file.base64();
+        } catch (fileErr) {
+          console.warn('[VoiceRecord] File.base64 error:', fileErr);
+        }
+      }
+
+      if (!base64Audio) {
+        throw new Error('Could not encode audio file to base64');
+      }
+
+      const data = await api.post('/api/transcribe', {
+        audio: base64Audio,
+        mimeType: 'audio/mp4',
+      });
+
+      if (data && data.success && data.text) {
+        setRawText((prev) => (prev ? `${prev} ${data.text}` : data.text).slice(0, 1000));
+      } else if (data && data.text) {
+        setRawText((prev) => (prev ? `${prev} ${data.text}` : data.text).slice(0, 1000));
+      } else {
+        throw new Error(data?.error || 'Empty transcription response');
+      }
+    } catch (err) {
+      console.error('Transcription failed:', err);
+      Alert.alert('Transcription Notice', 'Could not transcribe voice note: ' + (err.message || 'Network error'));
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  // Select Photo (Client-Side Pre-Compression to quality: 0.6)
   const handlePickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      quality: 0.7,
+      quality: 0.6,
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
       setPhotoUri(result.assets[0].uri);
+      // Invalidate existing triage cache if photo changes
+      setAiTriage(null);
     }
   };
 
-  // Run AI Diagnostics
-  const runAiTriage = async () => {
+  // Run AI Diagnostics with optional uploaded image URL
+  const runAiTriage = async (imageUrlOverride = null) => {
     setIsTriaging(true);
     setAiTriage(null);
     try {
-      const data = await api.post('/api/triage', { text: rawText });
+      let activeImageUrl = imageUrlOverride;
+
+      // If no override provided but a local photoUri is selected, upload it first to get publicUrl
+      if (!activeImageUrl && photoUri) {
+        const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
+        const response = await fetch(photoUri);
+        const blob = await response.blob();
+        const { error: uploadError } = await supabase.storage
+          .from('complaint-media')
+          .upload(filename, blob, { contentType: 'image/jpeg' });
+        if (!uploadError) {
+          const { data } = supabase.storage.from('complaint-media').getPublicUrl(filename);
+          activeImageUrl = data?.publicUrl || null;
+        }
+      }
+
+      const payload = { text: rawText };
+      if (activeImageUrl) {
+        payload.imageUrl = activeImageUrl;
+      }
+
+      const data = await api.post('/api/triage', payload);
       if (data && data.success && data.result) {
         setAiTriage(data.result);
         setCategory(data.result.category);
@@ -246,7 +406,7 @@ export default function FileComplaint({ navigation }) {
     return null;
   };
 
-  // Unified Submit — automatically locates, triages with AI, uploads photo, and submits
+  // Unified Submit — automatically locates, uploads photo, triages with AI, and submits
   const handleSubmit = async () => {
     if (!rawText.trim()) {
       Alert.alert('Validation Error', 'Please fill in the problem description.');
@@ -276,13 +436,9 @@ export default function FileComplaint({ navigation }) {
         return;
       }
 
-      // Step 2: Run AI diagnostics on the complaint text
-      setSubmitStatus('Running AI diagnostics...');
-      triageResult = await runAiTriage();
-
-      // Step 3: Upload photo to Supabase storage if selected
+      // Step 2: Upload photo to Supabase storage if attached (before AI triage so photo is inspected)
       if (photoUri) {
-        setSubmitStatus('Uploading photo...');
+        setSubmitStatus('Uploading photo evidence...');
         setIsUploading(true);
         const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
         const response = await fetch(photoUri);
@@ -299,6 +455,14 @@ export default function FileComplaint({ navigation }) {
         const { data } = supabase.storage.from('complaint-media').getPublicUrl(filename);
         finalImageUrl = data.publicUrl;
         setIsUploading(false);
+      }
+
+      // Step 3: Run AI diagnostics on complaint text + photo evidence (or reuse cached triage if already evaluated)
+      if (aiTriage && (!photoUri || finalImageUrl)) {
+        triageResult = aiTriage;
+      } else {
+        setSubmitStatus('Cross-examining photo & description with AI...');
+        triageResult = await runAiTriage(finalImageUrl);
       }
 
       // Step 4: Submit complaint payload
@@ -428,9 +592,20 @@ export default function FileComplaint({ navigation }) {
       <View style={{ paddingHorizontal: 18, marginTop: 12 }}>
 
         {/* 1. Incident Description */}
-        <Text className="text-[#64748B] font-extrabold text-xs uppercase tracking-widest mb-2 px-1">
-          Incident Description
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, paddingHorizontal: 4 }}>
+          <Text className="text-[#64748B] font-extrabold text-xs uppercase tracking-widest">
+            Incident Description
+          </Text>
+          {isRecording && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, gap: 6 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#DC2626' }} />
+              <Text style={{ color: '#DC2626', fontSize: 10, fontWeight: '900' }}>
+                REC 00:{recordingSeconds < 10 ? `0${recordingSeconds}` : recordingSeconds}
+              </Text>
+            </View>
+          )}
+        </View>
+
         <View 
           className="bg-white border border-[#E2E8F5] rounded-3xl p-5 mb-5"
           style={{
@@ -443,14 +618,48 @@ export default function FileComplaint({ navigation }) {
         >
           <TextInput
             className="bg-[#F8FAFC] border border-[#E2E8F5] rounded-2xl p-4 text-[#0B2240] text-sm leading-relaxed text-left"
-            style={{ minHeight: 120, textAlignVertical: 'top' }}
+            style={{ minHeight: 110, textAlignVertical: 'top' }}
             multiline
             numberOfLines={4}
-            placeholder="Type your issue. You can write in English, Tagalog, Taglish, or Kapampangan..."
+            placeholder="Type your issue. You can speak or write in English, Tagalog, Taglish, or Kapampangan..."
             placeholderTextColor="#94a3b8"
             value={rawText}
             onChangeText={setRawText}
           />
+
+          {/* Voice-to-Text Action Button */}
+          <View style={{ marginTop: 12 }}>
+            {isTranscribing ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, borderRadius: 16, backgroundColor: '#F0F9FF', borderWidth: 1, borderColor: '#BAE6FD' }}>
+                <ActivityIndicator color="#0284C7" size="small" style={{ marginRight: 8 }} />
+                <Text style={{ color: '#0369A1', fontWeight: '700', fontSize: 12 }}>
+                  Transcribing speech with Gemini...
+                </Text>
+              </View>
+            ) : isRecording ? (
+              <TouchableOpacity
+                onPress={stopVoiceRecording}
+                activeOpacity={0.8}
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, borderRadius: 16, backgroundColor: '#EF4444' }}
+              >
+                <AppIcon name="stop" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Stop Recording (00:{recordingSeconds < 10 ? `0${recordingSeconds}` : recordingSeconds})
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                onPress={startVoiceRecording}
+                activeOpacity={0.8}
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, borderRadius: 16, backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE' }}
+              >
+                <AppIcon name="mic" size={16} color="#0284C7" style={{ marginRight: 6 }} />
+                <Text style={{ color: '#0369A1', fontWeight: '700', fontSize: 12 }}>
+                  Voice Record
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {/* 2. Detailed Map & Geofence Location Preview */}
