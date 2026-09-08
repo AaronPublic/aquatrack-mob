@@ -358,3 +358,20 @@ Secondary screens also received the `{ navigation }` prop to enable notification
 - **Image Pre-Compression:** Configured client-side image compression (`quality: 0.6`) in `expo-image-picker` (`launchCameraAsync` and `launchImageLibraryAsync`). Slashes photo payload weight before upload while maintaining high visual fidelity for Gemini multimodal inspection.
 - **Smart Triage Caching:** Integrated a triage cache key ref (`lastTriagedKeyRef`) in `FileComplaint.js` to eliminate redundant duplicate AI calls during complaint submission.
 - **Water Health Index (WQI) 100-Point Mathematical Verification:** Verified mathematical alignment of consumer and technician water quality scoring with official PNSDW standards across pH (30%), Turbidity (25%), TDS (25%), and Pressure (20%).
+
+---
+
+## Session Changelog (September 8, 2026)
+
+### Technician In-App Task Assignment Notifications (`useTechNotificationStore.js`)
+- **Direct Task Assignments Synchronization**: Expanded the technician notification store to concurrently fetch directly assigned tickets (`assignedToId === session.user.id`, `status !== 'RESOLVED'`) alongside broadcast advisories and unassigned complaints.
+- **Priority Labeling**: Formatted task assignments with clear incident identifiers (`📋 Task Assigned (AQ-COMP-...)`), urgency badges (Critical, High Priority, Medium Priority, Standard), and barangay location context.
+- **Direct Navigation Routing**: Integrated one-tap routing in `TechHeader.js` so tapping an assigned task notification automatically dismisses it and navigates directly to `SubAdminComplaints`.
+
+### Real-Time In-App Notification Badge Sync (`TechHeader.js`)
+- **Live Supabase Realtime Channels**: Subscribed `TechHeader` to PostgreSQL changes on `Complaint` and `Advisory` tables. The header bell icon and unread counter update in real time without requiring manual pull-to-refresh.
+- **Multi-Screen Header Uniformity**: Automatically provides real-time notification sync across all sub-admin views (`SubAdminHome`, `SubAdminComplaints`, `SubAdminTelemetry`, and `SubAdminAdvisories`).
+
+### Technician Presence Lifecycle & Ticket Claiming (`useAuthStore.js` & `SubAdminComplaints.js`)
+- **Explicit Sign-Out Presence Teardown**: Updated `signOut()` in `useAuthStore.js` to dispatch an explicit offline heartbeat (`isOnline: false`) to `/api/auth/location`, immediately removing logged-out technicians from the automated dispatch pool.
+- **Ticket Claiming Workflow**: Standardized `handleAssignToMe` in `SubAdminComplaints.js` to set status `DISPATCHED` and assign tickets to the active technician via `/api/admin/complaints`.

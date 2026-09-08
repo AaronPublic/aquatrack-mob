@@ -99,6 +99,27 @@ export default function SubAdminComplaints({ navigation }) {
     }
   };
 
+  const handleAssignToMe = async (complaintId) => {
+    if (!currentUser?.id) return;
+    setUpdatingId(complaintId);
+    try {
+      const res = await api.put('/api/admin/complaints', {
+        id: complaintId,
+        assignedToId: currentUser.id,
+        status: 'DISPATCHED'
+      });
+      if (!res || !res.success) {
+        throw new Error(res?.error || "Failed to claim ticket");
+      }
+      Alert.alert("Ticket Claimed", "You have successfully claimed this complaint ticket.");
+      fetchComplaintsData();
+    } catch (err) {
+      Alert.alert("Claim Failed", err.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   const fetchDirections = async (techCoords, complaint) => {
     try {
       const start = [techCoords.longitude, techCoords.latitude];
@@ -239,27 +260,6 @@ export default function SubAdminComplaints({ navigation }) {
   const handleRefresh = () => {
     setRefreshing(true);
     fetchComplaintsData();
-  };
-
-  // Assign a ticket to self
-  const handleAssignToMe = async (ticketId) => {
-    if (!currentUser) return;
-    setUpdatingId(ticketId);
-    try {
-      const { error } = await supabase
-        .from('Complaint')
-        .update({ assignedToId: currentUser.id, status: 'EVALUATING' })
-        .eq('id', ticketId);
-
-      if (error) throw error;
-      
-      Alert.alert("Ticket Assigned", "You are now assigned to this complaint ticket.");
-      fetchComplaintsData();
-    } catch (err) {
-      Alert.alert("Assignment Failed", err.message);
-    } finally {
-      setUpdatingId(null);
-    }
   };
 
   // Change Ticket Status (Sub-Admin / Technician can assign ONGOING or RESOLVED)

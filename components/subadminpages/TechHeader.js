@@ -27,11 +27,13 @@ export default function TechHeader({
   const [profileModalVisible, setProfileModalVisible] = React.useState(false);
   const [userProfile, setUserProfile] = React.useState(null);
   
-  const { notifications, unreadCount, markAllAsRead, dismissNotification } =
+  const { notifications, unreadCount, markAllAsRead, dismissNotification, fetchNotifications } =
     useTechNotificationStore();
 
   React.useEffect(() => {
     let isMounted = true;
+    fetchNotifications();
+
     const fetchUser = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -50,7 +52,22 @@ export default function TechHeader({
       }
     };
     fetchUser();
-    return () => { isMounted = false; };
+
+    // Realtime listener to refresh badge count immediately when tasks or advisories change
+    const channel = supabase
+      .channel('tech-header-realtime-badge')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'Complaint' }, () => {
+        fetchNotifications();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'Advisory' }, () => {
+        fetchNotifications();
+      })
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleOpenNotifications = () => {
@@ -63,7 +80,7 @@ export default function TechHeader({
     dismissNotification(item.id);
     if (item.type === 'advisory') {
       navigation.navigate('SubAdminAdvisories');
-    } else if (item.type === 'new_complaint') {
+    } else if (item.type === 'new_complaint' || item.type === 'assigned_task') {
       navigation.navigate('SubAdminComplaints');
     }
   };

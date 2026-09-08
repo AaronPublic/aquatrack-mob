@@ -19,8 +19,8 @@ export const useTechNotificationStore = create((set, get) => ({
 
       const list = [];
 
-      // ─── 1 & 2. Fetch Advisories and Unassigned Complaints concurrently ───
-      const [advisoriesData, { data: newComplaints }] = await Promise.all([
+      // ─── 1, 2 & 3. Fetch Advisories, Assigned Tasks, and Unassigned Complaints concurrently ───
+      const [advisoriesData, { data: assignedComplaints }, { data: newComplaints }] = await Promise.all([
         api.get('/api/advisories').catch(async (err) => {
           console.warn('Falling back to Supabase for tech advisories:', err);
           const { data } = await supabase
@@ -32,7 +32,15 @@ export const useTechNotificationStore = create((set, get) => ({
         supabase
           .from('Complaint')
           .select('id, status, createdAt, summary, category, rawText, barangay, urgency')
+          .eq('assignedToId', session.user.id)
+          .neq('status', 'RESOLVED')
+          .order('createdAt', { ascending: false })
+          .limit(20),
+        supabase
+          .from('Complaint')
+          .select('id, status, createdAt, summary, category, rawText, barangay, urgency')
           .is('assignedToId', null)
+          .neq('status', 'RESOLVED')
           .order('createdAt', { ascending: false })
           .limit(20)
       ]);
@@ -52,6 +60,30 @@ export const useTechNotificationStore = create((set, get) => ({
             message: ad.content || ad.text || '',
             date: new Date(ad.createdAt || ad.date || Date.now()),
             category: ad.type || 'info',
+          });
+        });
+      }
+
+      if (assignedComplaints) {
+        assignedComplaints.forEach((comp) => {
+          const shortId = `AQ-${comp.id.slice(0, 8).toUpperCase()}`;
+          const urgencyLabel =
+            comp.urgency === 'CRITICAL'
+              ? '🔴 Critical'
+              : comp.urgency === 'HIGH'
+              ? '🟠 High Priority'
+              : comp.urgency === 'MEDIUM'
+              ? '🔵 Medium Priority'
+              : '🟢 Standard';
+
+          list.push({
+            id: `tech-assigned-${comp.id}`,
+            type: 'assigned_task',
+            title: `📋 Task Assigned (${shortId})`,
+            message: `${urgencyLabel} · ${comp.summary || comp.rawText || 'Water Utility Issue'} ${comp.barangay ? `— Brgy. ${comp.barangay}` : ''}`,
+            date: new Date(comp.createdAt || Date.now()),
+            urgency: comp.urgency,
+            complaintId: comp.id,
           });
         });
       }
@@ -79,7 +111,7 @@ export const useTechNotificationStore = create((set, get) => ({
         });
       }
 
-      // ─── 3. Sort & Apply Dismiss / Read Persistence ───────────────────────
+      // ─── 4. Sort & Apply Dismiss / Read Persistence ───────────────────────
       list.sort((a, b) => b.date - a.date);
 
       const [readIdsStr, dismissedIdsStr] = await Promise.all([

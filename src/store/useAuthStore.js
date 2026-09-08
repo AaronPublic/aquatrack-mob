@@ -37,6 +37,14 @@ export const useAuthStore = create(
       signOut: async () => {
         set({ loading: true, error: null });
         try {
+          const currentUserId = get().session?.user?.id || get().profile?.id;
+          if (currentUserId) {
+            try {
+              await api.post('/api/auth/location', { userId: currentUserId, isOnline: false });
+            } catch (presenceErr) {
+              console.warn("Presence teardown during signOut failed:", presenceErr);
+            }
+          }
           await supabase.auth.signOut();
           set({ session: null, profile: null, loading: false });
         } catch (err) {
