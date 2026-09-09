@@ -14,28 +14,22 @@ export default function SubAdminTelemetry({ navigation }) {
 
   const fetchTelemetryData = async () => {
     try {
-      // Fetch nodes and recent readings in parallel to cut latency in half
-      const [nodeRes, { data: latestReadings, error: readError }] = await Promise.all([
-        api.get('/api/admin/nodes'),
-        supabase
-          .from('TelemetryReading')
-          .select('id, nodeId, ph, turbidity, tds, pressure, timestamp')
-          .order('timestamp', { ascending: false })
-          .limit(30)
-      ]);
+      // Fetch nodes with authoritative latest readings directly from API
+      const nodeRes = await api.get('/api/admin/nodes');
 
-      if (nodeRes && nodeRes.success) {
+      if (nodeRes && nodeRes.success && nodeRes.nodes) {
         setNodes(nodeRes.nodes);
 
-        if (!readError && latestReadings) {
-          const latestMap = {};
-          latestReadings.forEach(r => {
-            if (!latestMap[r.nodeId]) {
-              latestMap[r.nodeId] = r;
-            }
-          });
-          setReadings(latestMap);
-        }
+        const latestMap = {};
+        nodeRes.nodes.forEach(n => {
+          if (n.reading) {
+            latestMap[n.id] = n.reading;
+          }
+        });
+        setReadings(prev => ({
+          ...latestMap,
+          ...prev, // Retain live readings received over WebSockets
+        }));
       }
     } catch (err) {
       console.error(err);
@@ -49,9 +43,10 @@ export default function SubAdminTelemetry({ navigation }) {
   useEffect(() => {
     fetchTelemetryData();
 
-    // Listen to realtime telemetry readings to update stats immediately!
+    // Listen to realtime telemetry readings with unique channel ID
+    const channelName = `tech-telemetry-${Date.now()}`;
     const channel = supabase
-      .channel('tech-telemetry-realtime')
+      .channel(channelName)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'TelemetryReading' }, (payload) => {
         const newReading = payload.new;
         setReadings(prev => ({
@@ -93,7 +88,7 @@ export default function SubAdminTelemetry({ navigation }) {
 
   const renderNodeItem = ({ item }) => {
     const statusCfg = getNodeStatusCfg(item.status);
-    const lastRead = readings[item.id] || null;
+    const lastRead = readings[item.id] || item.reading || null;
     const formattedTime = lastRead
       ? new Date(lastRead.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })
       : '—';

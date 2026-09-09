@@ -244,9 +244,10 @@ export default function SubAdminComplaints({ navigation }) {
   useEffect(() => {
     fetchComplaintsData();
 
-    // Subscribe to realtime updates
+    // Subscribe to realtime updates with unique channel ID
+    const channelName = `subadmin-complaints-${Date.now()}`;
     const channel = supabase
-      .channel('tech-complaints-list')
+      .channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'Complaint' }, () => {
         fetchComplaintsData();
       })
@@ -550,12 +551,12 @@ export default function SubAdminComplaints({ navigation }) {
         <FlatList
           style={{ flex: 1, marginTop: 12 }}
           data={listData}
-          keyExtractor={(item, index) => (item.__sectionHeader ? `section-${item.__sectionHeader}-${index}` : item.id)}
+          keyExtractor={(item, index) => (item.__sectionHeader ? `section-${item.__sectionHeader}-${index}` : (item.id ? `${item.id}-${index}` : `item-${index}`))}
           renderItem={renderTicketItem}
           initialNumToRender={8}
           maxToRenderPerBatch={10}
           windowSize={5}
-          removeClippedSubviews={Platform.OS === 'android'}
+          removeClippedSubviews={false}
           ListHeaderComponent={
             <View style={{ paddingHorizontal: 18, paddingTop: 4 }}>
               {/* Outer Gray Label */}

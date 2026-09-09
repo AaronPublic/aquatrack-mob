@@ -177,4 +177,30 @@ export const useTechNotificationStore = create((set, get) => ({
       console.error('Failed to mark tech notifications as read:', err);
     }
   },
+
+  subscribeRealtime: () => {
+    if (get()._realtimeChannel) return;
+    try {
+      const channel = supabase
+        .channel(`tech-global-notifications-${Date.now()}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'Complaint' }, () => {
+          get().fetchNotifications();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'Advisory' }, () => {
+          get().fetchNotifications();
+        })
+        .subscribe();
+      set({ _realtimeChannel: channel });
+    } catch (err) {
+      console.warn("Failed to subscribe realtime in useTechNotificationStore:", err);
+    }
+  },
+
+  unsubscribeRealtime: () => {
+    const channel = get()._realtimeChannel;
+    if (channel) {
+      supabase.removeChannel(channel);
+      set({ _realtimeChannel: null });
+    }
+  },
 }));

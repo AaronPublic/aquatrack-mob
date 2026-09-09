@@ -305,7 +305,7 @@ export default function Announcements({ route, navigation }) {
           initialNumToRender={8}
           maxToRenderPerBatch={10}
           windowSize={5}
-          removeClippedSubviews={Platform.OS === 'android'}
+          removeClippedSubviews={false}
           ListHeaderComponent={
             <View style={{ paddingHorizontal: 18, paddingTop: 4 }}>
               {/* Outer Gray Label */}

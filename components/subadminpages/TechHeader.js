@@ -53,20 +53,8 @@ export default function TechHeader({
     };
     fetchUser();
 
-    // Realtime listener to refresh badge count immediately when tasks or advisories change
-    const channel = supabase
-      .channel('tech-header-realtime-badge')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'Complaint' }, () => {
-        fetchNotifications();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'Advisory' }, () => {
-        fetchNotifications();
-      })
-      .subscribe();
-
     return () => {
       isMounted = false;
-      supabase.removeChannel(channel);
     };
   }, []);
 

@@ -6,6 +6,7 @@ import AppIcon from '../../components/AppIcon';
 import { supabase } from '../config/supabase';
 import { theme } from '../config/theme';
 import { useAuthStore } from '../store/useAuthStore';
+import { useTechNotificationStore } from '../store/useTechNotificationStore';
 import { requestUserPermission, registerNotificationListeners } from '../config/fcm';
 
 // Auth Screens
@@ -139,6 +140,16 @@ function ConsumerTabNavigator() {
 }
 
 function SubAdminTabNavigator() {
+  const { fetchNotifications, subscribeRealtime, unsubscribeRealtime } = useTechNotificationStore();
+
+  useEffect(() => {
+    fetchNotifications();
+    subscribeRealtime();
+    return () => {
+      unsubscribeRealtime();
+    };
+  }, []);
+
   return (
     <Tab.Navigator 
       screenOptions={({ route }) => ({
