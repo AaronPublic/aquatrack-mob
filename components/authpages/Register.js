@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -9,8 +9,10 @@ import {
   KeyboardAvoidingView, 
   Platform, 
   ScrollView,
-  Alert
+  Alert,
+  Keyboard
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import styles from './Login.styles';
@@ -18,6 +20,7 @@ import { useAuthStore } from '../../src/store/useAuthStore';
 import AppIcon from '../../components/AppIcon';
 
 export default function Register({ navigation }) {
+  const scrollViewRef = useRef(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,6 +28,22 @@ export default function Register({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setIsKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setIsKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const validatePassword = (pwd) => {
     const hasUpper = /[A-Z]/.test(pwd);
@@ -105,12 +124,23 @@ export default function Register({ navigation }) {
         style={styles.keyboardContainer}
       >
         <ScrollView 
-          contentContainerStyle={styles.scrollContent}
+          ref={scrollViewRef}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: isKeyboardVisible ? 280 : 40 }
+          ]}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
+          scrollEnabled={true}
         >
-          {/* ================= 70% TOP BRANDING SECTION (#2196F3) ================= */}
-          <View style={styles.topSection}>
+          {/* ================= TOP BRANDING SECTION (#0C4F8B -> #008CE3) ================= */}
+          <LinearGradient 
+            colors={['#0C4F8B', '#008CE3']} 
+            start={{ x: 0, y: 0 }} 
+            end={{ x: 0, y: 1 }} 
+            style={isKeyboardVisible ? styles.topSectionCompact : styles.topSection}
+          >
             {/* Realistic Water Droplets Overlay Graphic */}
             <Image 
               source={require('../../assets/water_droplets.png')}
@@ -120,40 +150,46 @@ export default function Register({ navigation }) {
 
             <View style={styles.decorCircle1} />
             <View style={styles.decorCircle2} />
-            <View style={styles.decorCircle3} />
 
             {/* BIG TRANSPARENT PNG LOGO DIRECTLY ON BLUE */}
-            <Image 
-              source={require('../../assets/Logo.png')}
-              style={styles.bigLogoImage}
-              resizeMode="contain"
-            />
-
-            <View style={styles.cityBadge}>
-              <AppIcon name="water-outline" size={13} color="#E0F2FE" style={{ marginRight: 4 }} />
-              <Text style={styles.brandSubtitle}>CITY OF SAN FERNANDO</Text>
+            <View style={isKeyboardVisible ? styles.logoWrapperCompact : styles.logoWrapper}>
+              <Image 
+                source={require('../../assets/Logo.png')}
+                style={isKeyboardVisible ? styles.bigLogoImageCompact : styles.bigLogoImage}
+                resizeMode="contain"
+              />
+              <View style={isKeyboardVisible ? styles.singleLogoDropletCompact : styles.singleLogoDroplet}>
+                <View style={isKeyboardVisible ? styles.dropletHighlightCompact : styles.dropletHighlight} />
+              </View>
             </View>
 
-            <Text style={styles.brandDescription}>
-              Join the community network to receive instant advisories, track pipe maintenance, and report water issues.
+            <View style={isKeyboardVisible ? styles.cityBadgeCompact : styles.cityBadge}>
+              <AppIcon name="water-outline" size={isKeyboardVisible ? 11 : 13} color="#E0F2FE" style={{ marginRight: 4 }} />
+              <Text style={isKeyboardVisible ? styles.brandSubtitleCompact : styles.brandSubtitle}>CITY OF SAN FERNANDO</Text>
+            </View>
+
+            <Text style={isKeyboardVisible ? styles.brandDescriptionCompact : styles.brandDescription}>
+              {isKeyboardVisible
+                ? "Join the community network for instant water advisories & anomaly reporting."
+                : "Join the community network to receive instant advisories, track pipe maintenance, and report water issues."}
             </Text>
 
             {/* Swirl Boundary Junction */}
-            <View style={styles.swirlWrapper}>
+            <View style={isKeyboardVisible ? styles.swirlWrapperCompact : styles.swirlWrapper}>
               <Image 
                 source={require('../../assets/swirl_accent.png')}
-                style={styles.swirlAccentImage}
+                style={isKeyboardVisible ? styles.swirlAccentImageCompact : styles.swirlAccentImage}
                 resizeMode="cover"
               />
               <Image 
                 source={require('../../assets/swirl_boundary.png')}
-                style={styles.swirlBoundaryImage}
+                style={isKeyboardVisible ? styles.swirlBoundaryImageCompact : styles.swirlBoundaryImage}
                 resizeMode="cover"
               />
             </View>
-          </View>
+          </LinearGradient>
 
-          {/* ================= 30% BOTTOM ACTION SECTION (WHITE) ================= */}
+          {/* ================= BOTTOM ACTION SECTION (WHITE) ================= */}
           <View style={styles.bottomSection}>
             
             {/* Form Header with Back Navigation */}
@@ -187,6 +223,10 @@ export default function Register({ navigation }) {
                     placeholderTextColor="#94A3B8"
                     value={name}
                     onChangeText={setName}
+                    onFocus={() => {
+                      setIsKeyboardVisible(true);
+                      setTimeout(() => scrollViewRef.current?.scrollTo({ y: 80, animated: true }), 120);
+                    }}
                   />
                 </View>
               </View>
@@ -202,6 +242,10 @@ export default function Register({ navigation }) {
                     placeholderTextColor="#94A3B8"
                     value={email}
                     onChangeText={setEmail}
+                    onFocus={() => {
+                      setIsKeyboardVisible(true);
+                      setTimeout(() => scrollViewRef.current?.scrollTo({ y: 140, animated: true }), 120);
+                    }}
                     autoCapitalize="none"
                     keyboardType="email-address"
                   />
@@ -219,6 +263,10 @@ export default function Register({ navigation }) {
                     placeholderTextColor="#94A3B8"
                     value={password}
                     onChangeText={setPassword}
+                    onFocus={() => {
+                      setIsKeyboardVisible(true);
+                      setTimeout(() => scrollViewRef.current?.scrollTo({ y: 200, animated: true }), 120);
+                    }}
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
                   />
@@ -249,6 +297,10 @@ export default function Register({ navigation }) {
                     placeholderTextColor="#94A3B8"
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
+                    onFocus={() => {
+                      setIsKeyboardVisible(true);
+                      setTimeout(() => scrollViewRef.current?.scrollTo({ y: 260, animated: true }), 120);
+                    }}
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
                   />
@@ -273,9 +325,11 @@ export default function Register({ navigation }) {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.supportFooterText}>
-              Technical Support: CSFWD IT Division (045) 961-3546
-            </Text>
+            {/* Technical Issues Support Contact Box under form */}
+            <View style={[styles.techSupportBox, { marginTop: 16 }]}>
+              <Text style={styles.techSupportTitle}>Technical issues? Contact CSFWD IT Division</Text>
+              <Text style={styles.techSupportPhone}>(045) 961-3546</Text>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

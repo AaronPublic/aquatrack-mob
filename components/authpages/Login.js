@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -11,7 +11,8 @@ import {
   ScrollView,
   Dimensions,
   Alert,
-  Modal
+  Modal,
+  Keyboard
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../src/config/supabase';
@@ -30,6 +31,24 @@ export default function Login({ navigation, route }) {
 
   // Login method: 'PASSWORD' | 'BILLING'
   const [authMethod, setAuthMethod] = useState('PASSWORD');
+
+  // Track keyboard visibility for dynamic scrolling
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setIsKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setIsKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Login form state
   const [email, setEmail] = useState('');
@@ -71,23 +90,20 @@ export default function Login({ navigation, route }) {
   const handleOpenLogin = () => {
     setAuthMode('LOGIN');
     setError(null);
-    setTimeout(() => {
-      scrollViewRef.current?.scrollTo({ y: SCREEN_HEIGHT * 0.44, animated: true });
-    }, 120);
+    scrollViewRef.current?.scrollTo({ y: 0, animated: false });
   };
 
   const handleOpenRegister = () => {
     setAuthMode('REGISTER');
     setError(null);
-    setTimeout(() => {
-      scrollViewRef.current?.scrollTo({ y: SCREEN_HEIGHT * 0.44, animated: true });
-    }, 120);
+    scrollViewRef.current?.scrollTo({ y: 0, animated: false });
   };
 
   const handleBackToLanding = () => {
+    Keyboard.dismiss();
     setAuthMode('IDLE');
     setError(null);
-    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    scrollViewRef.current?.scrollTo({ y: 0, animated: false });
   };
 
   const handleQrScanSimulation = () => {
@@ -251,16 +267,21 @@ export default function Login({ navigation, route }) {
       >
         <ScrollView 
           ref={scrollViewRef}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: isKeyboardVisible ? 280 : 40 }
+          ]}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
+          scrollEnabled={true}
         >
-          {/* ================= 70% TOP BRANDING SECTION (BLUE GRADIENT) ================= */}
+          {/* ================= TOP BRANDING SECTION (BLUE GRADIENT) ================= */}
           <LinearGradient 
             colors={['#0C4F8B', '#008CE3']} 
             start={{ x: 0, y: 0 }} 
             end={{ x: 0, y: 1 }} 
-            style={styles.topSection}
+            style={isKeyboardVisible ? styles.topSectionCompact : styles.topSection}
           >
             {/* Subtle Reduced Water Droplets Overlay Texture */}
             <Image 
@@ -274,37 +295,39 @@ export default function Login({ navigation, route }) {
             <View style={styles.decorCircle2} />
 
             {/* BIG TRANSPARENT PNG LOGO WITH SINGLE SHINY WATER DROPLET */}
-            <View style={styles.logoWrapper}>
+            <View style={isKeyboardVisible ? styles.logoWrapperCompact : styles.logoWrapper}>
               <Image 
                 source={require('../../assets/Logo.png')}
-                style={styles.bigLogoImage}
+                style={isKeyboardVisible ? styles.bigLogoImageCompact : styles.bigLogoImage}
                 resizeMode="contain"
               />
               {/* ONE Single Shiny Realistic Water Droplet on the Logo */}
-              <View style={styles.singleLogoDroplet}>
-                <View style={styles.dropletHighlight} />
+              <View style={isKeyboardVisible ? styles.singleLogoDropletCompact : styles.singleLogoDroplet}>
+                <View style={isKeyboardVisible ? styles.dropletHighlightCompact : styles.dropletHighlight} />
               </View>
             </View>
 
-            <View style={styles.cityBadge}>
-              <AppIcon name="water-outline" size={13} color="#E0F2FE" style={{ marginRight: 4 }} />
-              <Text style={styles.brandSubtitle}>CITY OF SAN FERNANDO</Text>
+            <View style={isKeyboardVisible ? styles.cityBadgeCompact : styles.cityBadge}>
+              <AppIcon name="water-outline" size={isKeyboardVisible ? 11 : 13} color="#E0F2FE" style={{ marginRight: 4 }} />
+              <Text style={isKeyboardVisible ? styles.brandSubtitleCompact : styles.brandSubtitle}>CITY OF SAN FERNANDO</Text>
             </View>
 
-            <Text style={styles.brandDescription}>
-              Empowering residents with real-time water quality tracking, automated anomaly reporting, and municipal advisories.
+            <Text style={isKeyboardVisible ? styles.brandDescriptionCompact : styles.brandDescription}>
+              {isKeyboardVisible 
+                ? "Real-time water quality tracking & municipal advisories."
+                : "Empowering residents with real-time water quality tracking, automated anomaly reporting, and municipal advisories."}
             </Text>
 
             {/* Swirl Boundary Transition */}
-            <View style={styles.swirlWrapper}>
+            <View style={isKeyboardVisible ? styles.swirlWrapperCompact : styles.swirlWrapper}>
               <Image 
                 source={require('../../assets/swirl_accent.png')}
-                style={styles.swirlAccentImage}
+                style={isKeyboardVisible ? styles.swirlAccentImageCompact : styles.swirlAccentImage}
                 resizeMode="cover"
               />
               <Image 
                 source={require('../../assets/swirl_boundary.png')}
-                style={styles.swirlBoundaryImage}
+                style={isKeyboardVisible ? styles.swirlBoundaryImageCompact : styles.swirlBoundaryImage}
                 resizeMode="cover"
               />
             </View>
@@ -420,6 +443,10 @@ export default function Login({ navigation, route }) {
                           placeholderTextColor="#94A3B8"
                           value={email}
                           onChangeText={(val) => { setEmail(val); setEmailError(null); }}
+                          onFocus={() => {
+                            setIsKeyboardVisible(true);
+                            setTimeout(() => scrollViewRef.current?.scrollTo({ y: 100, animated: true }), 120);
+                          }}
                           onBlur={validateEmail}
                           autoCapitalize="none"
                           keyboardType="email-address"
@@ -439,6 +466,10 @@ export default function Login({ navigation, route }) {
                           placeholderTextColor="#94A3B8"
                           value={password}
                           onChangeText={setPassword}
+                          onFocus={() => {
+                            setIsKeyboardVisible(true);
+                            setTimeout(() => scrollViewRef.current?.scrollTo({ y: 160, animated: true }), 120);
+                          }}
                           secureTextEntry={!showPassword}
                           autoCapitalize="none"
                         />
@@ -468,6 +499,10 @@ export default function Login({ navigation, route }) {
                           placeholderTextColor="#94A3B8"
                           value={billingId}
                           onChangeText={setBillingId}
+                          onFocus={() => {
+                            setIsKeyboardVisible(true);
+                            setTimeout(() => scrollViewRef.current?.scrollTo({ y: 140, animated: true }), 120);
+                          }}
                           autoCapitalize="characters"
                         />
                       </View>
@@ -543,6 +578,10 @@ export default function Login({ navigation, route }) {
                       placeholderTextColor="#94A3B8"
                       value={regName}
                       onChangeText={setRegName}
+                      onFocus={() => {
+                        setIsKeyboardVisible(true);
+                        setTimeout(() => scrollViewRef.current?.scrollTo({ y: 80, animated: true }), 120);
+                      }}
                     />
                   </View>
                 </View>
@@ -558,6 +597,10 @@ export default function Login({ navigation, route }) {
                       placeholderTextColor="#94A3B8"
                       value={regEmail}
                       onChangeText={setRegEmail}
+                      onFocus={() => {
+                        setIsKeyboardVisible(true);
+                        setTimeout(() => scrollViewRef.current?.scrollTo({ y: 140, animated: true }), 120);
+                      }}
                       autoCapitalize="none"
                       keyboardType="email-address"
                     />
@@ -575,6 +618,10 @@ export default function Login({ navigation, route }) {
                       placeholderTextColor="#94A3B8"
                       value={regPassword}
                       onChangeText={setRegPassword}
+                      onFocus={() => {
+                        setIsKeyboardVisible(true);
+                        setTimeout(() => scrollViewRef.current?.scrollTo({ y: 200, animated: true }), 120);
+                      }}
                       secureTextEntry={!regShowPassword}
                       autoCapitalize="none"
                     />
@@ -605,6 +652,10 @@ export default function Login({ navigation, route }) {
                       placeholderTextColor="#94A3B8"
                       value={regConfirmPassword}
                       onChangeText={setRegConfirmPassword}
+                      onFocus={() => {
+                        setIsKeyboardVisible(true);
+                        setTimeout(() => scrollViewRef.current?.scrollTo({ y: 260, animated: true }), 120);
+                      }}
                       secureTextEntry={!regShowPassword}
                       autoCapitalize="none"
                     />

@@ -19,9 +19,20 @@
         "backgroundColor": "#FFFFFF"
       },
       "package": "com.aquatrack.mob",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ]
     },
     "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow AquaTrack to access your camera to scan QR codes on complaint tickets."
+        }
+      ],
       [
         "@rnmapbox/maps",
         {

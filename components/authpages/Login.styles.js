@@ -18,11 +18,22 @@ export default StyleSheet.create({
 
   // ================= 70% TOP BRANDING SECTION (BLUE GRADIENT) =================
   topSection: {
-    minHeight: SCREEN_HEIGHT * 0.65,
+    minHeight: Math.min(SCREEN_HEIGHT * 0.58, 480),
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 52 : 36,
-    paddingBottom: 110,
+    paddingTop: Platform.OS === 'ios' ? 48 : 32,
+    paddingBottom: 95,
     paddingHorizontal: 24,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+
+  // Compact Header Section for Form Input Screens (Responsive for Keyboard)
+  topSectionCompact: {
+    minHeight: 180,
+    alignItems: 'center',
+    paddingTop: Platform.OS === 'ios' ? 40 : 20,
+    paddingBottom: 72,
+    paddingHorizontal: 20,
     position: 'relative',
     overflow: 'hidden',
   },
@@ -44,13 +55,25 @@ export default StyleSheet.create({
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 18,
+    marginTop: 14,
+  },
+  logoWrapperCompact: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
   },
 
   // Extra Large Transparent PNG Logo
   bigLogoImage: {
-    width: 380,
-    height: 250,
+    width: 340,
+    height: 220,
+    marginTop: 0,
+    marginBottom: 0,
+  },
+  bigLogoImageCompact: {
+    width: 200,
+    height: 100,
     marginTop: 0,
     marginBottom: 0,
   },
@@ -58,11 +81,11 @@ export default StyleSheet.create({
   // ONE Single Shiny Realistic 3D Water Droplet on the Logo
   singleLogoDroplet: {
     position: 'absolute',
-    top: 38,
-    right: 64,
-    width: 32,
-    height: 40,
-    borderRadius: 20,
+    top: 34,
+    right: 58,
+    width: 28,
+    height: 36,
+    borderRadius: 18,
     borderTopLeftRadius: 5,
     backgroundColor: 'rgba(255, 255, 255, 0.35)',
     borderWidth: 1.5,
@@ -74,6 +97,24 @@ export default StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
+  singleLogoDropletCompact: {
+    position: 'absolute',
+    top: 16,
+    right: 34,
+    width: 16,
+    height: 22,
+    borderRadius: 11,
+    borderTopLeftRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+    transform: [{ rotate: '-22deg' }],
+    shadowColor: '#001030',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    elevation: 3,
+  },
 
   // Specular Reflection Glare Spot inside Single Droplet
   dropletHighlight: {
@@ -83,6 +124,16 @@ export default StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
+    backgroundColor: '#FFFFFF',
+    opacity: 0.95,
+  },
+  dropletHighlightCompact: {
+    position: 'absolute',
+    top: 2,
+    left: 3,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: '#FFFFFF',
     opacity: 0.95,
   },
@@ -119,11 +170,28 @@ export default StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
+  cityBadgeCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 14,
+    marginTop: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
   brandSubtitle: {
     fontSize: 10,
     fontFamily: theme.fonts.extraBold,
     color: '#FFFFFF',
     letterSpacing: 1.5,
+  },
+  brandSubtitleCompact: {
+    fontSize: 8.5,
+    fontFamily: theme.fonts.extraBold,
+    color: '#FFFFFF',
+    letterSpacing: 1.2,
   },
   brandDescription: {
     fontSize: 13,
@@ -134,6 +202,16 @@ export default StyleSheet.create({
     marginTop: 8,
     maxWidth: 320,
     opacity: 0.95,
+  },
+  brandDescriptionCompact: {
+    fontSize: 11,
+    fontFamily: theme.fonts.regular,
+    color: '#F0F9FF',
+    textAlign: 'center',
+    lineHeight: 15,
+    marginTop: 3,
+    maxWidth: 280,
+    opacity: 0.9,
   },
 
   // Swirl Wave Boundary Junction
@@ -158,19 +236,41 @@ export default StyleSheet.create({
     height: 95,
   },
 
+  // Compact Swirl Wave Boundary Junction
+  swirlWrapperCompact: {
+    position: 'absolute',
+    bottom: -1,
+    left: 0,
+    right: 0,
+    height: 65,
+  },
+  swirlAccentImageCompact: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    height: 65,
+    opacity: 0.6,
+  },
+  swirlBoundaryImageCompact: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    height: 65,
+  },
+
   // ================= 30% BOTTOM ACTION SECTION (WHITE) =================
   bottomSection: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 40,
+    paddingTop: 22,
+    paddingBottom: 32,
     flex: 1,
   },
 
   // INITIAL LANDING: ONLY 2 BUTTONS
   idleButtonsContainer: {
-    gap: 12,
-    marginTop: 12,
+    gap: 14,
+    marginTop: 26,
     marginBottom: 12,
     paddingHorizontal: 4,
   },
@@ -411,7 +511,7 @@ export default StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 6,
+    marginTop: 12,
     shadowColor: '#2196F3',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,

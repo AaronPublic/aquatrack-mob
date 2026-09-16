@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, Animated, TextInput, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, Animated, TextInput, Image, StyleSheet, Platform } from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import { MapPin, ClipboardList, Wrench } from 'lucide-react-native';
@@ -43,6 +44,11 @@ export default function SubAdminHome({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const { fetchNotifications } = useTechNotificationStore();
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [scanned, setScanned] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
+  const [confirmingTicket, setConfirmingTicket] = useState(null);
+  const [isResolving, setIsResolving] = useState(false);
 
   const profileSlideAnim = useRef(new Animated.Value(280)).current;
   const profileFadeAnim = useRef(new Animated.Value(0)).current;
@@ -264,6 +270,25 @@ export default function SubAdminHome({ navigation }) {
   }, [navigation]);
 
   useEffect(() => {
+    let sub = null;
+    try {
+      if (CameraView.isModernBarcodeScannerAvailable) {
+        sub = CameraView.onModernBarcodeScanned((result) => {
+          const raw = typeof result === 'string' ? result : (result?.data || '');
+          if (raw) {
+            handleConfirmScan(raw);
+          }
+        });
+      }
+    } catch (e) {
+      console.warn("Modern scanner subscription error:", e);
+    }
+    return () => {
+      sub?.remove?.();
+    };
+  }, [jobDetails]);
+
+  useEffect(() => {
     let isMounted = true;
     let intervalId = null;
 
@@ -367,52 +392,159 @@ export default function SubAdminHome({ navigation }) {
     );
   };
 
+  const handleOpenScanner = async () => {
+    setScanned(false);
+    setScanInput('');
+    setTorchOn(false);
+    if (!cameraPermission?.granted) {
+      await requestCameraPermission();
+    }
+    setIsScannerOpen(true);
+  };
+
+  const handleLaunchGoogleScanner = async () => {
+    if (Platform.OS === 'android' && CameraView.isModernBarcodeScannerAvailable) {
+      try {
+        setIsScannerOpen(false);
+        await CameraView.launchScanner({ barcodeTypes: ['qr'] });
+      } catch (err) {
+        console.log("Google scanner dismissed:", err?.message);
+      }
+    }
+  };
+
+  const handleBarcodeScanned = (result) => {
+    if (scanned) return;
+    const rawData = typeof result === 'string' ? result : (result?.data || result?.raw || '');
+    if (!rawData) return;
+    setScanned(true);
+    handleConfirmScan(rawData);
+  };
+
   const handleConfirmScan = async (scannedId) => {
     if (!scannedId) {
       Alert.alert("Error", "Please scan or enter a Ticket ID.");
+      setScanned(false);
       return;
     }
     
-    const normalizedScanned = scannedId.replace(/^AQ-/i, '').trim().toLowerCase();
-    const normalizedJobId = jobDetails.id.trim().toLowerCase();
-    const shortJobId = jobDetails.id.slice(0, 8).toLowerCase();
+    // Normalize in case QR code is a URL, query parameter, or prefixed
+    let cleanId = String(scannedId).trim();
+    if (cleanId.includes('data=')) {
+      const match = cleanId.match(/data=([^&]+)/);
+      if (match) cleanId = decodeURIComponent(match[1]);
+    } else if (cleanId.includes('/')) {
+      cleanId = cleanId.split('/').pop().split('?')[0];
+    }
 
-    if (normalizedScanned === normalizedJobId || normalizedScanned === shortJobId || jobDetails.id.toLowerCase().startsWith(normalizedScanned)) {
+    const normalizedScanned = cleanId.replace(/^AQ-/i, '').trim().toLowerCase();
+    const normalizedJobId = jobDetails?.id ? jobDetails.id.trim().toLowerCase() : '';
+    const shortJobId = jobDetails?.id ? jobDetails.id.slice(0, 8).toLowerCase() : '';
+
+    const isCurrentJob = normalizedJobId && (
+      normalizedScanned === normalizedJobId ||
+      normalizedScanned === shortJobId ||
+      normalizedJobId.startsWith(normalizedScanned) ||
+      normalizedScanned.includes(normalizedJobId) ||
+      normalizedScanned.includes(shortJobId)
+    );
+
+    if (isCurrentJob && jobDetails) {
       setIsScannerOpen(false);
-      try {
-        if (jobDetails) {
-          const targetTable = jobDetails.sourceType === 'Complaint' ? 'Complaint' : 'WorkOrder';
-          
-          if (targetTable === 'Complaint') {
-            const res = await api.put('/api/admin/complaints', {
-              id: jobDetails.id,
-              status: 'RESOLVED'
-            });
-            if (!res || !res.success) {
-              throw new Error(res?.error || "Failed to update status via API");
-            }
-          } else {
-            const updatePayload = {
-              status: 'RESOLVED',
-              resolvedAt: new Date().toISOString()
-            };
-            const { error } = await supabase
-              .from(targetTable)
-              .update(updatePayload)
-              .eq('id', jobDetails.id);
+      setScanned(false);
+      setConfirmingTicket({
+        id: jobDetails.id,
+        sourceType: jobDetails.sourceType || 'Complaint',
+        barangay: jobDetails.location || 'Municipal Field Site',
+        summary: jobDetails.description || 'Assigned Field Incident',
+        status: jobStatus || 'ONGOING',
+        photoUrl: jobDetails.imageUrl || null,
+        recommendedAction: jobDetails.recommendedAction || null,
+      });
+      return;
+    }
 
-            if (error) throw error;
-          }
+    // Fallback: If not the current job, look up the complaint in database to preview and confirm
+    try {
+      const { data: dbComplaints, error: dbErr } = await supabase
+        .from('Complaint')
+        .select('*')
+        .or(`id.eq.${cleanId},id.ilike.${normalizedScanned}%`)
+        .limit(1);
+
+      if (!dbErr && dbComplaints && dbComplaints.length > 0) {
+        const target = dbComplaints[0];
+        if (target.status === 'RESOLVED') {
+          Alert.alert("Already Resolved", `Complaint ticket AQ-${target.id.slice(0, 8).toUpperCase()} is already marked as resolved.`, [
+            { text: "OK", onPress: () => setScanned(false) }
+          ]);
+          return;
         }
+
+        setIsScannerOpen(false);
+        setScanned(false);
+        setConfirmingTicket({
+          id: target.id,
+          sourceType: 'Complaint',
+          barangay: target.barangay ? `Brgy. ${target.barangay}` : 'San Fernando Field Site',
+          summary: target.summary || target.category || target.rawText || 'Water Quality / Infrastructure Incident',
+          status: target.status || 'PENDING',
+          photoUrl: target.photoUrl || target.imageUrl || null,
+          urgency: target.urgency || 'MEDIUM',
+          residentName: target.residentName || target.userName || 'Resident',
+          createdAt: target.createdAt || null
+        });
+        return;
+      }
+    } catch (dbEx) {
+      console.warn("Complaint lookup error:", dbEx);
+    }
+
+    Alert.alert(
+      "Invalid QR Code", 
+      `No active complaint matches code: ${cleanId}. Please check the ticket and try again.`,
+      [{ text: "OK", onPress: () => setScanned(false) }]
+    );
+  };
+
+  const handleExecuteResolution = async () => {
+    if (!confirmingTicket) return;
+    setIsResolving(true);
+    try {
+      const targetTable = confirmingTicket.sourceType === 'WorkOrder' ? 'WorkOrder' : 'Complaint';
+      if (targetTable === 'Complaint') {
+        const res = await api.put('/api/admin/complaints', {
+          id: confirmingTicket.id,
+          status: 'RESOLVED'
+        });
+        if (!res || !res.success) {
+          throw new Error(res?.error || "Failed to update status via API");
+        }
+      } else {
+        const updatePayload = {
+          status: 'RESOLVED',
+          resolvedAt: new Date().toISOString()
+        };
+        const { error } = await supabase
+          .from(targetTable)
+          .update(updatePayload)
+          .eq('id', confirmingTicket.id);
+
+        if (error) throw error;
+      }
+
+      if (jobDetails && jobDetails.id === confirmingTicket.id) {
         setJobStatus('RESOLVED');
         setHasActiveJob(false);
-        Alert.alert("Verification Success", "QR Code verified successfully. Complaint ticket has been resolved.");
-        loadDashboardData();
-      } catch (err) {
-        Alert.alert("Status Update Failed", err.message);
       }
-    } else {
-      Alert.alert("Invalid QR Code", "Scanned code does not match this job's Ticket ID. Please try again.");
+      const ticketCode = `AQ-${confirmingTicket.id.slice(0, 8).toUpperCase()}`;
+      setConfirmingTicket(null);
+      Alert.alert("Resolution Verified", `Complaint ticket ${ticketCode} has been successfully resolved.`);
+      loadDashboardData();
+    } catch (err) {
+      Alert.alert("Resolution Failed", err.message);
+    } finally {
+      setIsResolving(false);
     }
   };
 
@@ -553,7 +685,7 @@ export default function SubAdminHome({ navigation }) {
                         justifyContent: 'center',
                         flexDirection: 'row'
                       }}
-                      onPress={() => setIsScannerOpen(true)}
+                      onPress={handleOpenScanner}
                       activeOpacity={0.8}
                     >
                       <AppIcon name="scan-outline" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
@@ -766,87 +898,323 @@ export default function SubAdminHome({ navigation }) {
         </Modal>
       )}
 
-      {/* QR Code Scanner Simulation Overlay */}
-      {isScannerOpen && (
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#090d16', justifyContent: 'space-between', padding: 24, zIndex: 1000 }}>
-          {/* Header */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 65 }}>
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>Scan QR Code</Text>
-            <TouchableOpacity 
-              onPress={() => setIsScannerOpen(false)}
-              style={{ width: 36, height: 36, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 18, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <AppIcon name="close" size={16} color="#fff" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Viewfinder Mockup */}
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginVertical: 32 }}>
-            <View style={{
-              width: 250,
-              height: 250,
-              borderWidth: 2,
-              borderColor: '#00aeef',
-              borderRadius: 24,
-              backgroundColor: 'rgba(255,255,255,0.03)',
-              alignItems: 'center',
-              justifyContent: 'center',
-              position: 'relative'
-            }}>
-              {/* Corner brackets */}
-              <View style={{ position: 'absolute', top: -2, left: -2, width: 20, height: 20, borderTopWidth: 4, borderLeftWidth: 4, borderColor: '#00aeef', borderTopLeftRadius: 12 }} />
-              <View style={{ position: 'absolute', top: -2, right: -2, width: 20, height: 20, borderTopWidth: 4, borderRightWidth: 4, borderColor: '#00aeef', borderTopRightRadius: 12 }} />
-              <View style={{ position: 'absolute', bottom: -2, left: -2, width: 20, height: 20, borderBottomWidth: 4, borderLeftWidth: 4, borderColor: '#00aeef', borderBottomLeftRadius: 12 }} />
-              <View style={{ position: 'absolute', bottom: -2, right: -2, width: 20, height: 20, borderBottomWidth: 4, borderRightWidth: 4, borderColor: '#00aeef', borderBottomRightRadius: 12 }} />
-              
-              <AppIcon name="scan-outline" size={64} color="rgba(0,174,239,0.3)" />
-            </View>
-            <Text style={{ color: '#94a3b8', fontSize: 11, textAlign: 'center', marginTop: 20, fontWeight: '600' }}>
-              Align the resident's QR code within the frame to scan.
-            </Text>
-          </View>
-
-          {/* Manual Entry Form */}
-          <View style={{ marginBottom: 40 }}>
-            <Text style={{ color: '#94a3b8', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
-              Manual Ticket ID / Scan Entry
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <TextInput
-                style={{
-                  flex: 1,
-                  backgroundColor: 'rgba(255,255,255,0.06)',
-                  borderWidth: 1,
-                  borderColor: 'rgba(255,255,255,0.1)',
-                  borderRadius: 12,
-                  paddingHorizontal: 16,
-                  height: 48,
-                  color: '#fff',
-                  fontSize: 13,
-                  fontWeight: 'bold'
-                }}
-                value={scanInput}
-                onChangeText={setScanInput}
-                placeholder="Enter AQ-XXXXXX Code"
-                placeholderTextColor="rgba(255,255,255,0.3)"
-                autoCapitalize="characters"
-              />
+      {/* Real Camera QR Code Scanner Overlay */}
+      <Modal
+        visible={isScannerOpen}
+        animationType="slide"
+        onRequestClose={() => {
+          setIsScannerOpen(false);
+          setScanned(false);
+          setTorchOn(false);
+        }}
+      >
+        <View style={{ flex: 1, backgroundColor: '#090d16' }}>
+          {/* Camera View */}
+          {cameraPermission?.granted ? (
+            <CameraView
+              style={StyleSheet.absoluteFillObject}
+              facing="back"
+              enableTorch={torchOn}
+              barcodeScannerSettings={{
+                barcodeTypes: ['qr'],
+              }}
+              onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
+            />
+          ) : (
+            <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: '#090d16', justifyContent: 'center', alignItems: 'center', padding: 30 }}>
+              <AppIcon name="camera-outline" size={54} color="#94a3b8" />
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold', marginTop: 16, textAlign: 'center' }}>
+                Camera Access Needed
+              </Text>
+              <Text style={{ color: '#94a3b8', fontSize: 13, textAlign: 'center', marginTop: 8, lineHeight: 18 }}>
+                Camera permission is required to scan resident QR codes in the field.
+              </Text>
               <TouchableOpacity
-                onPress={() => handleConfirmScan(scanInput)}
+                onPress={requestCameraPermission}
                 style={{
                   backgroundColor: '#00aeef',
                   borderRadius: 12,
-                  paddingHorizontal: 20,
-                  justifyContent: 'center',
-                  alignItems: 'center'
+                  paddingVertical: 12,
+                  paddingHorizontal: 24,
+                  marginTop: 20
                 }}
               >
-                <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase' }}>Verify</Text>
+                <Text style={{ color: '#fff', fontSize: 13, fontWeight: 'bold' }}>Grant Permission</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Translucent HUD Overlay */}
+          <View style={{ flex: 1, justifyContent: 'space-between', padding: 24 }}>
+            {/* Header */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Platform.OS === 'ios' ? 44 : 24 }}>
+              <View style={{ backgroundColor: 'rgba(9, 13, 22, 0.75)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}>
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>Scan QR Code</Text>
+              </View>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                {/* Torch Toggle */}
+                <TouchableOpacity
+                  onPress={() => setTorchOn(!torchOn)}
+                  style={{
+                    width: 40,
+                    height: 40,
+                    backgroundColor: torchOn ? '#00aeef' : 'rgba(9, 13, 22, 0.75)',
+                    borderRadius: 20,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.15)'
+                  }}
+                >
+                  <AppIcon name={torchOn ? "flash" : "flash-outline"} size={18} color={torchOn ? "#090d16" : "#fff"} />
+                </TouchableOpacity>
+
+                {/* Close Button */}
+                <TouchableOpacity 
+                  onPress={() => {
+                    setIsScannerOpen(false);
+                    setScanned(false);
+                    setTorchOn(false);
+                  }}
+                  style={{ width: 40, height: 40, backgroundColor: 'rgba(9, 13, 22, 0.75)', borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}
+                >
+                  <AppIcon name="close" size={18} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Viewfinder Target */}
+            <View style={{ alignItems: 'center', marginVertical: 20 }}>
+              <View style={{
+                width: 260,
+                height: 260,
+                borderRadius: 24,
+                borderWidth: 2,
+                borderColor: '#00aeef',
+                backgroundColor: 'rgba(0, 174, 239, 0.04)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative'
+              }}>
+                {/* Corner brackets */}
+                <View style={{ position: 'absolute', top: -2, left: -2, width: 28, height: 28, borderTopWidth: 4, borderLeftWidth: 4, borderColor: '#00aeef', borderTopLeftRadius: 16 }} />
+                <View style={{ position: 'absolute', top: -2, right: -2, width: 28, height: 28, borderTopWidth: 4, borderRightWidth: 4, borderColor: '#00aeef', borderTopRightRadius: 16 }} />
+                <View style={{ position: 'absolute', bottom: -2, left: -2, width: 28, height: 28, borderBottomWidth: 4, borderLeftWidth: 4, borderColor: '#00aeef', borderBottomLeftRadius: 16 }} />
+                <View style={{ position: 'absolute', bottom: -2, right: -2, width: 28, height: 28, borderBottomWidth: 4, borderRightWidth: 4, borderColor: '#00aeef', borderBottomRightRadius: 16 }} />
+                
+                {scanned && (
+                  <View style={{ backgroundColor: 'rgba(16, 185, 129, 0.9)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 }}>
+                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: 'bold' }}>Verifying Code...</Text>
+                  </View>
+                )}
+              </View>
+              <View style={{ backgroundColor: 'rgba(9, 13, 22, 0.75)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, marginTop: 14 }}>
+                <Text style={{ color: '#e2e8f0', fontSize: 12, textAlign: 'center', fontWeight: '600' }}>
+                  Point camera directly at the resident's ticket QR code
+                </Text>
+              </View>
+
+              {/* Option to switch to Google Scanner on Android */}
+              {Platform.OS === 'android' && CameraView.isModernBarcodeScannerAvailable && (
+                <TouchableOpacity
+                  onPress={handleLaunchGoogleScanner}
+                  style={{
+                    backgroundColor: 'rgba(9, 13, 22, 0.85)',
+                    paddingHorizontal: 14,
+                    paddingVertical: 7,
+                    borderRadius: 16,
+                    marginTop: 10,
+                    borderWidth: 1,
+                    borderColor: 'rgba(0,174,239,0.3)',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                >
+                  <AppIcon name="scan-outline" size={13} color="#00aeef" />
+                  <Text style={{ color: '#00aeef', fontSize: 11, fontWeight: '700' }}>Switch to Google Scanner</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Manual Entry Fallback */}
+            <View style={{ backgroundColor: 'rgba(9, 13, 22, 0.85)', padding: 16, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', marginBottom: 20 }}>
+              <Text style={{ color: '#94a3b8', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+                Manual Ticket ID / Fallback Entry
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TextInput
+                  style={{
+                    flex: 1,
+                    backgroundColor: 'rgba(255,255,255,0.08)',
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.15)',
+                    borderRadius: 12,
+                    paddingHorizontal: 16,
+                    height: 46,
+                    color: '#fff',
+                    fontSize: 13,
+                    fontWeight: 'bold'
+                  }}
+                  value={scanInput}
+                  onChangeText={setScanInput}
+                  placeholder="e.g. AQ-XXXXXX or UUID"
+                  placeholderTextColor="rgba(255,255,255,0.35)"
+                  autoCapitalize="characters"
+                />
+                <TouchableOpacity
+                  onPress={() => handleConfirmScan(scanInput)}
+                  style={{
+                    backgroundColor: '#00aeef',
+                    borderRadius: 12,
+                    paddingHorizontal: 20,
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                  }}
+                >
+                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase' }}>Verify</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Ticket Preview & Resolution Confirmation Modal */}
+      <Modal
+        visible={!!confirmingTicket}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!isResolving) setConfirmingTicket(null);
+        }}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(9, 13, 22, 0.85)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ width: '100%', maxWidth: 400, backgroundColor: '#0f172a', borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', padding: 22, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 20, elevation: 10 }}>
+            {/* Modal Header */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(16, 185, 129, 0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                  <AppIcon name="checkmark-circle" size={20} color="#10B981" />
+                </View>
+                <View>
+                  <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 0.3 }}>Confirm Resolution</Text>
+                  <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '600' }}>Verify Scanned Ticket</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                disabled={isResolving}
+                onPress={() => setConfirmingTicket(null)}
+                style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <AppIcon name="close" size={16} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Ticket Card Details */}
+            {confirmingTicket && (
+              <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+                {/* ID & Badges */}
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', marginBottom: 12 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <Text style={{ color: '#00aeef', fontSize: 15, fontWeight: '900', letterSpacing: 0.5 }}>
+                      AQ-{confirmingTicket.id.slice(0, 8).toUpperCase()}
+                    </Text>
+                    <View style={{ backgroundColor: 'rgba(2, 132, 199, 0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(2, 132, 199, 0.3)' }}>
+                      <Text style={{ color: '#38bdf8', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>
+                        {confirmingTicket.status || 'ACTIVE'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <AppIcon name="location-outline" size={14} color="#94a3b8" />
+                    <Text style={{ color: '#e2e8f0', fontSize: 12, fontWeight: '600' }}>
+                      {confirmingTicket.barangay || 'San Fernando'}
+                    </Text>
+                  </View>
+
+                  {confirmingTicket.residentName && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <AppIcon name="person-outline" size={14} color="#94a3b8" />
+                      <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '500' }}>
+                        Reported by {confirmingTicket.residentName}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Summary / Description */}
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', marginBottom: 12 }}>
+                  <Text style={{ color: '#94a3b8', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
+                    Issue Summary
+                  </Text>
+                  <Text style={{ color: '#f8fafc', fontSize: 13, lineHeight: 18, fontWeight: '500' }}>
+                    {confirmingTicket.summary || confirmingTicket.description || 'Assigned Resident Complaint'}
+                  </Text>
+                </View>
+
+                {/* Photo Preview if attached */}
+                {confirmingTicket.photoUrl && (
+                  <View style={{ marginBottom: 12 }}>
+                    <Text style={{ color: '#94a3b8', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
+                      Resident Attachment
+                    </Text>
+                    <Image
+                      source={{ uri: confirmingTicket.photoUrl }}
+                      style={{ width: '100%', height: 160, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.05)' }}
+                      resizeMode="cover"
+                    />
+                  </View>
+                )}
+
+                {/* Recommended Action / Note if available */}
+                {confirmingTicket.recommendedAction && (
+                  <View style={{ backgroundColor: 'rgba(0, 174, 239, 0.08)', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: 'rgba(0, 174, 239, 0.2)', marginBottom: 12 }}>
+                    <Text style={{ color: '#38bdf8', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                      AI Recommended Action
+                    </Text>
+                    <Text style={{ color: '#e0f2fe', fontSize: 11.5, lineHeight: 16 }}>
+                      {confirmingTicket.recommendedAction}
+                    </Text>
+                  </View>
+                )}
+
+                <Text style={{ color: '#94a3b8', fontSize: 11, textAlign: 'center', marginVertical: 8 }}>
+                  Marking this ticket as resolved will notify the resident and update system records.
+                </Text>
+              </ScrollView>
+            )}
+
+            {/* Action Buttons */}
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+              <TouchableOpacity
+                disabled={isResolving}
+                onPress={() => setConfirmingTicket(null)}
+                style={{ flex: 1, paddingVertical: 13, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Text style={{ color: '#cbd5e1', fontSize: 13, fontWeight: '700' }}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                disabled={isResolving}
+                onPress={handleExecuteResolution}
+                style={{ flex: 1.4, paddingVertical: 13, borderRadius: 14, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6, shadowColor: '#10B981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 }}
+              >
+                {isResolving ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <AppIcon name="checkmark" size={16} color="#fff" />
+                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '800', textTransform: 'uppercase' }}>Mark Resolved</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
           </View>
         </View>
-      )}
+      </Modal>
     </View>
   );
 }
