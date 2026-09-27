@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Alert, Modal, Animated } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity,  Alert, Modal, Animated } from 'react-native';
+import { Image } from 'expo-image';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import * as Location from 'expo-location';

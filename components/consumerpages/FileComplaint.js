@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, UIManager, Platform, Modal } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView,  ActivityIndicator, Alert, UIManager, Platform, Modal } from 'react-native';
+import { Image } from 'expo-image';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';

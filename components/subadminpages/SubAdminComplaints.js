@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, RefreshControl, Alert, ScrollView, Platform, Modal, StyleSheet, Image } from 'react-native';
+import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, RefreshControl, Alert, ScrollView, Platform, Modal, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
@@ -675,7 +676,7 @@ export default function SubAdminComplaints({ navigation }) {
           initialNumToRender={8}
           maxToRenderPerBatch={10}
           windowSize={5}
-          removeClippedSubviews={false}
+          removeClippedSubviews={true}
           ListHeaderComponent={
             <View style={{ paddingHorizontal: 18, paddingTop: 4 }}>
               {/* Outer Gray Label */}
@@ -1058,7 +1059,7 @@ export default function SubAdminComplaints({ navigation }) {
                     <Image
                       source={{ uri: confirmingTicket.photoUrl }}
                       style={{ width: '100%', height: 160, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.05)' }}
-                      resizeMode="cover"
+                      contentFit="cover"
                     />
                   </View>
                 )}

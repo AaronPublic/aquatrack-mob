@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Modal, TouchableOpacity, ScrollView, Image, StyleSheet } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, ScrollView,  StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import AppIcon from '../AppIcon';
 import { theme } from '../../src/config/theme';
 
@@ -41,7 +42,7 @@ export default function ConsumerNotificationModal({
                 <Image
                   source={require('../../assets/adaptive-icon.png')}
                   style={styles.logoImage}
-                  resizeMode="contain"
+                  contentFit="contain"
                 />
               </View>
               <View>
@@ -187,7 +188,7 @@ export default function ConsumerNotificationModal({
                         <Image
                           source={require('../../assets/adaptive-icon.png')}
                           style={{ width: 12, height: 12, marginRight: 4 }}
-                          resizeMode="contain"
+                          contentFit="contain"
                         />
                         <Text style={styles.brandStampText}>AquaTrack System Notification</Text>
                       </View>

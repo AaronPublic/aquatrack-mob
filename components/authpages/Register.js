@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
-  Image, 
+   
   TextInput, 
   TouchableOpacity, 
   ActivityIndicator, 
@@ -12,6 +12,7 @@ import {
   Alert,
   Keyboard
 } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
@@ -145,7 +146,7 @@ export default function Register({ navigation }) {
             <Image 
               source={require('../../assets/water_droplets.png')}
               style={styles.waterDropletsOverlay}
-              resizeMode="cover"
+              contentFit="cover"
             />
 
             <View style={styles.decorCircle1} />
@@ -156,7 +157,7 @@ export default function Register({ navigation }) {
               <Image 
                 source={require('../../assets/Logo.png')}
                 style={isKeyboardVisible ? styles.bigLogoImageCompact : styles.bigLogoImage}
-                resizeMode="contain"
+                contentFit="contain"
               />
               <View style={isKeyboardVisible ? styles.singleLogoDropletCompact : styles.singleLogoDroplet}>
                 <View style={isKeyboardVisible ? styles.dropletHighlightCompact : styles.dropletHighlight} />
@@ -179,12 +180,12 @@ export default function Register({ navigation }) {
               <Image 
                 source={require('../../assets/swirl_accent.png')}
                 style={isKeyboardVisible ? styles.swirlAccentImageCompact : styles.swirlAccentImage}
-                resizeMode="cover"
+                contentFit="cover"
               />
               <Image 
                 source={require('../../assets/swirl_boundary.png')}
                 style={isKeyboardVisible ? styles.swirlBoundaryImageCompact : styles.swirlBoundaryImage}
-                resizeMode="cover"
+                contentFit="cover"
               />
             </View>
           </LinearGradient>

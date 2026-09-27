@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, FlatList, ActivityIndicator, RefreshControl, Alert, TouchableOpacity, Image, LayoutAnimation, Platform, UIManager, Modal, ScrollView } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, RefreshControl, Alert, TouchableOpacity,  LayoutAnimation, Platform, UIManager, Modal, ScrollView } from 'react-native';
+import { Image } from 'expo-image';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import AppIcon from '../../components/AppIcon';
@@ -462,7 +463,7 @@ export default function TrackComplaints({ navigation }) {
           initialNumToRender={8}
           maxToRenderPerBatch={10}
           windowSize={5}
-          removeClippedSubviews={false}
+          removeClippedSubviews={true}
           ListHeaderComponent={
             <View style={{ paddingHorizontal: 18, paddingTop: 4 }}>
               {/* Outer Gray Label */}
@@ -597,7 +598,7 @@ export default function TrackComplaints({ navigation }) {
                 <Image
                   source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${selectedQrId}` }}
                   style={{ width: 180, height: 180 }}
-                  resizeMode="contain"
+                  contentFit="contain"
                 />
               )}
             </View>

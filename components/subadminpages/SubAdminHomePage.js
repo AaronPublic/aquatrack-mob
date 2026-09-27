@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity,  Alert, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import { MapPin, Clock, Play, CheckCircle2, ChevronRight, Wrench } from 'lucide-react-native';

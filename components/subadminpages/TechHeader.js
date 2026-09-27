@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image, ScrollView, Modal } from 'react-native';
+import { View, Text, TouchableOpacity,  ScrollView, Modal } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import AppIcon from '../../components/AppIcon';
 import homeStyles from './SubAdminHome.styles';
@@ -269,7 +270,7 @@ export default function TechHeader({
                     <Image
                       source={require('../../assets/adaptive-icon.png')}
                       style={{ width: 22, height: 22 }}
-                      resizeMode="contain"
+                      contentFit="contain"
                     />
                   </View>
                   <View>
@@ -346,7 +347,7 @@ export default function TechHeader({
                             <Image
                               source={require('../../assets/adaptive-icon.png')}
                               style={{ width: 11, height: 11, marginRight: 4 }}
-                              resizeMode="contain"
+                              contentFit="contain"
                             />
                             <Text style={{ fontSize: 9, fontFamily: 'PlusJakartaSans_600SemiBold', color: '#94A3B8' }}>AquaTrack Field Dispatch</Text>
                           </View>

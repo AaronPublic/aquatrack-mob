@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, Animated, TextInput, Image, StyleSheet, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, Animated, TextInput,  StyleSheet, Platform } from 'react-native';
+import { Image } from 'expo-image';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
@@ -1164,7 +1165,7 @@ export default function SubAdminHome({ navigation }) {
                     <Image
                       source={{ uri: confirmingTicket.photoUrl }}
                       style={{ width: '100%', height: 160, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.05)' }}
-                      resizeMode="cover"
+                      contentFit="cover"
                     />
                   </View>
                 )}

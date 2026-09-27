@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, LayoutAnimation, Platform, UIManager, Image, Modal, ScrollView } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, LayoutAnimation, Platform, UIManager,  Modal, ScrollView } from 'react-native';
+import { Image } from 'expo-image';
 import { api } from '../../src/config/api';
 import { supabase } from '../../src/config/supabase';
 import AppIcon from '../../components/AppIcon';
@@ -305,7 +306,7 @@ export default function Announcements({ route, navigation }) {
           initialNumToRender={8}
           maxToRenderPerBatch={10}
           windowSize={5}
-          removeClippedSubviews={false}
+          removeClippedSubviews={true}
           ListHeaderComponent={
             <View style={{ paddingHorizontal: 18, paddingTop: 4 }}>
               {/* Outer Gray Label */}

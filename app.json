@@ -3,6 +3,7 @@
     "name": "AquaTrack",
     "slug": "aquatrack-mob",
     "version": "1.0.0",
+    "jsEngine": "hermes",
     "orientation": "portrait",
     "icon": "./assets/LOGO3.png",
     "userInterfaceStyle": "light",

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
-  Image, 
+   
   TextInput, 
   TouchableOpacity, 
   ActivityIndicator, 
@@ -14,6 +14,7 @@ import {
   Modal,
   Keyboard
 } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
@@ -287,7 +288,7 @@ export default function Login({ navigation, route }) {
             <Image 
               source={require('../../assets/water_droplets.png')}
               style={styles.waterDropletsOverlay}
-              resizeMode="cover"
+              contentFit="cover"
             />
 
             {/* Background Water Ripple Micro-Decorations */}
@@ -299,7 +300,7 @@ export default function Login({ navigation, route }) {
               <Image 
                 source={require('../../assets/Logo.png')}
                 style={isKeyboardVisible ? styles.bigLogoImageCompact : styles.bigLogoImage}
-                resizeMode="contain"
+                contentFit="contain"
               />
               {/* ONE Single Shiny Realistic Water Droplet on the Logo */}
               <View style={isKeyboardVisible ? styles.singleLogoDropletCompact : styles.singleLogoDroplet}>
@@ -323,12 +324,12 @@ export default function Login({ navigation, route }) {
               <Image 
                 source={require('../../assets/swirl_accent.png')}
                 style={isKeyboardVisible ? styles.swirlAccentImageCompact : styles.swirlAccentImage}
-                resizeMode="cover"
+                contentFit="cover"
               />
               <Image 
                 source={require('../../assets/swirl_boundary.png')}
                 style={isKeyboardVisible ? styles.swirlBoundaryImageCompact : styles.swirlBoundaryImage}
-                resizeMode="cover"
+                contentFit="cover"
               />
             </View>
           </LinearGradient>
