@@ -2,17 +2,17 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
-   
   TextInput, 
   TouchableOpacity, 
   ActivityIndicator, 
   KeyboardAvoidingView, 
   Platform, 
-  ScrollView,
-  Dimensions,
-  Alert,
-  Modal,
-  Keyboard
+  ScrollView, 
+  Dimensions, 
+  Alert, 
+  Modal, 
+  Keyboard,
+  Linking
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -32,6 +32,9 @@ export default function Login({ navigation, route }) {
 
   // Login method: 'PASSWORD' | 'BILLING'
   const [authMethod, setAuthMethod] = useState('PASSWORD');
+
+  // Track focused field for input styling
+  const [focusedField, setFocusedField] = useState(null);
 
   // Track keyboard visibility for dynamic scrolling
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
@@ -61,13 +64,30 @@ export default function Login({ navigation, route }) {
   const [showPassword, setShowPassword] = useState(false);
   const [emailError, setEmailError] = useState(null);
   const [adminModalVisible, setAdminModalVisible] = useState(false);
+  const [supportModalVisible, setSupportModalVisible] = useState(false);
+
+  const handleDial = (phoneNumber) => {
+    const cleanNum = phoneNumber.replace(/[^0-9+]/g, '');
+    Linking.openURL(`tel:${cleanNum}`).catch(() => {
+      Alert.alert("CSFWD Hotline", `Please dial ${phoneNumber}`);
+    });
+  };
+
+  const handleEmail = (emailAddr) => {
+    Linking.openURL(`mailto:${emailAddr}`).catch(() => {
+      Alert.alert("CSFWD Email", `Please send email to ${emailAddr}`);
+    });
+  };
 
   // Register form state
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regAddress, setRegAddress] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [regShowPassword, setRegShowPassword] = useState(false);
+  const [regShowConfirm, setRegShowConfirm] = useState(false);
   const [regLoading, setRegLoading] = useState(false);
 
   const validateEmail = () => {
@@ -153,7 +173,7 @@ export default function Login({ navigation, route }) {
 
       // 2. Authenticate credentials with Supabase Auth for non-admin accounts
       const { data, error: authErr } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim(),
         password,
       });
 
@@ -179,18 +199,6 @@ export default function Login({ navigation, route }) {
       }
 
       useAuthStore.getState().setSession(data.session);
-
-      if (profile && profile.role === 'FIELD_ENGINEER_TECHNICIAN') {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'SubAdminTab' }],
-        });
-      } else {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'ConsumerTab' }],
-        });
-      }
     } catch (err) {
       console.error(err);
       setError(err.message || "An unexpected error occurred during login.");
@@ -199,16 +207,16 @@ export default function Login({ navigation, route }) {
   };
 
   const handleRegisterSubmit = async () => {
-    if (!regName || !regEmail || !regPassword || !regConfirmPassword) {
-      setError("All mandatory registration fields are required.");
+    if (!regName.trim() || !regEmail.trim() || !regPhone.trim() || !regAddress.trim() || !regPassword || !regConfirmPassword) {
+      setError("All fields are mandatory. Please fill in all details.");
       return;
     }
     if (regPassword !== regConfirmPassword) {
-      setError("Passwords do not match.");
+      setError("Passwords do not match. Please try again.");
       return;
     }
     if (!validatePassword(regPassword)) {
-      setError("Password must be at least 8 chars with uppercase, lowercase, number, and an asterisk (*).");
+      setError("Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and an asterisk (*).");
       return;
     }
 
@@ -217,10 +225,14 @@ export default function Login({ navigation, route }) {
 
     try {
       const { data, error: authErr } = await supabase.auth.signUp({
-        email: regEmail,
+        email: regEmail.trim(),
         password: regPassword,
         options: {
-          data: { full_name: regName }
+          data: { 
+            full_name: regName.trim(),
+            phone: regPhone.trim(),
+            address: regAddress.trim(),
+          }
         }
       });
 
@@ -231,16 +243,24 @@ export default function Login({ navigation, route }) {
       }
 
       if (data?.user?.identities && data.user.identities.length === 0) {
-        setError("An account with this email address already exists.");
+        setError("This email address is already registered. Please sign in or use a different email.");
         setRegLoading(false);
         return;
       }
 
-      await api.post('/api/auth/register', {
-        id: data.user.id,
-        email: regEmail,
-        fullName: regName,
-      });
+      if (data.user?.id) {
+        try {
+          await api.post('/api/auth/register', {
+            id: data.user.id,
+            email: data.user.email || regEmail.trim(),
+            fullName: regName.trim(),
+            phone: regPhone.trim(),
+            address: regAddress.trim(),
+          });
+        } catch (syncErr) {
+          console.warn("DB profile sync failed; auth account created:", syncErr);
+        }
+      }
 
       if (data.session) {
         useAuthStore.getState().setSession(data.session);
@@ -249,8 +269,8 @@ export default function Login({ navigation, route }) {
 
       setRegLoading(false);
       Alert.alert(
-        "Registration Sent",
-        "Please check your email inbox to confirm your registration link before logging in.",
+        "Registration Submitted",
+        `A verification email has been sent to ${regEmail.trim()}. Please check your email inbox to confirm your registration link before logging in.`,
         [{ text: "Go to Login", onPress: () => handleOpenLogin() }]
       );
     } catch (err) {
@@ -362,22 +382,37 @@ export default function Login({ navigation, route }) {
                   style={styles.idleRegisterBtn}
                   onPress={handleOpenRegister}
                 >
-                  <AppIcon name="person-add-outline" size={20} color="#2196F3" style={{ marginRight: 8 }} />
+                  <AppIcon name="person-add-outline" size={20} color="#0284C7" style={{ marginRight: 8 }} />
                   <Text style={styles.idleRegisterBtnText}>REGISTER</Text>
                 </TouchableOpacity>
 
                 {/* "or" Divider */}
                 <View style={styles.orDividerContainer}>
                   <View style={styles.orDividerLine} />
-                  <Text style={styles.orDividerText}>or</Text>
+                  <Text style={styles.orDividerText}>OR</Text>
                   <View style={styles.orDividerLine} />
                 </View>
 
-                {/* Technical Issues Support Contact Box */}
-                <View style={styles.techSupportBox}>
-                  <Text style={styles.techSupportTitle}>Technical issues? Contact CSFWD IT Division</Text>
-                  <Text style={styles.techSupportPhone}>(045) 961-3546</Text>
-                </View>
+                {/* Technical Issues Support Contact Card */}
+                <TouchableOpacity 
+                  style={styles.techSupportCard}
+                  activeOpacity={0.8}
+                  onPress={() => setSupportModalVisible(true)}
+                >
+                  <View style={styles.techSupportLeft}>
+                    <View style={styles.techSupportIconWrap}>
+                      <AppIcon name="phone-call" size={18} color="#0284C7" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.techSupportTitle}>CSFWD Support & Hotlines</Text>
+                      <Text style={styles.techSupportPhone}>(045) 961-3546 • csfwd@yahoo.com</Text>
+                    </View>
+                  </View>
+                  <View style={styles.techSupportPill}>
+                    <Text style={styles.techSupportPillText}>Directory</Text>
+                    <AppIcon name="chevron-forward" size={14} color="#0284C7" />
+                  </View>
+                </TouchableOpacity>
               </View>
             )}
 
@@ -389,11 +424,11 @@ export default function Login({ navigation, route }) {
                   <TouchableOpacity 
                     style={styles.backBtn}
                     onPress={handleBackToLanding}
+                    activeOpacity={0.7}
                   >
-                    <AppIcon name="arrow-back" size={20} color="#2196F3" />
+                    <AppIcon name="arrow-back" size={18} color="#0284C7" />
                     <Text style={styles.backBtnText}>Back</Text>
                   </TouchableOpacity>
-                  <Text style={styles.formHeaderTitle}>LOGIN</Text>
                 </View>
 
                 {/* Sub-selector for Password Login vs Billing ID Login */}
@@ -404,10 +439,9 @@ export default function Login({ navigation, route }) {
                     onPress={() => { setAuthMethod('PASSWORD'); setError(null); }}
                   >
                     <AppIcon 
-                      name="key-outline" 
-                      size={14} 
-                      color={authMethod === 'PASSWORD' ? '#2196F3' : '#64748B'} 
-                      style={{ marginRight: 4 }}
+                      name="key-round" 
+                      size={15} 
+                      color={authMethod === 'PASSWORD' ? '#0284C7' : '#64748B'} 
                     />
                     <Text style={[styles.subSelectorTxt, authMethod === 'PASSWORD' && styles.subSelectorTxtActive]}>
                       Password Login
@@ -420,10 +454,9 @@ export default function Login({ navigation, route }) {
                     onPress={() => { setAuthMethod('BILLING'); setError(null); }}
                   >
                     <AppIcon 
-                      name="qr-code-outline" 
-                      size={14} 
-                      color={authMethod === 'BILLING' ? '#2196F3' : '#64748B'} 
-                      style={{ marginRight: 4 }}
+                      name="receipt-text" 
+                      size={15} 
+                      color={authMethod === 'BILLING' ? '#0284C7' : '#64748B'} 
                     />
                     <Text style={[styles.subSelectorTxt, authMethod === 'BILLING' && styles.subSelectorTxtActive]}>
                       Billing ID Login
@@ -436,8 +469,11 @@ export default function Login({ navigation, route }) {
                     {/* Email Address */}
                     <View style={styles.fieldGroup}>
                       <Text style={styles.fieldLabel}>EMAIL ADDRESS</Text>
-                      <View style={styles.fieldInputWrapper}>
-                        <AppIcon name="mail-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
+                      <View style={[
+                        styles.fieldInputWrapper,
+                        focusedField === 'email' && styles.fieldInputWrapperFocused
+                      ]}>
+                        <AppIcon name="mail-outline" size={18} color={focusedField === 'email' ? '#0284C7' : '#64748B'} style={styles.fieldIconLeft} />
                         <TextInput
                           style={styles.fieldInput}
                           placeholder="e.g. resident@sanfernando.gov.ph"
@@ -445,10 +481,14 @@ export default function Login({ navigation, route }) {
                           value={email}
                           onChangeText={(val) => { setEmail(val); setEmailError(null); }}
                           onFocus={() => {
+                            setFocusedField('email');
                             setIsKeyboardVisible(true);
                             setTimeout(() => scrollViewRef.current?.scrollTo({ y: 100, animated: true }), 120);
                           }}
-                          onBlur={validateEmail}
+                          onBlur={() => {
+                            setFocusedField(null);
+                            validateEmail();
+                          }}
                           autoCapitalize="none"
                           keyboardType="email-address"
                         />
@@ -459,8 +499,11 @@ export default function Login({ navigation, route }) {
                     {/* Password */}
                     <View style={styles.fieldGroup}>
                       <Text style={styles.fieldLabel}>PASSWORD</Text>
-                      <View style={styles.fieldInputWrapper}>
-                        <AppIcon name="lock-closed-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
+                      <View style={[
+                        styles.fieldInputWrapper,
+                        focusedField === 'password' && styles.fieldInputWrapperFocused
+                      ]}>
+                        <AppIcon name="lock-keyhole" size={18} color={focusedField === 'password' ? '#0284C7' : '#64748B'} style={styles.fieldIconLeft} />
                         <TextInput
                           style={styles.fieldInput}
                           placeholder="Enter password"
@@ -468,20 +511,24 @@ export default function Login({ navigation, route }) {
                           value={password}
                           onChangeText={setPassword}
                           onFocus={() => {
+                            setFocusedField('password');
                             setIsKeyboardVisible(true);
                             setTimeout(() => scrollViewRef.current?.scrollTo({ y: 160, animated: true }), 120);
                           }}
+                          onBlur={() => setFocusedField(null)}
                           secureTextEntry={!showPassword}
                           autoCapitalize="none"
                         />
                         <TouchableOpacity 
                           onPress={() => setShowPassword(!showPassword)}
                           style={styles.fieldIconRight}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                          activeOpacity={0.7}
                         >
                           <AppIcon 
-                            name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                            name={showPassword ? "eye-off" : "eye"} 
                             size={20} 
-                            color="#64748B" 
+                            color={showPassword ? "#0284C7" : "#94A3B8"} 
                           />
                         </TouchableOpacity>
                       </View>
@@ -492,8 +539,11 @@ export default function Login({ navigation, route }) {
                     {/* Billing ID Input */}
                     <View style={styles.fieldGroup}>
                       <Text style={styles.fieldLabel}>BILLING ID</Text>
-                      <View style={styles.fieldInputWrapper}>
-                        <AppIcon name="receipt-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
+                      <View style={[
+                        styles.fieldInputWrapper,
+                        focusedField === 'billingId' && styles.fieldInputWrapperFocused
+                      ]}>
+                        <AppIcon name="receipt-text" size={18} color={focusedField === 'billingId' ? '#0284C7' : '#64748B'} style={styles.fieldIconLeft} />
                         <TextInput
                           style={[styles.fieldInput, { fontFamily: 'GeistMono-Regular' }]}
                           placeholder="BILL-SF904128"
@@ -501,9 +551,11 @@ export default function Login({ navigation, route }) {
                           value={billingId}
                           onChangeText={setBillingId}
                           onFocus={() => {
+                            setFocusedField('billingId');
                             setIsKeyboardVisible(true);
                             setTimeout(() => scrollViewRef.current?.scrollTo({ y: 140, animated: true }), 120);
                           }}
+                          onBlur={() => setFocusedField(null)}
                           autoCapitalize="characters"
                         />
                       </View>
@@ -545,11 +597,26 @@ export default function Login({ navigation, route }) {
                   )}
                 </TouchableOpacity>
 
-                {/* Technical Issues Support Contact Box under form */}
-                <View style={[styles.techSupportBox, { marginTop: 16 }]}>
-                  <Text style={styles.techSupportTitle}>Technical issues? Contact CSFWD IT Division</Text>
-                  <Text style={styles.techSupportPhone}>(045) 961-3546</Text>
-                </View>
+                {/* Technical Issues Support Contact Card under form */}
+                <TouchableOpacity 
+                  style={styles.techSupportCard}
+                  activeOpacity={0.8}
+                  onPress={() => setSupportModalVisible(true)}
+                >
+                  <View style={styles.techSupportLeft}>
+                    <View style={styles.techSupportIconWrap}>
+                      <AppIcon name="phone-call" size={18} color="#0284C7" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.techSupportTitle}>Need assistance? CSFWD Hotlines</Text>
+                      <Text style={styles.techSupportPhone}>(045) 961-3546 • csfwd@yahoo.com</Text>
+                    </View>
+                  </View>
+                  <View style={styles.techSupportPill}>
+                    <Text style={styles.techSupportPillText}>Directory</Text>
+                    <AppIcon name="chevron-forward" size={14} color="#0284C7" />
+                  </View>
+                </TouchableOpacity>
               </View>
             )}
 
@@ -561,18 +628,21 @@ export default function Login({ navigation, route }) {
                   <TouchableOpacity 
                     style={styles.backBtn}
                     onPress={handleBackToLanding}
+                    activeOpacity={0.7}
                   >
-                    <AppIcon name="arrow-back" size={20} color="#2196F3" />
-                    <Text style={styles.backBtnText}>BACK</Text>
+                    <AppIcon name="arrow-back" size={18} color="#0284C7" />
+                    <Text style={styles.backBtnText}>Back</Text>
                   </TouchableOpacity>
-                  <Text style={styles.formHeaderTitle}>REGISTER</Text>
                 </View>
 
                 {/* Full Name */}
                 <View style={styles.fieldGroup}>
                   <Text style={styles.fieldLabel}>FULL NAME</Text>
-                  <View style={styles.fieldInputWrapper}>
-                    <AppIcon name="person-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
+                  <View style={[
+                    styles.fieldInputWrapper,
+                    focusedField === 'regName' && styles.fieldInputWrapperFocused
+                  ]}>
+                    <AppIcon name="person-outline" size={18} color={focusedField === 'regName' ? '#0284C7' : '#64748B'} style={styles.fieldIconLeft} />
                     <TextInput
                       style={styles.fieldInput}
                       placeholder="Juan dela Cruz"
@@ -580,9 +650,11 @@ export default function Login({ navigation, route }) {
                       value={regName}
                       onChangeText={setRegName}
                       onFocus={() => {
+                        setFocusedField('regName');
                         setIsKeyboardVisible(true);
                         setTimeout(() => scrollViewRef.current?.scrollTo({ y: 80, animated: true }), 120);
                       }}
+                      onBlur={() => setFocusedField(null)}
                     />
                   </View>
                 </View>
@@ -590,8 +662,11 @@ export default function Login({ navigation, route }) {
                 {/* Email Address */}
                 <View style={styles.fieldGroup}>
                   <Text style={styles.fieldLabel}>EMAIL ADDRESS</Text>
-                  <View style={styles.fieldInputWrapper}>
-                    <AppIcon name="mail-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
+                  <View style={[
+                    styles.fieldInputWrapper,
+                    focusedField === 'regEmail' && styles.fieldInputWrapperFocused
+                  ]}>
+                    <AppIcon name="mail-outline" size={18} color={focusedField === 'regEmail' ? '#0284C7' : '#64748B'} style={styles.fieldIconLeft} />
                     <TextInput
                       style={styles.fieldInput}
                       placeholder="juan@domain.com"
@@ -599,11 +674,62 @@ export default function Login({ navigation, route }) {
                       value={regEmail}
                       onChangeText={setRegEmail}
                       onFocus={() => {
+                        setFocusedField('regEmail');
                         setIsKeyboardVisible(true);
                         setTimeout(() => scrollViewRef.current?.scrollTo({ y: 140, animated: true }), 120);
                       }}
+                      onBlur={() => setFocusedField(null)}
                       autoCapitalize="none"
                       keyboardType="email-address"
+                    />
+                  </View>
+                </View>
+
+                {/* Phone Number */}
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.fieldLabel}>PHONE NUMBER</Text>
+                  <View style={[
+                    styles.fieldInputWrapper,
+                    focusedField === 'regPhone' && styles.fieldInputWrapperFocused
+                  ]}>
+                    <AppIcon name="call-outline" size={18} color={focusedField === 'regPhone' ? '#0284C7' : '#64748B'} style={styles.fieldIconLeft} />
+                    <TextInput
+                      style={styles.fieldInput}
+                      placeholder="09XX-XXX-XXXX"
+                      placeholderTextColor="#94A3B8"
+                      value={regPhone}
+                      onChangeText={setRegPhone}
+                      onFocus={() => {
+                        setFocusedField('regPhone');
+                        setIsKeyboardVisible(true);
+                        setTimeout(() => scrollViewRef.current?.scrollTo({ y: 180, animated: true }), 120);
+                      }}
+                      onBlur={() => setFocusedField(null)}
+                      keyboardType="phone-pad"
+                    />
+                  </View>
+                </View>
+
+                {/* Complete Address */}
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.fieldLabel}>COMPLETE ADDRESS</Text>
+                  <View style={[
+                    styles.fieldInputWrapper,
+                    focusedField === 'regAddress' && styles.fieldInputWrapperFocused
+                  ]}>
+                    <AppIcon name="location-outline" size={18} color={focusedField === 'regAddress' ? '#0284C7' : '#64748B'} style={styles.fieldIconLeft} />
+                    <TextInput
+                      style={styles.fieldInput}
+                      placeholder="House No., Street, Barangay, City"
+                      placeholderTextColor="#94A3B8"
+                      value={regAddress}
+                      onChangeText={setRegAddress}
+                      onFocus={() => {
+                        setFocusedField('regAddress');
+                        setIsKeyboardVisible(true);
+                        setTimeout(() => scrollViewRef.current?.scrollTo({ y: 220, animated: true }), 120);
+                      }}
+                      onBlur={() => setFocusedField(null)}
                     />
                   </View>
                 </View>
@@ -611,42 +737,52 @@ export default function Login({ navigation, route }) {
                 {/* Password */}
                 <View style={styles.fieldGroup}>
                   <Text style={styles.fieldLabel}>PASSWORD</Text>
-                  <View style={styles.fieldInputWrapper}>
-                    <AppIcon name="lock-closed-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
+                  <View style={[
+                    styles.fieldInputWrapper,
+                    focusedField === 'regPassword' && styles.fieldInputWrapperFocused
+                  ]}>
+                    <AppIcon name="lock-keyhole" size={18} color={focusedField === 'regPassword' ? '#0284C7' : '#64748B'} style={styles.fieldIconLeft} />
                     <TextInput
                       style={styles.fieldInput}
-                      placeholder="e.g. Pass1234*"
+                      placeholder="Min. 8 chars (e.g. Pass1234*)"
                       placeholderTextColor="#94A3B8"
                       value={regPassword}
                       onChangeText={setRegPassword}
                       onFocus={() => {
+                        setFocusedField('regPassword');
                         setIsKeyboardVisible(true);
-                        setTimeout(() => scrollViewRef.current?.scrollTo({ y: 200, animated: true }), 120);
+                        setTimeout(() => scrollViewRef.current?.scrollTo({ y: 260, animated: true }), 120);
                       }}
+                      onBlur={() => setFocusedField(null)}
                       secureTextEntry={!regShowPassword}
                       autoCapitalize="none"
                     />
                     <TouchableOpacity 
                       onPress={() => setRegShowPassword(!regShowPassword)}
                       style={styles.fieldIconRight}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      activeOpacity={0.7}
                     >
                       <AppIcon 
-                        name={regShowPassword ? "eye-off-outline" : "eye-outline"} 
+                        name={regShowPassword ? "eye-off" : "eye"} 
                         size={20} 
-                        color="#64748B" 
+                        color={regShowPassword ? "#0284C7" : "#94A3B8"} 
                       />
                     </TouchableOpacity>
                   </View>
                   <Text style={styles.passwordHintText}>
-                    Must be 8+ chars with uppercase, lowercase, digit, and asterisk (*).
+                    Must contain 8+ characters, uppercase, lowercase, digit, and asterisk (*).
                   </Text>
                 </View>
 
                 {/* Confirm Password */}
                 <View style={styles.fieldGroup}>
                   <Text style={styles.fieldLabel}>CONFIRM PASSWORD</Text>
-                  <View style={styles.fieldInputWrapper}>
-                    <AppIcon name="checkmark-circle-outline" size={18} color="#64748B" style={styles.fieldIconLeft} />
+                  <View style={[
+                    styles.fieldInputWrapper,
+                    focusedField === 'regConfirmPassword' && styles.fieldInputWrapperFocused
+                  ]}>
+                    <AppIcon name="checkmark-circle-outline" size={18} color={focusedField === 'regConfirmPassword' ? '#0284C7' : '#64748B'} style={styles.fieldIconLeft} />
                     <TextInput
                       style={styles.fieldInput}
                       placeholder="Re-enter password"
@@ -654,12 +790,26 @@ export default function Login({ navigation, route }) {
                       value={regConfirmPassword}
                       onChangeText={setRegConfirmPassword}
                       onFocus={() => {
+                        setFocusedField('regConfirmPassword');
                         setIsKeyboardVisible(true);
-                        setTimeout(() => scrollViewRef.current?.scrollTo({ y: 260, animated: true }), 120);
+                        setTimeout(() => scrollViewRef.current?.scrollTo({ y: 300, animated: true }), 120);
                       }}
-                      secureTextEntry={!regShowPassword}
+                      onBlur={() => setFocusedField(null)}
+                      secureTextEntry={!regShowConfirm}
                       autoCapitalize="none"
                     />
+                    <TouchableOpacity 
+                      onPress={() => setRegShowConfirm(!regShowConfirm)}
+                      style={styles.fieldIconRight}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      activeOpacity={0.7}
+                    >
+                      <AppIcon 
+                        name={regShowConfirm ? "eye-off" : "eye"} 
+                        size={20} 
+                        color={regShowConfirm ? "#0284C7" : "#94A3B8"} 
+                      />
+                    </TouchableOpacity>
                   </View>
                 </View>
 
@@ -680,16 +830,187 @@ export default function Login({ navigation, route }) {
                   )}
                 </TouchableOpacity>
 
-                {/* Technical Issues Support Contact Box under form */}
-                <View style={[styles.techSupportBox, { marginTop: 16 }]}>
-                  <Text style={styles.techSupportTitle}>Technical issues? Contact CSFWD IT Division</Text>
-                  <Text style={styles.techSupportPhone}>(045) 961-3546</Text>
-                </View>
+                {/* Technical Issues Support Contact Card under form */}
+                <TouchableOpacity 
+                  style={styles.techSupportCard}
+                  activeOpacity={0.8}
+                  onPress={() => setSupportModalVisible(true)}
+                >
+                  <View style={styles.techSupportLeft}>
+                    <View style={styles.techSupportIconWrap}>
+                      <AppIcon name="phone-call" size={18} color="#0284C7" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.techSupportTitle}>Need assistance? CSFWD Hotlines</Text>
+                      <Text style={styles.techSupportPhone}>(045) 961-3546 • csfwd@yahoo.com</Text>
+                    </View>
+                  </View>
+                  <View style={styles.techSupportPill}>
+                    <Text style={styles.techSupportPillText}>Directory</Text>
+                    <AppIcon name="chevron-forward" size={14} color="#0284C7" />
+                  </View>
+                </TouchableOpacity>
               </View>
             )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* ── CSFWD Directory & Support Modal ────────────────────────────── */}
+      <Modal
+        visible={supportModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSupportModalVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.supportModalOverlay}
+          activeOpacity={1}
+          onPress={() => setSupportModalVisible(false)}
+        >
+          <TouchableOpacity 
+            activeOpacity={1} 
+            style={styles.supportModalContent}
+          >
+            {/* Modal Header */}
+            <View style={styles.supportModalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={[styles.techSupportIconWrap, { width: 32, height: 32, borderRadius: 16, marginRight: 8 }]}>
+                  <AppIcon name="business-outline" size={16} color="#0284C7" />
+                </View>
+                <Text style={styles.supportModalTitle}>CSFWD Directory & Contacts</Text>
+              </View>
+              <TouchableOpacity 
+                style={styles.supportModalCloseBtn}
+                onPress={() => setSupportModalVisible(false)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <AppIcon name="close" size={18} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: SCREEN_HEIGHT * 0.62 }}>
+              {/* Main Office Section */}
+              <View style={styles.supportModalSection}>
+                <Text style={styles.supportModalSectionTitle}>Main Office (Sto. Rosario)</Text>
+                <View style={styles.supportModalCard}>
+                  <View style={styles.supportInfoRow}>
+                    <AppIcon name="location-outline" size={16} color="#0284C7" style={{ marginTop: 2 }} />
+                    <Text style={styles.supportInfoText}>
+                      B. Mendoza Street, Sto. Rosario, 2000 San Fernando, Pampanga
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity 
+                    style={styles.supportInfoRow}
+                    onPress={() => handleEmail('csfwd@yahoo.com')}
+                    activeOpacity={0.7}
+                  >
+                    <AppIcon name="mail-outline" size={16} color="#0284C7" style={{ marginTop: 2 }} />
+                    <Text style={[styles.supportInfoText, { color: '#0284C7', textDecorationLine: 'underline', fontFamily: 'PlusJakartaSans-Bold' }]}>
+                      csfwd@yahoo.com
+                    </Text>
+                  </TouchableOpacity>
+
+                  <View style={{ height: 1, backgroundColor: '#E2E8F0', marginVertical: 4 }} />
+
+                  <Text style={[styles.supportInfoText, styles.supportInfoTextBold]}>Hotlines & Inquiries:</Text>
+
+                  <TouchableOpacity 
+                    style={styles.supportActionChip}
+                    onPress={() => handleDial('(045) 961-3546')}
+                    activeOpacity={0.7}
+                  >
+                    <AppIcon name="call-outline" size={14} color="#0284C7" />
+                    <Text style={styles.supportActionChipText}>961-3546 Customer Service</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={styles.supportActionChip}
+                    onPress={() => handleDial('(045) 961-5804')}
+                    activeOpacity={0.7}
+                  >
+                    <AppIcon name="call-outline" size={14} color="#0284C7" />
+                    <Text style={styles.supportActionChipText}>961-5804 Billing Inquiry</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={styles.supportActionChip}
+                    onPress={() => handleDial('(045) 961-8837')}
+                    activeOpacity={0.7}
+                  >
+                    <AppIcon name="call-outline" size={14} color="#0284C7" />
+                    <Text style={styles.supportActionChipText}>961-8837 Follow-up on Service Application</Text>
+                  </TouchableOpacity>
+
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                    <TouchableOpacity 
+                      style={styles.supportActionChip}
+                      onPress={() => handleDial('0968-854-1343')}
+                      activeOpacity={0.7}
+                    >
+                      <AppIcon name="phone" size={14} color="#0284C7" />
+                      <Text style={styles.supportActionChipText}>0968-854-1343</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.supportActionChip}
+                      onPress={() => handleDial('0933-8146585')}
+                      activeOpacity={0.7}
+                    >
+                      <AppIcon name="phone" size={14} color="#0284C7" />
+                      <Text style={styles.supportActionChipText}>0933-8146585</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+
+              {/* Sub Offices Section */}
+              <View style={styles.supportModalSection}>
+                <Text style={styles.supportModalSectionTitle}>Sub Offices</Text>
+                <View style={styles.supportModalCard}>
+                  {/* Sindalan Sub-office */}
+                  <View>
+                    <Text style={[styles.supportInfoText, styles.supportInfoTextBold]}>Sindalan Sub-office</Text>
+                    <TouchableOpacity 
+                      style={styles.supportActionChip}
+                      onPress={() => handleDial('(045) 455-1988')}
+                      activeOpacity={0.7}
+                    >
+                      <AppIcon name="call-outline" size={14} color="#0284C7" />
+                      <Text style={styles.supportActionChipText}>455-1988</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={{ height: 1, backgroundColor: '#E2E8F0', marginVertical: 4 }} />
+
+                  {/* Bulaon Sub-office */}
+                  <View>
+                    <Text style={[styles.supportInfoText, styles.supportInfoTextBold]}>Bulaon Sub-office</Text>
+                    <TouchableOpacity 
+                      style={styles.supportActionChip}
+                      onPress={() => handleDial('(045) 961-5804')}
+                      activeOpacity={0.7}
+                    >
+                      <AppIcon name="call-outline" size={14} color="#0284C7" />
+                      <Text style={styles.supportActionChipText}>961-5804</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={{ height: 1, backgroundColor: '#E2E8F0', marginVertical: 4 }} />
+
+                  {/* Saguin Sub-office */}
+                  <View>
+                    <Text style={[styles.supportInfoText, styles.supportInfoTextBold]}>Saguin Sub-office</Text>
+                    <Text style={styles.supportInfoText}>
+                      Fortune Square Bldg. (in front of Coke), Saguin, City of San Fernando, Pampanga
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* ── Admin Access Restriction Modal ────────────────────────────── */}
       <Modal

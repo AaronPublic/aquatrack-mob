@@ -61,8 +61,8 @@ export const useNotificationStore = create((set, get) => ({
           id: `ad-${ad.id}`,
           type: 'advisory',
           title: ad.title || 'Community Advisory',
-          message: ad.content || '',
-          date: new Date(ad.createdAt || ad.date || Date.now()),
+          message: ad.content || ad.text || '',
+          date: ad.createdAt || ad.date || new Date().toISOString(),
           category: ad.type || 'info',
         });
       });
@@ -75,14 +75,14 @@ export const useNotificationStore = create((set, get) => ({
             type: 'complaint_status',
             title: 'Ticket Status Update',
             message: `Your report regarding "${comp.summary || comp.rawText || 'Water Anomaly'}" is now: ${statusLabels[comp.status] || comp.status}.`,
-            date: new Date(comp.updatedAt || comp.createdAt || Date.now()),
+            date: comp.updatedAt || comp.createdAt || new Date().toISOString(),
             status: comp.status,
           });
         }
       });
 
       // Sort by date descending
-      list.sort((a, b) => b.date - a.date);
+      list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       // Load read and dismissed IDs from AsyncStorage
       const [readIdsStr, dismissedIdsStr] = await Promise.all([

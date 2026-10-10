@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, FlatList, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import AppIcon from '../../components/AppIcon';
 import styles from './SubAdminTelemetry.styles';
 import TechHeader from './TechHeader';
+import { formatPHT } from '../../src/utils/dateUtils';
 
 export default function SubAdminTelemetry({ navigation }) {
   const [nodes, setNodes] = useState([]);
@@ -86,11 +87,11 @@ export default function SubAdminTelemetry({ navigation }) {
     }
   };
 
-  const renderNodeItem = ({ item }) => {
+  const renderNodeItem = useCallback(({ item }) => {
     const statusCfg = getNodeStatusCfg(item.status);
     const lastRead = readings[item.id] || item.reading || null;
     const formattedTime = lastRead
-      ? new Date(lastRead.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })
+      ? formatPHT(lastRead.timestamp, 'time')
       : '—';
 
     return (
@@ -154,7 +155,7 @@ export default function SubAdminTelemetry({ navigation }) {
         <Text style={styles.metaFooter}>{lastRead ? `Last report: ${formattedTime}` : 'No reports received yet'}</Text>
       </View>
     );
-  };
+  }, [readings]);
 
   return (
     <View style={[styles.container, { backgroundColor: '#F2F5FA' }]}>
@@ -165,34 +166,34 @@ export default function SubAdminTelemetry({ navigation }) {
         showSwirl={true}
       />
 
-      <ScrollView 
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#001e66" />
-        }
-        style={{ flex: 1, marginTop: 12 }}
-        contentContainerStyle={{ paddingBottom: 110, paddingHorizontal: 18, paddingTop: 4 }}
-      >
-        {/* Outer Gray Label */}
-        <Text style={{ color: '#64748B', fontWeight: '800', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, paddingHorizontal: 4 }}>
-          REAL-TIME TELEMETRY SENSOR NODES
-        </Text>
-
-        {loading ? (
-          <View style={{ marginTop: 40, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator color="#0C4F8B" size="large" />
-          </View>
-        ) : nodes.length > 0 ? (
-          <View style={styles.listContainer}>
-            {nodes.map((node) => (
-              <React.Fragment key={node.id}>
-                {renderNodeItem({ item: node })}
-              </React.Fragment>
-            ))}
-          </View>
-        ) : (
-          <Text style={styles.emptyText}>No telemetry nodes active.</Text>
-        )}
-      </ScrollView>
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator color="#0C4F8B" size="large" />
+        </View>
+      ) : (
+        <FlatList
+          data={nodes}
+          keyExtractor={(item) => item.id}
+          renderItem={renderNodeItem}
+          initialNumToRender={6}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+          removeClippedSubviews={true}
+          style={{ flex: 1, marginTop: 4 }}
+          contentContainerStyle={{ paddingBottom: 110, paddingHorizontal: 18, paddingTop: 4 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#001e66" />
+          }
+          ListHeaderComponent={
+            <Text style={{ color: '#64748B', fontWeight: '800', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, paddingHorizontal: 4 }}>
+              REAL-TIME TELEMETRY SENSOR NODES
+            </Text>
+          }
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>No telemetry nodes active.</Text>
+          }
+        />
+      )}
     </View>
   );
 }

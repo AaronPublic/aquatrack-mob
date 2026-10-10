@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView,  ActivityIndicator, Alert, UIManager, Platform, Modal } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, UIManager, Platform, Modal } from 'react-native';
 import { Image } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
@@ -16,6 +17,7 @@ import styles from './FileComplaint.styles';
 import homeStyles from './ConsumerHome.styles';
 import { useNotificationStore } from '../../src/store/useNotificationStore';
 import ConsumerNotificationModal from './ConsumerNotificationModal';
+import { useResponsive } from '../../src/utils/responsive';
 
 // Mapbox native access token — set at module load (web build uses the OSM iframe below instead)
 if (Platform.OS !== 'web') {
@@ -60,6 +62,10 @@ const SPEECH_RECORDING_OPTIONS = {
 };
 
 export default function FileComplaint({ navigation }) {
+  const insets = useSafeAreaInsets();
+  const { isSmallDevice } = useResponsive();
+  const topPadding = Math.max(insets.top, Platform.OS === 'android' ? 34 : 20) + (isSmallDevice ? 2 : 6);
+
   const [rawText, setRawText] = useState('');
   const [category, setCategory] = useState('UNCLASSIFIED_INFRASTRUCTURE_ANOMALY');
   const [urgency, setUrgency] = useState('MEDIUM');
@@ -77,6 +83,7 @@ export default function FileComplaint({ navigation }) {
   // Media states
   const [photoUri, setPhotoUri] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [photoModalVisible, setPhotoModalVisible] = useState(false);
 
   // Voice-to-Text states (expo-audio speech-optimized)
   const audioRecorder = useAudioRecorder(SPEECH_RECORDING_OPTIONS);
@@ -98,7 +105,10 @@ export default function FileComplaint({ navigation }) {
   });
   const [userName, setUserName] = useState('Pedro');
   const [notificationsModalVisible, setNotificationsModalVisible] = useState(false);
-  const { notifications, unreadCount, markAllAsRead, dismissNotification } = useNotificationStore();
+  const notifications = useNotificationStore(s => s.notifications);
+  const unreadCount = useNotificationStore(s => s.unreadCount);
+  const markAllAsRead = useNotificationStore(s => s.markAllAsRead);
+  const dismissNotification = useNotificationStore(s => s.dismissNotification);
 
   const cameraRef = useRef(null);
   const mapReadyRef = useRef(false);
@@ -204,9 +214,22 @@ export default function FileComplaint({ navigation }) {
         }
       }
 
-      const current = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
+      let current = null;
+      try {
+        current = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+      } catch (curErr) {
+        current = await Location.getLastKnownPositionAsync();
+      }
+
+      if (!current) {
+        current = await Location.getLastKnownPositionAsync();
+      }
+
+      if (!current) {
+        throw new Error('GPS position unavailable. Please check device location settings.');
+      }
 
       const newCoords = {
         latitude: current.coords.latitude,
@@ -247,17 +270,15 @@ export default function FileComplaint({ navigation }) {
     }
   };
 
-  // Clean up audio recording and timer on unmount
+  // Clean up audio recording timer on unmount
   useEffect(() => {
     return () => {
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current);
-      }
-      if (audioRecorder.isRecording) {
-        audioRecorder.stop().catch(() => {});
+        recordingTimerRef.current = null;
       }
     };
-  }, [audioRecorder]);
+  }, []);
 
   // Voice Recording Handlers (expo-audio)
   const startVoiceRecording = async () => {
@@ -351,19 +372,72 @@ export default function FileComplaint({ navigation }) {
     }
   };
 
-  // Select Photo (Client-Side Pre-Compression to quality: 0.6)
-  const handlePickPhoto = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.6,
-    });
+  // Take Photo with Camera (Requests Camera Permission)
+  const handleTakePhoto = async () => {
+    setPhotoModalVisible(false);
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          'Camera Permission Required',
+          'AquaTrack requires camera access to directly take photos of the water incident. Please enable camera permission in your device settings.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
 
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      setPhotoUri(result.assets[0].uri);
-      // Invalidate existing triage cache if photo changes
-      setAiTriage(null);
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        quality: 0.6,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setPhotoUri(result.assets[0].uri);
+        // Invalidate existing triage cache if photo changes
+        setAiTriage(null);
+      }
+    } catch (err) {
+      console.error('Camera capture error:', err);
+      Alert.alert('Camera Error', 'Could not open camera: ' + (err.message || 'Unknown error'));
     }
+  };
+
+  // Pick Photo from Gallery (Requests Media Library Permission)
+  const handlePickFromGallery = async () => {
+    setPhotoModalVisible(false);
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          'Gallery Permission Required',
+          'AquaTrack requires access to your photo library to attach photos of the incident. Please enable gallery permissions in your device settings.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.6,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setPhotoUri(result.assets[0].uri);
+        // Invalidate existing triage cache if photo changes
+        setAiTriage(null);
+      }
+    } catch (err) {
+      console.error('Gallery pick error:', err);
+      Alert.alert('Gallery Error', 'Could not open photo gallery: ' + (err.message || 'Unknown error'));
+    }
+  };
+
+  // Remove Photo & Reset AI Triage Cache
+  const handleRemovePhoto = () => {
+    setPhotoUri(null);
+    setAiTriage(null);
+    setPhotoModalVisible(false);
   };
 
   // Run AI Diagnostics with optional uploaded image URL
@@ -517,15 +591,15 @@ export default function FileComplaint({ navigation }) {
       contentContainerStyle={{ paddingBottom: 140 }}
       showsVerticalScrollIndicator={false}
     >
-      {/* ==================== TOP 30% BLUE SECTION ==================== */}
+      {/* ==================== TOP BLUE SECTION ==================== */}
       <LinearGradient 
         colors={['#0C4F8B', '#008CE3']} 
         start={{ x: 0, y: 0 }} 
         end={{ x: 0, y: 1 }} 
         style={{
-          paddingTop: Platform.OS === 'ios' ? 54 : 42,
+          paddingTop: topPadding,
           paddingHorizontal: 20,
-          paddingBottom: 28,
+          paddingBottom: 20,
           position: 'relative',
           overflow: 'hidden'
         }}
@@ -808,43 +882,84 @@ export default function FileComplaint({ navigation }) {
             elevation: 4,
           }}
         >
-          <TouchableOpacity 
-            onPress={handlePickPhoto}
-            activeOpacity={0.8}
-            style={{ 
-              backgroundColor: photoUri ? '#ECFDF5' : '#EFF6FF',
-              borderColor: photoUri ? '#10B981' : '#009FDE',
-              borderStyle: 'dashed'
-            }}
-            className="border rounded-2xl p-4 flex-row items-center justify-center"
-          >
-            <AppIcon 
-              name={photoUri ? "checkmark-circle" : "camera"} 
-              size={18} 
-              color={photoUri ? '#10B981' : '#009FDE'} 
-              style={{ marginRight: 8 }}
-            />
-            <Text 
-              style={{ color: photoUri ? '#10B981' : '#007AFF' }} 
-              className="font-bold text-sm"
+          {!photoUri ? (
+            <TouchableOpacity 
+              onPress={() => setPhotoModalVisible(true)}
+              activeOpacity={0.8}
+              style={{ 
+                backgroundColor: '#EFF6FF',
+                borderColor: '#009FDE',
+                borderStyle: 'dashed'
+              }}
+              className="border rounded-2xl p-5 items-center justify-center"
             >
-              {photoUri ? "Photo Attached" : "Attach Incident Photo"}
-            </Text>
-          </TouchableOpacity>
+              <View className="flex-row items-center justify-center gap-2.5 mb-2.5">
+                <View className="w-10 h-10 rounded-xl bg-white items-center justify-center border border-[#BFDBFE] shadow-xs">
+                  <AppIcon name="camera" size={20} color="#008CE3" />
+                </View>
+                <View className="w-10 h-10 rounded-xl bg-white items-center justify-center border border-[#A7F3D0] shadow-xs">
+                  <AppIcon name="image" size={20} color="#10B981" />
+                </View>
+              </View>
+              <Text className="font-black text-sm text-[#007AFF] text-center">
+                Attach Incident Photo
+              </Text>
+              <Text className="text-xs text-[#627D98] text-center mt-1">
+                Take a live photo with camera or choose from gallery
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <View>
+              <View className="flex-row items-center justify-between mb-3 bg-[#ECFDF5] border border-[#A7F3D0] rounded-xl px-3 py-2">
+                <View className="flex-row items-center gap-1.5">
+                  <AppIcon name="checkmark-circle" size={16} color="#10B981" />
+                  <Text className="text-[#047857] font-bold text-xs">
+                    Incident Photo Attached
+                  </Text>
+                </View>
+                <TouchableOpacity 
+                  onPress={handleRemovePhoto}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text className="text-[#EF4444] font-bold text-xs">Remove</Text>
+                </TouchableOpacity>
+              </View>
 
-          {photoUri && (
-            <View className="relative mt-4">
-              <Image 
-                source={{ uri: photoUri }} 
-                className="w-full h-48 rounded-2xl border border-[#E2E8F5]"
-                style={{ resizeMode: 'cover' }}
-              />
-              <TouchableOpacity 
-                onPress={() => setPhotoUri(null)}
-                className="absolute top-2 right-2 bg-black/60 p-1.5 rounded-full"
-              >
-                <AppIcon name="close" size={16} color="#FFFFFF" />
-              </TouchableOpacity>
+              <View className="relative rounded-2xl overflow-hidden border border-[#E2E8F5]">
+                <Image 
+                  source={{ uri: photoUri }} 
+                  className="w-full h-48"
+                  contentFit="cover"
+                />
+                <TouchableOpacity 
+                  onPress={handleRemovePhoto}
+                  className="absolute top-2.5 right-2.5 bg-black/60 w-8 h-8 rounded-full items-center justify-center"
+                  activeOpacity={0.8}
+                >
+                  <AppIcon name="close" size={16} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Action Buttons to Retake or Change */}
+              <View className="flex-row gap-2.5 mt-3">
+                <TouchableOpacity
+                  onPress={() => setPhotoModalVisible(true)}
+                  activeOpacity={0.8}
+                  className="flex-1 bg-[#EFF6FF] border border-[#BFDBFE] py-2.5 rounded-xl flex-row items-center justify-center gap-1.5"
+                >
+                  <AppIcon name="camera" size={15} color="#008CE3" />
+                  <Text className="text-[#007AFF] font-bold text-xs">Change Photo</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={handleRemovePhoto}
+                  activeOpacity={0.8}
+                  className="bg-[#FEF2F2] border border-[#FECACA] px-4 py-2.5 rounded-xl flex-row items-center justify-center gap-1.5"
+                >
+                  <AppIcon name="trash" size={15} color="#EF4444" />
+                  <Text className="text-[#DC2626] font-bold text-xs">Delete</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
         </View>
@@ -946,6 +1061,121 @@ export default function FileComplaint({ navigation }) {
         notifications={notifications}
         onNotificationPress={handleNotificationPress}
       />
+
+      {/* Photo Picker Options Bottom Sheet Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={photoModalVisible}
+        onRequestClose={() => setPhotoModalVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(11, 34, 64, 0.45)', justifyContent: 'flex-end' }}>
+          <View 
+            className="bg-white rounded-t-[32px] p-6 pb-10"
+            style={{
+              shadowColor: '#0B2240',
+              shadowOffset: { width: 0, height: -6 },
+              shadowOpacity: 0.12,
+              shadowRadius: 20,
+              elevation: 12,
+            }}
+          >
+            {/* Header */}
+            <View className="flex-row items-center justify-between pb-4 border-b border-[#F1F5F9] mb-4">
+              <View>
+                <Text className="text-[#0B2240] font-black text-base">
+                  Attach Incident Photo
+                </Text>
+                <Text className="text-[#627D98] text-xs mt-0.5">
+                  Provide visual evidence of the water complaint
+                </Text>
+              </View>
+              <TouchableOpacity 
+                onPress={() => setPhotoModalVisible(false)}
+                className="w-8 h-8 rounded-full bg-[#F1F5F9] items-center justify-center"
+                activeOpacity={0.7}
+              >
+                <AppIcon name="close" size={16} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Options List */}
+            <View className="gap-3">
+              {/* Option 1: Live Camera */}
+              <TouchableOpacity
+                onPress={handleTakePhoto}
+                activeOpacity={0.8}
+                className="flex-row items-center p-4 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F5] active:bg-[#EFF6FF] active:border-[#BFDBFE]"
+              >
+                <View className="w-12 h-12 rounded-xl bg-[#EFF6FF] items-center justify-center mr-3.5 border border-[#BFDBFE]">
+                  <AppIcon name="camera" size={22} color="#008CE3" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-[#0B2240] font-black text-sm">
+                    Take Photo with Camera
+                  </Text>
+                  <Text className="text-[#627D98] text-xs mt-0.5">
+                    Directly snap a live photo of the water issue
+                  </Text>
+                </View>
+                <AppIcon name="chevron-forward" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+
+              {/* Option 2: Gallery Picker */}
+              <TouchableOpacity
+                onPress={handlePickFromGallery}
+                activeOpacity={0.8}
+                className="flex-row items-center p-4 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F5] active:bg-[#ECFDF5] active:border-[#A7F3D0]"
+              >
+                <View className="w-12 h-12 rounded-xl bg-[#ECFDF5] items-center justify-center mr-3.5 border border-[#A7F3D0]">
+                  <AppIcon name="image" size={22} color="#10B981" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-[#0B2240] font-black text-sm">
+                    Choose from Gallery
+                  </Text>
+                  <Text className="text-[#627D98] text-xs mt-0.5">
+                    Select an existing image from your device photos
+                  </Text>
+                </View>
+                <AppIcon name="chevron-forward" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+
+              {/* Option 3: Remove photo (if attached) */}
+              {photoUri && (
+                <TouchableOpacity
+                  onPress={handleRemovePhoto}
+                  activeOpacity={0.8}
+                  className="flex-row items-center p-4 rounded-2xl bg-[#FEF2F2] border border-[#FECACA]"
+                >
+                  <View className="w-12 h-12 rounded-xl bg-[#FEE2E2] items-center justify-center mr-3.5 border border-[#FCA5A5]">
+                    <AppIcon name="trash" size={20} color="#EF4444" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-[#DC2626] font-black text-sm">
+                      Remove Current Photo
+                    </Text>
+                    <Text className="text-[#EF4444] text-xs mt-0.5">
+                      Detach current photo from this report
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+
+              {/* Cancel Button */}
+              <TouchableOpacity
+                onPress={() => setPhotoModalVisible(false)}
+                activeOpacity={0.8}
+                className="py-3.5 rounded-2xl bg-[#F1F5F9] items-center justify-center mt-2"
+              >
+                <Text className="text-[#475569] font-bold text-xs uppercase tracking-wider">
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }

@@ -89,7 +89,7 @@ export default function SubAdminAdvisories({ navigation }) {
         </View>
       ) : (
         <FlatList
-          style={{ flex: 1, marginTop: 12 }}
+          style={{ flex: 1, marginTop: 4 }}
           data={advisories}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}

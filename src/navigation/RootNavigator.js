@@ -8,6 +8,7 @@ import { theme } from '../config/theme';
 import { useAuthStore } from '../store/useAuthStore';
 import { useTechNotificationStore } from '../store/useTechNotificationStore';
 import { requestUserPermission, registerNotificationListeners } from '../config/fcm';
+import { startTechnicianPresence, stopTechnicianPresence } from '../utils/presenceManager';
 
 // Auth Screens
 import Login from '../../components/authpages/Login';
@@ -34,17 +35,31 @@ const Tab = createBottomTabNavigator();
 const getTabBarOptions = () => ({
   tabBarActiveTintColor: theme.colors.accent,
   tabBarInactiveTintColor: theme.colors.textMuted,
-  tabBarShowLabel: false,
+  tabBarShowLabel: true,
+  tabBarLabelPosition: 'below-icon',
+  tabBarLabelStyle: {
+    fontSize: 10,
+    fontFamily: theme.fonts.bold,
+    letterSpacing: 0.3,
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  tabBarItemStyle: {
+    paddingTop: 6,
+    paddingBottom: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   tabBarStyle: {
     backgroundColor: theme.colors.white,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    height: 64,
+    height: 68,
     borderRadius: 24,
     position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
+    bottom: 18,
+    left: 18,
+    right: 18,
     paddingBottom: 0,
     shadowColor: '#0B1C3F',
     shadowOffset: { width: 0, height: 8 },
@@ -87,19 +102,8 @@ function ConsumerTabNavigator() {
           }
           
           return (
-            <View style={{ alignItems: 'center', justifyContent: 'center', height: '100%', paddingTop: 4 }}>
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
               <AppIcon name={iconName} size={20} color={color} />
-              {focused && (
-                <View 
-                  style={{ 
-                    width: 4, 
-                    height: 4, 
-                    borderRadius: 2, 
-                    backgroundColor: color, 
-                    marginTop: 4 
-                  }} 
-                />
-              )}
             </View>
           );
         },
@@ -108,22 +112,22 @@ function ConsumerTabNavigator() {
       <Tab.Screen 
         name="ConsumerHome" 
         component={ConsumerHome} 
-        options={{ title: 'Home', headerShown: false }} 
+        options={{ title: 'Home', tabBarLabel: 'Home', headerShown: false }} 
       />
       <Tab.Screen 
         name="FileComplaint" 
         component={FileComplaint} 
-        options={{ title: 'Report', headerShown: false }} 
+        options={{ title: 'Report', tabBarLabel: 'Report', headerShown: false }} 
       />
       <Tab.Screen 
         name="TrackComplaints" 
         component={TrackComplaints} 
-        options={{ title: 'Tickets', headerShown: false }} 
+        options={{ title: 'Tickets', tabBarLabel: 'Tickets', headerShown: false }} 
       />
       <Tab.Screen 
         name="Announcements" 
         component={Announcements} 
-        options={{ title: 'Advisories', headerShown: false }} 
+        options={{ title: 'Advisories', tabBarLabel: 'Advisories', headerShown: false }} 
       />
       <Tab.Screen 
         name="ManageAccount" 
@@ -168,19 +172,8 @@ function SubAdminTabNavigator() {
           }
           
           return (
-            <View style={{ alignItems: 'center', justifyContent: 'center', height: '100%', paddingTop: 4 }}>
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
               <AppIcon name={iconName} size={20} color={color} />
-              {focused && (
-                <View 
-                  style={{ 
-                    width: 4, 
-                    height: 4, 
-                    borderRadius: 2, 
-                    backgroundColor: color, 
-                    marginTop: 4 
-                  }} 
-                />
-              )}
             </View>
           );
         },
@@ -189,22 +182,22 @@ function SubAdminTabNavigator() {
       <Tab.Screen 
         name="SubAdminHome" 
         component={SubAdminHome} 
-        options={{ title: 'My Job', headerShown: false }} 
+        options={{ title: 'My Job', tabBarLabel: 'My Job', headerShown: false }} 
       />
       <Tab.Screen 
         name="SubAdminComplaints" 
         component={SubAdminComplaints} 
-        options={{ title: 'Triage', headerShown: false }} 
+        options={{ title: 'Triage', tabBarLabel: 'Triage', headerShown: false }} 
       />
       <Tab.Screen 
         name="SubAdminTelemetry" 
         component={SubAdminTelemetry} 
-        options={{ title: 'Telemetry', headerShown: false }} 
+        options={{ title: 'Telemetry', tabBarLabel: 'Telemetry', headerShown: false }} 
       />
       <Tab.Screen 
         name="SubAdminAdvisories" 
         component={SubAdminAdvisories} 
-        options={{ title: 'Advisories', headerShown: false }} 
+        options={{ title: 'Advisories', tabBarLabel: 'Advisories', headerShown: false }} 
       />
       <Tab.Screen 
         name="ManageAccount" 
@@ -224,45 +217,52 @@ export default function RootNavigator() {
   const { session, profile, loading, setSession, fetchProfile, signOut } = useAuthStore();
 
   useEffect(() => {
-    // Sync initial session on mount
-    const syncSession = async () => {
-      const { data: { session: activeSession } } = await supabase.auth.getSession();
-      if (activeSession) {
-        const profileResult = await fetchProfile(activeSession.user.id);
-        if (profileResult && profileResult.role === 'ADMIN') {
-          await supabase.auth.signOut();
-          useAuthStore.setState({ session: null, profile: null });
-        } else {
-          setSession(activeSession);
-          if (profileResult) {
-            await requestUserPermission(activeSession.user.id);
+    let lastHandledUserId = null;
+    let inFlightFetch = false;
+
+    const handleSessionChange = async (newSession) => {
+      if (newSession?.user) {
+        const uId = newSession.user.id;
+        if (inFlightFetch && lastHandledUserId === uId) return;
+
+        inFlightFetch = true;
+        lastHandledUserId = uId;
+
+        const currentProfile = useAuthStore.getState().profile;
+        if (currentProfile?.id === uId) {
+          setSession(newSession);
+          if (currentProfile.role === 'FIELD_ENGINEER_TECHNICIAN') {
+            startTechnicianPresence(uId);
           }
         }
+
+        const fetchedProfile = await fetchProfile(uId);
+        inFlightFetch = false;
+
+        if (fetchedProfile && fetchedProfile.role === 'ADMIN') {
+          await supabase.auth.signOut();
+          useAuthStore.setState({ session: null, profile: null });
+        } else if (fetchedProfile) {
+          setSession(newSession);
+          if (fetchedProfile.role === 'FIELD_ENGINEER_TECHNICIAN') {
+            startTechnicianPresence(uId);
+          }
+          await requestUserPermission(uId);
+        }
       } else {
+        const prevUserId = lastHandledUserId || useAuthStore.getState().profile?.id;
+        if (prevUserId) {
+          stopTechnicianPresence(prevUserId);
+        }
+        lastHandledUserId = null;
         setSession(null);
         useAuthStore.setState({ profile: null });
       }
     };
-    
-    syncSession();
 
-    // Listen to Supabase Auth State changes and sync with Zustand
+    // Listen to Supabase Auth State changes and sync with Zustand (handles initial session seamlessly)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      if (newSession) {
-        const fetchedProfile = await fetchProfile(newSession.user.id);
-        if (fetchedProfile && fetchedProfile.role === 'ADMIN') {
-          await supabase.auth.signOut();
-          useAuthStore.setState({ session: null, profile: null });
-        } else {
-          setSession(newSession);
-          if (fetchedProfile) {
-            await requestUserPermission(newSession.user.id);
-          }
-        }
-      } else {
-        setSession(null);
-        useAuthStore.setState({ profile: null });
-      }
+      handleSessionChange(newSession);
     });
 
     return () => {

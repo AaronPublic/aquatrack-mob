@@ -14,35 +14,47 @@ import {
 import RootNavigator from './src/navigation/RootNavigator';
 import { navigationRef } from './src/navigation/navigationRef';
 
+// Fast font resolver to eliminate object allocation & StyleSheet.flatten overhead on high-frequency renders
+function getAppliedStyle(style) {
+  if (!style) {
+    return { fontFamily: 'PlusJakartaSans_400Regular' };
+  }
+
+  const flatStyle = Array.isArray(style) ? StyleSheet.flatten(style) || {} : style;
+  const { fontFamily, fontWeight } = flatStyle;
+
+  if (fontFamily === 'GeistMono-Regular') {
+    if (fontWeight === 'bold' || fontWeight === '700' || fontWeight === '800' || fontWeight === '900') {
+      return { fontFamily: 'GeistMono-Bold' };
+    }
+    return null;
+  }
+
+  if (!fontFamily) {
+    if (fontWeight === 'bold' || fontWeight === '700') {
+      return { fontFamily: 'PlusJakartaSans_700Bold' };
+    }
+    if (fontWeight === '800' || fontWeight === '900') {
+      return { fontFamily: 'PlusJakartaSans_800ExtraBold' };
+    }
+    if (fontWeight === '500' || fontWeight === '600') {
+      return { fontFamily: 'PlusJakartaSans_600SemiBold' };
+    }
+    return { fontFamily: 'PlusJakartaSans_400Regular' };
+  }
+
+  return null;
+}
+
 // Hook into React Native's Text render method to apply Plus Jakarta Sans globally
 const oldTextRender = Text.render;
 Text.render = function (props, ref) {
   const origin = oldTextRender.call(this, props, ref);
   if (origin && origin.props) {
-    const style = origin.props.style;
-    const flatStyle = StyleSheet.flatten(style) || {};
-    
-    // Intercept GeistMono font family weight mapping
-    if (flatStyle.fontFamily === 'GeistMono-Regular') {
-      if (flatStyle.fontWeight === 'bold' || flatStyle.fontWeight === '700' || flatStyle.fontWeight === '800' || flatStyle.fontWeight === '900') {
-        return React.cloneElement(origin, {
-          style: [style, { fontFamily: 'GeistMono-Bold' }]
-        });
-      }
-      return origin;
-    }
-
-    if (!flatStyle.fontFamily) {
-      let family = 'PlusJakartaSans_400Regular';
-      if (flatStyle.fontWeight === 'bold' || flatStyle.fontWeight === '700') {
-        family = 'PlusJakartaSans_700Bold';
-      } else if (flatStyle.fontWeight === '800' || flatStyle.fontWeight === '900') {
-        family = 'PlusJakartaSans_800ExtraBold';
-      } else if (flatStyle.fontWeight === '500' || flatStyle.fontWeight === '600') {
-        family = 'PlusJakartaSans_600SemiBold';
-      }
+    const override = getAppliedStyle(origin.props.style);
+    if (override) {
       return React.cloneElement(origin, {
-        style: [style, { fontFamily: family }]
+        style: [origin.props.style, override]
       });
     }
   }
@@ -54,30 +66,10 @@ const oldTextInputRender = TextInput.render;
 TextInput.render = function (props, ref) {
   const origin = oldTextInputRender.call(this, props, ref);
   if (origin && origin.props) {
-    const style = origin.props.style;
-    const flatStyle = StyleSheet.flatten(style) || {};
-
-    // Intercept GeistMono font family weight mapping
-    if (flatStyle.fontFamily === 'GeistMono-Regular') {
-      if (flatStyle.fontWeight === 'bold' || flatStyle.fontWeight === '700' || flatStyle.fontWeight === '800' || flatStyle.fontWeight === '900') {
-        return React.cloneElement(origin, {
-          style: [style, { fontFamily: 'GeistMono-Bold' }]
-        });
-      }
-      return origin;
-    }
-
-    if (!flatStyle.fontFamily) {
-      let family = 'PlusJakartaSans_400Regular';
-      if (flatStyle.fontWeight === 'bold' || flatStyle.fontWeight === '700') {
-        family = 'PlusJakartaSans_700Bold';
-      } else if (flatStyle.fontWeight === '800' || flatStyle.fontWeight === '900') {
-        family = 'PlusJakartaSans_800ExtraBold';
-      } else if (flatStyle.fontWeight === '500' || flatStyle.fontWeight === '600') {
-        family = 'PlusJakartaSans_600SemiBold';
-      }
+    const override = getAppliedStyle(origin.props.style);
+    if (override) {
       return React.cloneElement(origin, {
-        style: [style, { fontFamily: family }]
+        style: [origin.props.style, override]
       });
     }
   }

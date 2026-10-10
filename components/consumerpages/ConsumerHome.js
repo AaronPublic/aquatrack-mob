@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity,  Alert, Modal, Animated } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Modal, Animated, Platform } from 'react-native';
 import { Image } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
 import * as Location from 'expo-location';
@@ -12,6 +13,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useNotificationStore } from '../../src/store/useNotificationStore';
 import ConsumerNotificationModal from './ConsumerNotificationModal';
+import { useResponsive } from '../../src/utils/responsive';
+import { formatPHT } from '../../src/utils/dateUtils';
 
 const statusConfigs = {
   PENDING: { label: "Pending Review", text: "#b45309", bg: "#fef3c7", dot: "#f59e0b" },
@@ -215,6 +218,10 @@ const buildNeighborhoodCopy = (alert) => {
 };
 
 export default function ConsumerHome({ navigation }) {
+  const insets = useSafeAreaInsets();
+  const { isSmallDevice } = useResponsive();
+  const topPadding = Math.max(insets.top, Platform.OS === 'android' ? 34 : 20) + (isSmallDevice ? 2 : 6);
+
   const [userName, setUserName] = useState('Pedro'); // Default fallback to "Pedro" per spec
   const [userLocation, setUserLocation] = useState('City of San Fernando • Dolores');
   const [gpsLocation, setGpsLocation] = useState(null);
@@ -223,7 +230,11 @@ export default function ConsumerHome({ navigation }) {
   const [recentComplaints, setRecentComplaints] = useState([]);
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [notificationsModalVisible, setNotificationsModalVisible] = useState(false);
-  const { notifications, unreadCount, fetchNotifications, markAllAsRead, dismissNotification } = useNotificationStore();
+  const notifications = useNotificationStore(s => s.notifications);
+  const unreadCount = useNotificationStore(s => s.unreadCount);
+  const fetchNotifications = useNotificationStore(s => s.fetchNotifications);
+  const markAllAsRead = useNotificationStore(s => s.markAllAsRead);
+  const dismissNotification = useNotificationStore(s => s.dismissNotification);
   const [dismissedAlerts, setDismissedAlerts] = useState([]);
   const [neighborhoodAlert, setNeighborhoodAlert] = useState(null);
   const [metrics, setMetrics] = useState({ total: 25, pending: 9, active: 8, resolved: 8 });
@@ -421,7 +432,7 @@ export default function ConsumerHome({ navigation }) {
           api.post('/api/auth/profile', { userId: session.user.id }),
           supabase
             .from('Complaint')
-            .select('id, status, createdAt, summary, category, rawText')
+            .select('id, status, createdAt, summary, category, rawText, assignedToId')
             .eq('userId', session.user.id)
             .order('createdAt', { ascending: false }),
           supabase
@@ -565,18 +576,18 @@ export default function ConsumerHome({ navigation }) {
       fetchProfileAndAdvisories();
     });
 
+    let isMounted = true;
     let channel;
     const setupRealtime = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
+      if (session && isMounted) {
         channel = supabase.channel(`home-realtime-${session.user.id}`)
           .on(
             'postgres_changes',
             {
               event: '*',
               schema: 'public',
-              table: 'Complaint',
-              filter: `userId=eq.${session.user.id}`
+              table: 'Complaint'
             },
             () => {
               debouncedFetch();
@@ -603,26 +614,18 @@ export default function ConsumerHome({ navigation }) {
             () => {
               debouncedFetch();
             }
-          )
-          .on(
-            'postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'Complaint'
-            },
-            () => {
-              debouncedFetch();
-            }
           );
 
-        channel.subscribe();
+        if (isMounted) {
+          channel.subscribe();
+        }
       }
     };
 
     setupRealtime();
     
     return () => {
+      isMounted = false;
       unsubscribeFocus();
       if (debounceTimer) clearTimeout(debounceTimer);
       if (channel) {
@@ -680,10 +683,6 @@ export default function ConsumerHome({ navigation }) {
   const handleLogout = async () => {
     try {
       await useAuthStore.getState().signOut();
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Login' }],
-      });
     } catch (err) {
       Alert.alert("Logout Error", err.message);
     }
@@ -704,12 +703,12 @@ export default function ConsumerHome({ navigation }) {
   const neighborhoodCopy = buildNeighborhoodCopy(activeNeighborhoodAlert);
 return (
     <View style={styles.container}>
-      {/* Top 30% Blue Gradient Header Card Component */}
+      {/* Top Blue Gradient Header Card Component */}
       <LinearGradient 
         colors={['#0C4F8B', '#008CE3']} 
         start={{ x: 0, y: 0 }} 
         end={{ x: 0, y: 1 }} 
-        style={styles.headerCard}
+        style={[styles.headerCard, { paddingTop: topPadding }]}
       >
         {/* Water Ripple Micro-Decorations */}
         <View style={styles.decorCircle1} />
@@ -718,10 +717,10 @@ return (
         {/* Brand Row */}
         <View style={styles.brandRow}>
           {/* Upper Left: Light Blue Water Droplet + Custom Colored AQUATRACK Logo */}
-          <View style={[styles.logoContainer, { gap: 0 }]}>
+          <View style={styles.logoContainer}>
             <Image
               source={require('../../assets/MOB-LOGO.png')}
-              style={{ width: 44, height: 44, resizeMode: 'contain' }}
+              style={styles.logoImage}
             />
             <Text style={styles.brandTitleText}>
               <Text style={{ color: '#FFFFFF' }}>AQ</Text>
@@ -732,7 +731,7 @@ return (
           </View>
 
           {/* Right: Notification & Consumer Profile Section */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={styles.headerRightActions}>
             {/* Notification Bell */}
             <TouchableOpacity 
               activeOpacity={0.7} 
@@ -749,9 +748,9 @@ return (
               onPress={handleProfilePress}
               activeOpacity={0.8}
             >
-              <Text style={styles.profileName} numberOfLines={1}>{userName}</Text>
+              <Text style={styles.profileName} numberOfLines={1} ellipsizeMode="tail">{userName}</Text>
               <View style={styles.avatarContainer}>
-                <AppIcon name="person" size={14} color="#ffffff" />
+                <AppIcon name="person" size={13} color="#ffffff" />
                 <View style={styles.activeDot} />
               </View>
             </TouchableOpacity>
@@ -808,7 +807,7 @@ return (
         <Image 
           source={require('../../assets/swirl_accent.png')}
           style={styles.swirlAccentImage}
-          resizeMode="stretch"
+          contentFit="fill"
         />
         
       </View>
@@ -1087,13 +1086,7 @@ return (
             recentComplaints.map((item) => {
               const statusCfg = statusConfigs[item.status] || { label: item.status, text: '#525f7f', bg: '#f1f5f9', dot: '#525f7f' };
               const catCfg = categoryIconConfigs[item.category] || categoryIconConfigs.default;
-              const formattedDate = new Date(item.createdAt).toLocaleDateString(undefined, {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                timeZone: 'Asia/Manila'
-              });
+              const formattedDate = formatPHT(item.createdAt, 'full');
               return (
                 <TouchableOpacity 
                   key={item.id}

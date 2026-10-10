@@ -4,13 +4,15 @@ import { Image } from 'expo-image';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
-import { MapPin, ClipboardList, Wrench } from 'lucide-react-native';
+import { MapPin, ClipboardList, Wrench, Navigation as NavIcon } from 'lucide-react-native';
 import AppIcon from '../../components/AppIcon';
 import styles from './SubAdminHome.styles';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useTechNotificationStore } from '../../src/store/useTechNotificationStore';
 import TechHeader from './TechHeader';
+import TechRouteTrackingModal from './TechRouteTrackingModal';
 import * as Location from 'expo-location';
+import { pingTechnicianPresence } from '../../src/utils/presenceManager';
 
 const haversineMeters = (lat1, lng1, lat2, lng2) => {
   const toRad = (deg) => (deg * Math.PI) / 180;
@@ -84,39 +86,118 @@ export default function SubAdminHome({ navigation }) {
   const [jobDetails, setJobDetails] = useState(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [scanInput, setScanInput] = useState('');
+  const [trackingComplaint, setTrackingComplaint] = useState(null);
 
   // Dashboard Metrics
-  const [metrics, setMetrics] = useState({ activeJobs: 0, pendingTriage: 0, telemetryAlerts: 0 });
+  const [metrics, setMetrics] = useState({ totalLogs: 0, assigned: 0, pendingTriage: 0, resolved: 0, telemetryAlerts: 0 });
 
   const loadDashboardData = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const authStore = useAuthStore.getState();
+      const session = authStore.session || (await supabase.auth.getSession())?.data?.session;
+      const currentUserId = session?.user?.id || authStore.profile?.id;
 
-      const profile = await api.post('/api/auth/profile', { userId: session.user.id });
-      if (profile?.name) setTechName(profile.name);
+      // Parallelize profile, nodes, complaints, and workorders in a single concurrent pass
+      const promises = [
+        currentUserId
+          ? api.post('/api/auth/profile', { userId: currentUserId }).catch((e) => {
+              console.warn("Failed to fetch profile in SubAdminHome:", e);
+              return null;
+            })
+          : Promise.resolve(null),
+        api.get('/api/admin/nodes').catch((e) => {
+          console.warn("Failed to fetch nodes:", e);
+          return null;
+        }),
+        api.get('/api/admin/complaints').catch((e) => {
+          console.warn("Failed to fetch complaints:", e);
+          return null;
+        }),
+        currentUserId
+          ? (async () => {
+              try {
+                return await supabase
+                  .from('WorkOrder')
+                  .select('*, alert(*)')
+                  .eq('engineerId', currentUserId)
+                  .neq('status', 'RESOLVED')
+                  .limit(1);
+              } catch (e) {
+                return { data: null };
+              }
+            })()
+          : Promise.resolve({ data: null })
+      ];
 
-      // 0. Fetch telemetry nodes once (nearest-node matching + IoT alert count)
+      const [profileRes, nodeRes, complaintsRes, workOrderRes] = await Promise.all(promises);
+
+      if (profileRes?.name) {
+        setTechName(profileRes.name);
+      } else if (authStore.profile?.name) {
+        setTechName(authStore.profile.name);
+      }
+
       let nodeList = [];
-      try {
-        const nodeRes = await api.get('/api/admin/nodes');
-        if (nodeRes && nodeRes.success && nodeRes.nodes) {
-          nodeList = nodeRes.nodes;
+      if (nodeRes && nodeRes.success && Array.isArray(nodeRes.nodes)) {
+        nodeList = nodeRes.nodes;
+      } else if (Array.isArray(nodeRes)) {
+        nodeList = nodeRes;
+      } else {
+        // Direct Supabase fallback for telemetry nodes
+        try {
+          const { data: directNodes } = await supabase
+            .from('TelemetryNode')
+            .select('id, name, status, latitude, longitude, type')
+            .order('name', { ascending: true });
+          if (directNodes && directNodes.length > 0) {
+            nodeList = directNodes;
+          }
+        } catch (dbErr) {
+          console.warn("Direct Supabase node fallback error:", dbErr);
         }
-      } catch (e) {
-        console.error("Failed to fetch telemetry nodes:", e);
+      }
+
+      let allComplaints = [];
+      if (complaintsRes && complaintsRes.success && Array.isArray(complaintsRes.complaints)) {
+        allComplaints = complaintsRes.complaints;
+      } else if (Array.isArray(complaintsRes)) {
+        allComplaints = complaintsRes;
+      } else {
+        // Direct Supabase fallback if Next.js API is unreachable
+        try {
+          const { data: directComplaints } = await supabase
+            .from('Complaint')
+            .select('id, status, createdAt, summary, category, rawText, assignedToId, barangay, latitude, longitude, urgency, imageUrl, photoUrl')
+            .order('createdAt', { ascending: false });
+          if (directComplaints && directComplaints.length > 0) {
+            allComplaints = directComplaints;
+          }
+        } catch (dbErr) {
+          console.warn("Direct Supabase complaint fallback error:", dbErr);
+        }
       }
 
       // 1. Fetch active work order OR assigned complaint assigned to this technician
-      const { data: workOrders } = await supabase
-        .from('WorkOrder')
-        .select('*, alert(*)')
-        .eq('engineerId', session.user.id)
-        .neq('status', 'RESOLVED')
-        .limit(1);
+      const techProfileName = (profileRes?.name || authStore.profile?.name || techName || '').trim().toLowerCase();
+      const targetUserId = currentUserId ? String(currentUserId).toLowerCase() : null;
 
-      if (workOrders && workOrders.length > 0) {
-        const wo = workOrders[0];
+      const assignedToMe = allComplaints.filter(c => {
+        if (!c || c.status === 'RESOLVED' || c.status === 'ARCHIVED') return false;
+        const cAssignedId = c.assignedToId ? String(c.assignedToId).toLowerCase() : null;
+        const cAssignedName = c.assignedToName ? String(c.assignedToName).trim().toLowerCase() : null;
+
+        const matchesId = targetUserId && cAssignedId === targetUserId;
+        const matchesName = techProfileName && techProfileName !== 'technician' && cAssignedName && cAssignedName === techProfileName;
+        return Boolean(matchesId || matchesName);
+      });
+
+      let activeWorkOrder = null;
+      if (workOrderRes?.data && workOrderRes.data.length > 0) {
+        activeWorkOrder = workOrderRes.data[0];
+      }
+
+      if (activeWorkOrder) {
+        const wo = activeWorkOrder;
         setJobStatus(wo.status);
         setJobDetails({
           id: wo.id,
@@ -127,116 +208,89 @@ export default function SubAdminHome({ navigation }) {
           imageUrl: wo.imageUrl || null
         });
         setHasActiveJob(true);
-      } else {
-        // Fetch active assigned complaint for this technician
-        const { data: activeComplaints } = await supabase
-          .from('Complaint')
-          .select('*')
-          .eq('assignedToId', session.user.id)
-          .neq('status', 'RESOLVED')
-          .order('updatedAt', { ascending: false })
-          .limit(1);
+      } else if (assignedToMe.length > 0) {
+        // Prioritize in-progress / ongoing, then dispatched, then pending
+        const complaint =
+          assignedToMe.find(c => c.status === 'ONGOING' || c.status === 'IN_PROGRESS') ||
+          assignedToMe.find(c => c.status === 'DISPATCHED') ||
+          assignedToMe.find(c => c.status === 'PENDING') ||
+          assignedToMe[0];
 
-        if (activeComplaints && activeComplaints.length > 0) {
-          const complaint = activeComplaints[0];
-          let recommendedAction = null;
+        let recommendedAction = null;
 
-          // Prefer the exact diagnostic alert created from this complaint (complaintId link).
-          // Fall back to the nearest-node lookup for alerts created before the link existed.
-          try {
-            const { data: linkedAlert, error: linkedError } = await supabase
-              .from('DiagnosticAlert')
-              .select('geminiAnalysis')
-              .eq('complaintId', complaint.id)
-              .order('createdAt', { ascending: false })
-              .limit(1);
+        // Try linked DiagnosticAlert
+        try {
+          const { data: linkedAlert, error: linkedError } = await supabase
+            .from('DiagnosticAlert')
+            .select('geminiAnalysis')
+            .eq('complaintId', complaint.id)
+            .order('createdAt', { ascending: false })
+            .limit(1);
 
-            if (!linkedError && linkedAlert && linkedAlert.length > 0) {
-              recommendedAction = extractRecommendedAction(linkedAlert[0]);
-            }
-          } catch (linkErr) {
-            console.error("Failed to load linked diagnostic alert:", linkErr);
+          if (!linkedError && linkedAlert && linkedAlert.length > 0) {
+            recommendedAction = extractRecommendedAction(linkedAlert[0]);
           }
-
-          if (!recommendedAction && nodeList.length > 0 && complaint.latitude != null && complaint.longitude != null) {
-            // Fallback: locate this complaint's diagnostic alert via its nearest telemetry node.
-            // Only trust a genuinely nearby node — otherwise there is no alert for this complaint.
-            let nearestNode = null;
-            let minDistance = Infinity;
-            nodeList.forEach((n) => {
-              if (n.latitude == null || n.longitude == null) return;
-              const d = haversineMeters(complaint.latitude, complaint.longitude, n.latitude, n.longitude);
-              if (d < minDistance) {
-                minDistance = d;
-                nearestNode = n;
-              }
-            });
-
-            if (nearestNode && minDistance <= NEARBY_NODE_THRESHOLD_METERS) {
-              try {
-                const { data: alertRows, error: alertError } = await supabase
-                  .from('DiagnosticAlert')
-                  .select('geminiAnalysis')
-                  .eq('nodeId', nearestNode.id)
-                  .order('createdAt', { ascending: false })
-                  .limit(1);
-
-                if (!alertError && alertRows && alertRows.length > 0) {
-                  recommendedAction = extractRecommendedAction(alertRows[0]);
-                }
-              } catch (alertErr) {
-                console.error("Failed to load diagnostic alert:", alertErr);
-              }
-            }
-          }
-
-          setJobStatus(complaint.status);
-          setJobDetails({
-            id: complaint.id,
-            sourceType: 'Complaint',
-            location: complaint.barangay ? `Brgy. ${complaint.barangay}` : "Municipal Field Site",
-            description: complaint.summary || complaint.rawText || "Assigned Resident Water Complaint",
-            recommendedAction,
-            imageUrl: complaint.photoUrl || complaint.imageUrl || null
-          });
-          setHasActiveJob(true);
-        } else {
-          setHasActiveJob(false);
-          setJobDetails(null);
+        } catch (linkErr) {
+          console.warn("Failed to load linked diagnostic alert:", linkErr);
         }
+
+        if (!recommendedAction && nodeList.length > 0 && complaint.latitude != null && complaint.longitude != null) {
+          let nearestNode = null;
+          let minDistance = Infinity;
+          nodeList.forEach((n) => {
+            if (n.latitude == null || n.longitude == null) return;
+            const d = haversineMeters(complaint.latitude, complaint.longitude, n.latitude, n.longitude);
+            if (d < minDistance) {
+              minDistance = d;
+              nearestNode = n;
+            }
+          });
+
+          if (nearestNode && minDistance <= NEARBY_NODE_THRESHOLD_METERS) {
+            try {
+              const { data: alertRows, error: alertError } = await supabase
+                .from('DiagnosticAlert')
+                .select('geminiAnalysis')
+                .eq('nodeId', nearestNode.id)
+                .order('createdAt', { ascending: false })
+                .limit(1);
+
+              if (!alertError && alertRows && alertRows.length > 0) {
+                recommendedAction = extractRecommendedAction(alertRows[0]);
+              }
+            } catch (alertErr) {
+              console.warn("Failed to load diagnostic alert:", alertErr);
+            }
+          }
+        }
+
+        setJobStatus(complaint.status);
+        setJobDetails({
+          ...complaint,
+          id: complaint.id,
+          sourceType: 'Complaint',
+          location: complaint.barangay ? (complaint.barangay.toLowerCase().startsWith('brgy') ? complaint.barangay : `Brgy. ${complaint.barangay}`) : "Municipal Field Site",
+          description: complaint.summary || complaint.translatedText || complaint.rawText || "Assigned Resident Water Complaint",
+          recommendedAction,
+          imageUrl: complaint.photoUrl || complaint.imageUrl || null,
+          latitude: complaint.latitude,
+          longitude: complaint.longitude,
+          barangay: complaint.barangay,
+          category: complaint.category,
+          urgency: complaint.urgency,
+          summary: complaint.summary || complaint.translatedText || complaint.rawText,
+        });
+        setHasActiveJob(true);
+      } else {
+        setHasActiveJob(false);
+        setJobDetails(null);
       }
 
-      // 2. Fetch metrics in parallel
-      const [
-        { count: totalLogsCount },
-        { count: unclaimedCount },
-        { count: assignedCount },
-        { count: resolvedCount },
-        { count: activeWoCount }
-      ] = await Promise.all([
-        supabase
-          .from('Complaint')
-          .select('*', { count: 'exact', head: true }),
-        supabase
-          .from('Complaint')
-          .select('*', { count: 'exact', head: true })
-          .is('assignedToId', null)
-          .neq('status', 'RESOLVED'),
-        supabase
-          .from('Complaint')
-          .select('*', { count: 'exact', head: true })
-          .eq('assignedToId', session.user.id)
-          .neq('status', 'RESOLVED'),
-        supabase
-          .from('Complaint')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'RESOLVED'),
-        supabase
-          .from('WorkOrder')
-          .select('*', { count: 'exact', head: true })
-          .eq('engineerId', session.user.id)
-          .neq('status', 'RESOLVED')
-      ]);
+      // 2. Authoritative Dashboard Metrics
+      const totalLogsCount = allComplaints.length;
+      const assignedCount = allComplaints.filter(c => c.assignedToId && c.status !== 'RESOLVED' && c.status !== 'ARCHIVED').length;
+      const pendingTriageCount = allComplaints.filter(c => !c.assignedToId && c.status !== 'RESOLVED' && c.status !== 'ARCHIVED').length;
+      const resolvedCount = allComplaints.filter(c => c.status === 'RESOLVED').length;
 
       let activeAlerts = 0;
       if (nodeList.length > 0) {
@@ -244,10 +298,10 @@ export default function SubAdminHome({ navigation }) {
       }
 
       setMetrics({
-        totalLogs: totalLogsCount || 0,
-        assigned: (assignedCount || activeWoCount || 0),
-        resolved: resolvedCount || 0,
-        pendingTriage: unclaimedCount || 0,
+        totalLogs: totalLogsCount,
+        assigned: assignedCount,
+        resolved: resolvedCount,
+        pendingTriage: pendingTriageCount,
         telemetryAlerts: activeAlerts,
       });
 
@@ -262,12 +316,30 @@ export default function SubAdminHome({ navigation }) {
     loadDashboardData();
     fetchNotifications();
 
-    const unsubscribe = navigation.addListener('focus', () => {
+    const unsubscribeFocus = navigation.addListener('focus', () => {
       loadDashboardData();
       fetchNotifications();
     });
 
-    return unsubscribe;
+    const unsubscribeAuth = useAuthStore.subscribe((state, prevState) => {
+      if (state.session?.user?.id !== prevState?.session?.user?.id || state.profile?.name !== prevState?.profile?.name) {
+        loadDashboardData();
+      }
+    });
+
+    const channelName = `subadmin-home-complaints-${Date.now()}`;
+    const channel = supabase
+      .channel(channelName)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'Complaint' }, () => {
+        loadDashboardData();
+      })
+      .subscribe();
+
+    return () => {
+      unsubscribeFocus();
+      unsubscribeAuth();
+      supabase.removeChannel(channel);
+    };
   }, [navigation]);
 
   useEffect(() => {
@@ -313,8 +385,7 @@ export default function SubAdminHome({ navigation }) {
               const currentSession = await supabase.auth.getSession();
               const uId = currentSession?.data?.session?.user?.id;
               if (uId) {
-                await api.post('/api/auth/location', {
-                  userId: uId,
+                await pingTechnicianPresence(uId, {
                   latitude: currentLoc.coords.latitude,
                   longitude: currentLoc.coords.longitude,
                 });
@@ -465,16 +536,23 @@ export default function SubAdminHome({ navigation }) {
       return;
     }
 
-    // Fallback: If not the current job, look up the complaint in database to preview and confirm
+    // Fallback: If not the current job, look up the complaint in database via authoritative API
     try {
-      const { data: dbComplaints, error: dbErr } = await supabase
-        .from('Complaint')
-        .select('*')
-        .or(`id.eq.${cleanId},id.ilike.${normalizedScanned}%`)
-        .limit(1);
+      const compRes = await api.get('/api/admin/complaints');
+      const allC = compRes?.complaints || [];
+      const target = allC.find(c => {
+        if (!c.id) return false;
+        const cId = c.id.toLowerCase();
+        const short = cId.slice(0, 8);
+        return (
+          cId === cleanId.toLowerCase() ||
+          cId.startsWith(normalizedScanned) ||
+          normalizedScanned.includes(short) ||
+          normalizedScanned.includes(cId)
+        );
+      });
 
-      if (!dbErr && dbComplaints && dbComplaints.length > 0) {
-        const target = dbComplaints[0];
+      if (target) {
         if (target.status === 'RESOLVED') {
           Alert.alert("Already Resolved", `Complaint ticket AQ-${target.id.slice(0, 8).toUpperCase()} is already marked as resolved.`, [
             { text: "OK", onPress: () => setScanned(false) }
@@ -487,18 +565,18 @@ export default function SubAdminHome({ navigation }) {
         setConfirmingTicket({
           id: target.id,
           sourceType: 'Complaint',
-          barangay: target.barangay ? `Brgy. ${target.barangay}` : 'San Fernando Field Site',
+          barangay: target.barangay ? (target.barangay.toLowerCase().startsWith('brgy') ? target.barangay : `Brgy. ${target.barangay}`) : 'San Fernando Field Site',
           summary: target.summary || target.category || target.rawText || 'Water Quality / Infrastructure Incident',
           status: target.status || 'PENDING',
           photoUrl: target.photoUrl || target.imageUrl || null,
           urgency: target.urgency || 'MEDIUM',
-          residentName: target.residentName || target.userName || 'Resident',
+          residentName: target.userName || target.residentName || 'Resident',
           createdAt: target.createdAt || null
         });
         return;
       }
     } catch (dbEx) {
-      console.warn("Complaint lookup error:", dbEx);
+      console.warn("Complaint API lookup error:", dbEx);
     }
 
     Alert.alert(
@@ -552,10 +630,6 @@ export default function SubAdminHome({ navigation }) {
   const handleLogout = async () => {
     try {
       await useAuthStore.getState().signOut();
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Login' }],
-      });
     } catch (err) {
       Alert.alert("Logout Error", err.message);
     }
@@ -595,17 +669,15 @@ export default function SubAdminHome({ navigation }) {
       {/* Shared Technician Header */}
       <TechHeader
         navigation={navigation}
-        subtitle="TECHNICIAN PORTAL"
         pageTitle={`Hello, ${techName}`}
         pageDesc="City of San Fernando • Field Ops"
-        roleDesc="Manage field work orders, dispatch repair crews, monitor real-time IoT telemetry nodes, and triage citizen complaint reports."
         techName={techName}
         metrics={metrics}
         showSwirl={true}
         onProfilePress={handleProfilePress}
       />
 
-      <ScrollView style={[styles.scrollView, { marginTop: 12 }]} contentContainerStyle={styles.scrollContent}>
+      <ScrollView style={[styles.scrollView, { marginTop: 2 }]} contentContainerStyle={styles.scrollContent}>
         {/* Active Work Order tracking panel */}
         {hasActiveJob && jobDetails ? (
           <View className="mb-5">
@@ -657,7 +729,25 @@ export default function SubAdminHome({ navigation }) {
                   </View>
                 ) : null}
                 {/* Job Status Actions */}
-                <View style={{ borderTopWidth: 1, borderColor: '#F1F5F9', paddingTop: 16, marginTop: 16, flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ borderTopWidth: 1, borderColor: '#F1F5F9', paddingTop: 16, marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: '#0C4F8B',
+                      height: 44,
+                      borderRadius: 14,
+                      paddingHorizontal: 16,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexDirection: 'row',
+                      gap: 6
+                    }}
+                    onPress={() => setTrackingComplaint(jobDetails)}
+                    activeOpacity={0.8}
+                  >
+                    <NavIcon size={14} color="#FFFFFF" />
+                    <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Track Route</Text>
+                  </TouchableOpacity>
+
                   {jobStatus !== 'ONGOING' ? (
                     <TouchableOpacity
                       style={{
@@ -667,13 +757,14 @@ export default function SubAdminHome({ navigation }) {
                         flex: 1,
                         alignItems: 'center',
                         justifyContent: 'center',
-                        flexDirection: 'row'
+                        flexDirection: 'row',
+                        gap: 6
                       }}
                       onPress={() => handleUpdateStatus('ONGOING')}
                       activeOpacity={0.8}
                     >
-                      <AppIcon name="arrow-forward" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
-                      <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>Start Job Assignment</Text>
+                      <AppIcon name="arrow-forward" size={14} color="#FFFFFF" />
+                      <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Start Job</Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity
@@ -684,13 +775,14 @@ export default function SubAdminHome({ navigation }) {
                         flex: 1,
                         alignItems: 'center',
                         justifyContent: 'center',
-                        flexDirection: 'row'
+                        flexDirection: 'row',
+                        gap: 6
                       }}
                       onPress={handleOpenScanner}
                       activeOpacity={0.8}
                     >
-                      <AppIcon name="scan-outline" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
-                      <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>Scan QR to Resolve</Text>
+                      <AppIcon name="scan-outline" size={14} color="#FFFFFF" />
+                      <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Scan to Resolve</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -699,11 +791,31 @@ export default function SubAdminHome({ navigation }) {
           </View>
         ) : (
           <View className="bg-white border border-[#E2E8F5] rounded-3xl p-6 items-center shadow-sm mb-5">
-            <View className="w-12 h-12 rounded-2xl bg-[#F1F5F9] items-center justify-center mb-3">
-              <Wrench size={22} color="#8E8E93" />
+            <View className="w-12 h-12 rounded-2xl bg-[#E0F2FE] items-center justify-center mb-3">
+              <Wrench size={22} color="#0C4F8B" />
             </View>
             <Text className="text-[#0B1C3F] font-bold text-sm">No Active Jobs Assigned</Text>
-            <Text className="text-[#8E8E93] text-xs text-center mt-1">You are currently available for dispatch work orders.</Text>
+            <Text className="text-[#8E8E93] text-xs text-center mt-1 mb-4">
+              You are currently available for field dispatch and complaint triage.
+            </Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('SubAdminComplaints')}
+              activeOpacity={0.85}
+              style={{
+                backgroundColor: '#001e66',
+                paddingHorizontal: 20,
+                paddingVertical: 10,
+                borderRadius: 14,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6
+              }}
+            >
+              <AppIcon name="chatbubbles" size={14} color="#FFFFFF" />
+              <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                Browse Triage Queue {metrics.pendingTriage > 0 ? `(${metrics.pendingTriage})` : ''}
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -1216,6 +1328,14 @@ export default function SubAdminHome({ navigation }) {
           </View>
         </View>
       </Modal>
+
+      {/* Professional Route Tracking Modal */}
+      <TechRouteTrackingModal
+        visible={Boolean(trackingComplaint)}
+        complaint={trackingComplaint}
+        onClose={() => setTrackingComplaint(null)}
+        onOpenScanner={handleOpenScanner}
+      />
     </View>
   );
 }

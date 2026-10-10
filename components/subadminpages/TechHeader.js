@@ -1,12 +1,16 @@
 import React from 'react';
-import { View, Text, TouchableOpacity,  ScrollView, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Modal, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppIcon from '../../components/AppIcon';
 import homeStyles from './SubAdminHome.styles';
 import { useTechNotificationStore } from '../../src/store/useTechNotificationStore';
 import { supabase } from '../../src/config/supabase';
+import { api } from '../../src/config/api';
 import { useAuthStore } from '../../src/store/useAuthStore';
+import { useResponsive } from '../../src/utils/responsive';
+import { formatPHT } from '../../src/utils/dateUtils';
 
 /**
  * Shared header component for all sub-admin / technician screens.
@@ -24,6 +28,8 @@ export default function TechHeader({
   showBack = false,
   onProfilePress,
 }) {
+  const insets = useSafeAreaInsets();
+  const { isSmallDevice } = useResponsive();
   const [notificationsVisible, setNotificationsVisible] = React.useState(false);
   const [profileModalVisible, setProfileModalVisible] = React.useState(false);
   const [userProfile, setUserProfile] = React.useState(null);
@@ -31,21 +37,24 @@ export default function TechHeader({
   const { notifications, unreadCount, markAllAsRead, dismissNotification, fetchNotifications } =
     useTechNotificationStore();
 
+  const topPadding = Math.max(insets.top, Platform.OS === 'android' ? 36 : 22) + (isSmallDevice ? 3 : 7);
+
   React.useEffect(() => {
     let isMounted = true;
     fetchNotifications();
 
     const fetchUser = async () => {
       try {
+        const storedProfile = useAuthStore.getState().profile;
+        if (storedProfile && isMounted) {
+          setUserProfile(storedProfile);
+        }
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user && isMounted) {
-          const { data } = await supabase
-            .from('User')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          if (data && isMounted) {
-            setUserProfile(data);
+        const userId = session?.user?.id || storedProfile?.id || useAuthStore.getState().session?.user?.id;
+        if (userId && isMounted) {
+          const profileData = await api.post('/api/auth/profile', { userId }).catch(() => null);
+          if (profileData && isMounted) {
+            setUserProfile(profileData);
           }
         }
       } catch (err) {
@@ -95,7 +104,8 @@ export default function TechHeader({
         end={{ x: 0, y: 1 }} 
         style={[
           homeStyles.headerCard,
-          !showSwirl && { paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }
+          { paddingTop: topPadding },
+          !showSwirl && { paddingBottom: 20, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }
         ]}
       >
         {/* Background Water Ripple Decorations */}
@@ -124,10 +134,10 @@ export default function TechHeader({
                 <AppIcon name="arrow-back" size={20} color="#FFFFFF" />
               </TouchableOpacity>
             )}
-            <View style={[homeStyles.logoContainer, { gap: 0 }]}>
+            <View style={homeStyles.logoContainer}>
               <Image
                 source={require('../../assets/MOB-LOGO.png')}
-                style={{ width: 44, height: 44, resizeMode: 'contain' }}
+                style={homeStyles.logoImage}
               />
               <Text style={homeStyles.brandTitleText}>
                 <Text style={{ color: '#FFFFFF' }}>AQ</Text>
@@ -139,7 +149,7 @@ export default function TechHeader({
           </View>
 
           {/* Right: Notification Bell + Profile Pill */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={homeStyles.headerRightActions}>
             {/* Notification Bell */}
             <TouchableOpacity
               activeOpacity={0.7}
@@ -156,11 +166,11 @@ export default function TechHeader({
               onPress={onProfilePress || (() => setProfileModalVisible(true))}
               activeOpacity={0.8}
             >
-              <Text style={homeStyles.profileName} numberOfLines={1}>
+              <Text style={homeStyles.profileName} numberOfLines={1} ellipsizeMode="tail">
                 {displayTechName}
               </Text>
               <View style={homeStyles.avatarContainer}>
-                <AppIcon name="person" size={14} color="#ffffff" />
+                <AppIcon name="person" size={13} color="#ffffff" />
                 <View style={homeStyles.activeDot} />
               </View>
             </TouchableOpacity>
@@ -169,17 +179,24 @@ export default function TechHeader({
 
         {/* ── Page Title / Greeting Row & Role Details ───────────────── */}
         {(pageTitle || pageDesc || subtitle || roleDesc) && (
-          <View style={[homeStyles.greetingContainer, { marginTop: showBack ? 6 : 10 }]}>
+          <View style={[homeStyles.greetingContainer, { marginTop: showBack ? 4 : 2 }]}>
             {pageTitle && (
-              <Text style={[homeStyles.greetingText, showBack && { fontSize: 24, letterSpacing: -0.5 }]}>
+              <Text style={[homeStyles.greetingText, showBack && { fontSize: 20, letterSpacing: -0.4 }]}>
                 {pageTitle}
               </Text>
             )}
 
             {pageDesc && (
               <View style={homeStyles.locationPill}>
-                {!showBack && <AppIcon name="location-outline" size={13} color="#E0F2FE" />}
-                <Text style={[homeStyles.locationText, showBack && { marginLeft: 0 }]}>{pageDesc}</Text>
+                {!showBack && (pageDesc.includes('San Fernando') || pageDesc.includes('•') || pageDesc.includes('Brgy') || pageDesc.includes('District')) ? (
+                  <AppIcon name="location-outline" size={12} color="#E0F2FE" />
+                ) : null}
+                <Text style={[
+                  homeStyles.locationText, 
+                  (showBack || !(pageDesc.includes('San Fernando') || pageDesc.includes('•') || pageDesc.includes('Brgy') || pageDesc.includes('District'))) && { marginLeft: 0 }
+                ]}>
+                  {pageDesc}
+                </Text>
               </View>
             )}
 
@@ -237,7 +254,7 @@ export default function TechHeader({
           <Image 
             source={require('../../assets/swirl_accent.png')}
             style={homeStyles.swirlAccentImage}
-            resizeMode="stretch"
+            contentFit="fill"
           />
         </View>
       )}
@@ -298,11 +315,14 @@ export default function TechHeader({
                   </View>
                 ) : (
                   notifications.map((item) => {
+                    const isTask = item.type === 'assigned_task';
                     const isComplaint = item.type === 'new_complaint';
-                    const badgeColor = isComplaint ? '#007AFF' : '#F59E0B';
-                    const badgeBg = isComplaint ? '#EFF6FF' : '#FEF3C7';
-                    const badgeText = isComplaint ? 'NEW FIELD TICKET' : 'OPERATIONAL ADVISORY';
-                    const iconName = isComplaint ? 'warning' : 'megaphone';
+                    const isUnread = !item.read;
+                    const badgeColor = isTask ? '#6366F1' : isComplaint ? '#007AFF' : '#F59E0B';
+                    const badgeBg = isTask ? '#EEF2FF' : isComplaint ? '#EFF6FF' : '#FEF3C7';
+                    const badgeText = isTask ? 'ASSIGNED FIELD TASK' : isComplaint ? 'NEW FIELD TICKET' : 'OPERATIONAL ADVISORY';
+                    const iconName = isTask ? 'construct' : isComplaint ? 'warning' : 'megaphone';
+                    const timeString = formatPHT(item.date || item.createdAt, 'relative');
 
                     return (
                       <TouchableOpacity
@@ -312,7 +332,7 @@ export default function TechHeader({
                           borderRadius: 16,
                           padding: 14,
                           borderWidth: 1,
-                          borderColor: item.unread ? '#BFDBFE' : '#E2E8F0',
+                          borderColor: isUnread ? '#BFDBFE' : '#E2E8F0',
                           position: 'relative',
                           overflow: 'hidden',
                           shadowColor: '#0B2240',
@@ -324,25 +344,25 @@ export default function TechHeader({
                         onPress={() => handleNotificationPress(item)}
                         activeOpacity={0.7}
                       >
-                        {item.unread && (
+                        {isUnread && (
                           <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: badgeColor }} />
                         )}
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, paddingLeft: item.unread ? 4 : 0 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, paddingLeft: isUnread ? 4 : 0 }}>
                           <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: badgeBg, paddingHorizontal: 7, paddingVertical: 2.5, borderRadius: 6 }}>
                             <AppIcon name={iconName} size={10} color={badgeColor} style={{ marginRight: 4 }} />
                             <Text style={{ fontSize: 9, fontFamily: 'PlusJakartaSans_800ExtraBold', color: badgeColor, letterSpacing: 0.5 }}>
                               {badgeText}
                             </Text>
                           </View>
-                          <Text style={{ fontSize: 10, fontFamily: 'PlusJakartaSans_600SemiBold', color: '#94A3B8' }}>{item.time}</Text>
+                          <Text style={{ fontSize: 10, fontFamily: 'PlusJakartaSans_600SemiBold', color: '#94A3B8' }}>{timeString}</Text>
                         </View>
-                        <Text style={{ fontSize: 13, fontFamily: 'PlusJakartaSans_700Bold', color: '#0B2240', marginBottom: 3, paddingLeft: item.unread ? 4 : 0 }}>
+                        <Text style={{ fontSize: 13, fontFamily: 'PlusJakartaSans_700Bold', color: '#0B2240', marginBottom: 3, paddingLeft: isUnread ? 4 : 0 }}>
                           {item.title}
                         </Text>
-                        <Text style={{ fontSize: 12, fontFamily: 'PlusJakartaSans_400Regular', color: '#475569', lineHeight: 16, paddingLeft: item.unread ? 4 : 0, marginBottom: 8 }}>
-                          {item.body}
+                        <Text style={{ fontSize: 12, fontFamily: 'PlusJakartaSans_400Regular', color: '#475569', lineHeight: 16, paddingLeft: isUnread ? 4 : 0, marginBottom: 8 }}>
+                          {item.message || item.body || ''}
                         </Text>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F8FAFC', paddingTop: 6, paddingLeft: item.unread ? 4 : 0 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F8FAFC', paddingTop: 6, paddingLeft: isUnread ? 4 : 0 }}>
                           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                             <Image
                               source={require('../../assets/adaptive-icon.png')}
@@ -410,12 +430,10 @@ export default function TechHeader({
                   style={homeStyles.modalBtnDanger}
                   onPress={async () => {
                     setProfileModalVisible(false);
-                    await useAuthStore.getState().signOut();
-                    if (navigation) {
-                      navigation.reset({
-                        index: 0,
-                        routes: [{ name: 'Login' }],
-                      });
+                    try {
+                      await useAuthStore.getState().signOut();
+                    } catch (err) {
+                      console.error("Logout error:", err);
                     }
                   }}
                 >

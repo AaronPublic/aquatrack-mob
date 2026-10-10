@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../config/supabase';
 import { api } from '../config/api';
+import { startTechnicianPresence, stopTechnicianPresence } from '../utils/presenceManager';
 
 export const useAuthStore = create(
   persist(
@@ -22,6 +23,9 @@ export const useAuthStore = create(
           const profile = await api.post('/api/auth/profile', { userId });
           if (profile) {
             set({ profile, loading: false });
+            if (profile.role === 'FIELD_ENGINEER_TECHNICIAN') {
+              startTechnicianPresence(profile.id || userId);
+            }
             return profile;
           } else {
             set({ profile: null, loading: false, error: 'Could not fetch profile' });
@@ -40,7 +44,7 @@ export const useAuthStore = create(
           const currentUserId = get().session?.user?.id || get().profile?.id;
           if (currentUserId) {
             try {
-              await api.post('/api/auth/location', { userId: currentUserId, isOnline: false });
+              await stopTechnicianPresence(currentUserId);
             } catch (presenceErr) {
               console.warn("Presence teardown during signOut failed:", presenceErr);
             }

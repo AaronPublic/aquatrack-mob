@@ -4,6 +4,7 @@ import { supabase } from '../../src/config/supabase';
 import AppIcon from '../../components/AppIcon';
 import styles from './ComplaintHistory.styles';
 import TechHeader from '../subadminpages/TechHeader';
+import { formatPHT } from '../../src/utils/dateUtils';
 
 export default function ComplaintHistory({ navigation }) {
   const [resolvedComplaints, setResolvedComplaints] = useState([]);
@@ -47,12 +48,7 @@ export default function ComplaintHistory({ navigation }) {
   };
 
   const renderItem = ({ item }) => {
-    const formattedDate = new Date(item.createdAt).toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      timeZone: 'Asia/Manila'
-    });
+    const formattedDate = formatPHT(item.createdAt, 'date');
 
     return (
       <View style={styles.card}>

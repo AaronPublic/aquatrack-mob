@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, LayoutAnimation, Platform, UIManager,  Modal, ScrollView } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, LayoutAnimation, Platform, UIManager, Modal, ScrollView } from 'react-native';
 import { Image } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../../src/config/api';
 import { supabase } from '../../src/config/supabase';
 import AppIcon from '../../components/AppIcon';
@@ -9,6 +10,7 @@ import styles from './Announcements.styles';
 import homeStyles from './ConsumerHome.styles';
 import { useNotificationStore } from '../../src/store/useNotificationStore';
 import ConsumerNotificationModal from './ConsumerNotificationModal';
+import { useResponsive } from '../../src/utils/responsive';
 
 if (
   Platform.OS === 'android' && 
@@ -20,6 +22,10 @@ if (
 }
 
 export default function Announcements({ route, navigation }) {
+  const insets = useSafeAreaInsets();
+  const { isSmallDevice } = useResponsive();
+  const topPadding = Math.max(insets.top, Platform.OS === 'android' ? 34 : 20) + (isSmallDevice ? 2 : 6);
+
   const [advisories, setAdvisories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -28,7 +34,11 @@ export default function Announcements({ route, navigation }) {
   const [userName, setUserName] = useState('Pedro');
   const [metrics, setMetrics] = useState({ total: 25, pending: 9, active: 8, resolved: 8 });
   const [notificationsModalVisible, setNotificationsModalVisible] = useState(false);
-  const { notifications, unreadCount, fetchNotifications, markAllAsRead, dismissNotification } = useNotificationStore();
+  const notifications = useNotificationStore(s => s.notifications);
+  const unreadCount = useNotificationStore(s => s.unreadCount);
+  const fetchNotifications = useNotificationStore(s => s.fetchNotifications);
+  const markAllAsRead = useNotificationStore(s => s.markAllAsRead);
+  const dismissNotification = useNotificationStore(s => s.dismissNotification);
 
   const handleOpenNotifications = () => {
     setNotificationsModalVisible(true);
@@ -222,15 +232,15 @@ export default function Announcements({ route, navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: '#F2F5FA' }]}>
-      {/* ==================== TOP 30% BLUE SECTION ==================== */}
+      {/* ==================== TOP BLUE SECTION ==================== */}
       <LinearGradient 
         colors={['#0C4F8B', '#008CE3']} 
         start={{ x: 0, y: 0 }} 
         end={{ x: 0, y: 1 }} 
         style={{
-          paddingTop: Platform.OS === 'ios' ? 54 : 42,
+          paddingTop: topPadding,
           paddingHorizontal: 20,
-          paddingBottom: 28,
+          paddingBottom: 20,
           position: 'relative',
           overflow: 'hidden'
         }}

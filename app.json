@@ -7,6 +7,11 @@
     "orientation": "portrait",
     "icon": "./assets/LOGO3.png",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
     "notification": {
       "icon": "./assets/notification-icon.png",
       "color": "#00aeef"
@@ -19,6 +24,11 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
+      "splash": {
+        "image": "./assets/splash.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#FFFFFF"
+      },
       "package": "com.aquatrack.mob",
       "googleServicesFile": "./google-services.json",
       "permissions": [
@@ -29,9 +39,23 @@
     },
     "plugins": [
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#00aeef"
+        }
+      ],
+      [
         "expo-camera",
         {
-          "cameraPermission": "Allow AquaTrack to access your camera to scan QR codes on complaint tickets."
+          "cameraPermission": "Allow AquaTrack to access your camera to scan QR codes on complaint tickets and capture incident photos."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow AquaTrack to access your photos to attach complaint incident images.",
+          "cameraPermission": "Allow AquaTrack to access your camera to take photos of water complaints."
         }
       ],
       [

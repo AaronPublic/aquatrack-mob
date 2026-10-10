@@ -1,18 +1,19 @@
-import { Platform } from 'react-native';
-
 const rawUrl =
-  process.env.EXPO_PUBLIC_API_URL ||
-  Platform.select({
-    android: 'http://192.168.31.172:3000',
-    default: 'http://192.168.31.172:3000',
-  });
+  process.env.EXPO_PUBLIC_API_URL || 'https://aquatrack-web-gilt.vercel.app';
 
 export const API_BASE_URL = (rawUrl || '').replace(/\/+$/, '');
 
 export const api = {
   get: async (endpoint) => {
     try {
-      const res = await fetch(`${API_BASE_URL}${endpoint}`);
+      const sep = endpoint.includes('?') ? '&' : '?';
+      const url = `${API_BASE_URL}${endpoint}${sep}t=${Date.now()}`;
+      const res = await fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache',
+        },
+      });
       if (!res.ok) {
         throw new Error(`HTTP Error: ${res.status}`);
       }
@@ -26,7 +27,10 @@ export const api = {
     try {
       const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
         body: JSON.stringify(body),
       });
       if (!res.ok) {
@@ -42,7 +46,10 @@ export const api = {
     try {
       const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
         body: JSON.stringify(body),
       });
       if (!res.ok) {
@@ -60,7 +67,6 @@ export const api = {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
-          // Do not set Content-Type header manually for FormData so boundary is generated automatically
         },
         body: formData,
       });

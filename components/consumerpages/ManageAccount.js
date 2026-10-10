@@ -5,6 +5,7 @@ import { api } from '../../src/config/api';
 import AppIcon from '../../components/AppIcon';
 import styles from './ManageAccount.styles';
 import TechHeader from '../subadminpages/TechHeader';
+import { useAuthStore } from '../../src/store/useAuthStore';
 
 export default function ManageAccount({ navigation }) {
   const [name, setName] = useState('');
@@ -45,7 +46,7 @@ export default function ManageAccount({ navigation }) {
           }
         } else {
           Alert.alert("Session Expired", "Please log in again.");
-          navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+          await useAuthStore.getState().signOut();
         }
       } catch (err) {
         console.error("Failed to load user info:", err);

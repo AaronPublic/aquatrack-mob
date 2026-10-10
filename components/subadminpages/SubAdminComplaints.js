@@ -4,20 +4,13 @@ import { Image } from 'expo-image';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { supabase } from '../../src/config/supabase';
 import { api } from '../../src/config/api';
+import { useAuthStore } from '../../src/store/useAuthStore';
 import AppIcon from '../../components/AppIcon';
 import styles from './SubAdminComplaints.styles';
 import TechHeader from './TechHeader';
-import * as Location from 'expo-location';
-import MapboxGL from '@rnmapbox/maps';
-import { MAPBOX_ACCESS_TOKEN } from '../../src/config/mapbox';
-
-if (Platform.OS !== 'web') {
-  try {
-    MapboxGL.setAccessToken(MAPBOX_ACCESS_TOKEN);
-  } catch (err) {
-    console.warn('[Mapbox] setAccessToken failed:', err?.message);
-  }
-}
+import TechRouteTrackingModal from './TechRouteTrackingModal';
+import { Navigation as NavIcon } from 'lucide-react-native';
+import { formatPHT } from '../../src/utils/dateUtils';
 
 export default function SubAdminComplaints({ navigation }) {
   const [complaints, setComplaints] = useState([]);
@@ -39,43 +32,77 @@ export default function SubAdminComplaints({ navigation }) {
   const [confirmingTicket, setConfirmingTicket] = useState(null);
   const [isResolving, setIsResolving] = useState(false);
   
-  // Tracking & Routing States
+  // Tracking Route state
   const [selectedRouteComplaint, setSelectedRouteComplaint] = useState(null);
-  const [techLocation, setTechLocation] = useState(null);
-  const [routeCoordinates, setRouteCoordinates] = useState(null);
-  const [routeLoading, setRouteLoading] = useState(false);
-  const [routeStats, setRouteStats] = useState({ distance: '0.0 km', duration: '0 mins' });
 
   const fetchComplaintsData = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setCurrentUser(session.user);
+      const authStore = useAuthStore.getState();
+      const session = authStore.session || (await supabase.auth.getSession())?.data?.session;
+      const user = session?.user || authStore.profile;
+      if (user) {
+        setCurrentUser(user);
       }
 
-      // Fetch all complaints and tech profiles in parallel
-      const [result, { data: users, error: userError }] = await Promise.all([
-        api.get('/api/admin/complaints'),
-        supabase
+      // Fetch complaints from Next.js API
+      let complaintsList = [];
+      try {
+        const result = await api.get('/api/admin/complaints');
+        if (result && result.success && Array.isArray(result.complaints)) {
+          complaintsList = result.complaints;
+        } else if (Array.isArray(result)) {
+          complaintsList = result;
+        }
+      } catch (apiErr) {
+        console.warn("api.get /api/admin/complaints failed:", apiErr);
+      }
+
+      // If API didn't return complaints, attempt direct DB fallback
+      if (complaintsList.length === 0) {
+        try {
+          const { data: directComplaints } = await supabase
+            .from('Complaint')
+            .select('*')
+            .order('createdAt', { ascending: false });
+          if (directComplaints && directComplaints.length > 0) {
+            complaintsList = directComplaints;
+          }
+        } catch (dbErr) {
+          console.warn("Direct Supabase complaint fallback error:", dbErr);
+        }
+      }
+
+      setComplaints(complaintsList);
+
+      // Map tech names from complaints
+      const mapping = {};
+      complaintsList.forEach((c) => {
+        if (c.assignedToId && c.assignedToName) {
+          mapping[c.assignedToId] = c.assignedToName;
+        }
+      });
+
+      // Supplementary tech names from User table
+      try {
+        const { data: users } = await supabase
           .from('User')
           .select('id, name')
-          .in('role', ['FIELD_ENGINEER_TECHNICIAN', 'ADMIN'])
-      ]);
-
-      if (result && result.success) {
-        setComplaints(result.complaints);
+          .in('role', ['FIELD_ENGINEER_TECHNICIAN', 'ADMIN']);
+        if (users && Array.isArray(users)) {
+          users.forEach(u => {
+            mapping[u.id] = u.name;
+          });
+        }
+      } catch (uErr) {
+        console.warn("Tech user list lookup skipped:", uErr);
       }
 
-      if (!userError && users) {
-        const mapping = {};
-        users.forEach(u => {
-          mapping[u.id] = u.name;
-        });
-        setTechProfiles(mapping);
+      if (authStore.profile?.id && authStore.profile?.name) {
+        mapping[authStore.profile.id] = authStore.profile.name;
       }
+      setTechProfiles(mapping);
     } catch (err) {
-      console.error(err);
-      Alert.alert("Sync Error", "Could not fetch complaints from server.");
+      console.error("fetchComplaintsData error:", err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -107,12 +134,14 @@ export default function SubAdminComplaints({ navigation }) {
   };
 
   const handleAssignToMe = async (complaintId) => {
-    if (!currentUser?.id) return;
+    const authStore = useAuthStore.getState();
+    const targetUserId = currentUser?.id || authStore.session?.user?.id || authStore.profile?.id;
+    if (!targetUserId) return;
     setUpdatingId(complaintId);
     try {
       const res = await api.put('/api/admin/complaints', {
         id: complaintId,
-        assignedToId: currentUser.id,
+        assignedToId: targetUserId,
         status: 'DISPATCHED'
       });
       if (!res || !res.success) {
@@ -126,92 +155,6 @@ export default function SubAdminComplaints({ navigation }) {
       setUpdatingId(null);
     }
   };
-
-  const fetchDirections = async (techCoords, complaint) => {
-    try {
-      const start = [techCoords.longitude, techCoords.latitude];
-      const end = [complaint.longitude || 120.6955, complaint.latitude || 15.0298];
-      
-      const res = await fetch(
-        `https://api.mapbox.com/directions/v5/mapbox/driving/${start[0]},${start[1]};${end[0]},${end[1]}?geometries=geojson&access_token=${MAPBOX_ACCESS_TOKEN}`
-      );
-      const data = await res.json();
-      if (data.routes && data.routes.length > 0) {
-        const route = data.routes[0];
-        setRouteCoordinates(route.geometry.coordinates);
-        
-        const distanceKm = (route.distance / 1000).toFixed(1);
-        const durationMin = Math.round(route.duration / 60);
-        setRouteStats({
-          distance: `${distanceKm} km`,
-          duration: `${durationMin} mins`
-        });
-      }
-    } catch (err) {
-      console.warn("Failed to fetch Mapbox directions:", err.message);
-    }
-  };
-
-  // Route tracking position watcher
-  useEffect(() => {
-    let timerId = null;
-    let isMounted = true;
-
-    if (selectedRouteComplaint) {
-      const updateLocation = async (showLoader = false) => {
-        try {
-          if (showLoader && isMounted) setRouteLoading(true);
-          const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-          if (isMounted) {
-            let coords = current.coords;
-            const endLng = selectedRouteComplaint.longitude || 120.6955;
-            const endLat = selectedRouteComplaint.latitude || 15.0298;
-
-            // Check if coordinates are in different regions (more than ~5 degrees difference)
-            // e.g. emulator is in California, USA, while complaint is in Pampanga, Philippines
-            if (Math.abs(coords.latitude - endLat) > 5 || Math.abs(coords.longitude - endLng) > 5) {
-              coords = {
-                ...coords,
-                longitude: endLng - 0.012, // Offset roughly 1.5 km west
-                latitude: endLat - 0.006 // Offset roughly 1 km south
-              };
-            }
-
-            setTechLocation(coords);
-            await fetchDirections(coords, selectedRouteComplaint);
-          }
-        } catch (err) {
-          console.warn("Location tracking fetch failed:", err.message);
-        } finally {
-          if (showLoader && isMounted) setRouteLoading(false);
-        }
-      };
-
-      (async () => {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert("Permission Denied", "GPS location access is required to track the route.");
-          return;
-        }
-
-        // Get initial location immediately
-        await updateLocation(true);
-
-        // Poll every 15 seconds
-        timerId = setInterval(() => {
-          updateLocation(false);
-        }, 15000);
-      })();
-    } else {
-      setTechLocation(null);
-      setRouteCoordinates(null);
-    }
-
-    return () => {
-      isMounted = false;
-      if (timerId) clearInterval(timerId);
-    };
-  }, [selectedRouteComplaint]);
 
   const handleOpenScanner = async () => {
     setScanned(false);
@@ -364,6 +307,10 @@ export default function SubAdminComplaints({ navigation }) {
   useEffect(() => {
     fetchComplaintsData();
 
+    const unsubscribeFocus = navigation?.addListener?.('focus', () => {
+      fetchComplaintsData();
+    });
+
     // Subscribe to realtime updates with unique channel ID
     const channelName = `subadmin-complaints-${Date.now()}`;
     const channel = supabase
@@ -374,9 +321,10 @@ export default function SubAdminComplaints({ navigation }) {
       .subscribe();
 
     return () => {
+      unsubscribeFocus?.();
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [navigation]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -399,21 +347,22 @@ export default function SubAdminComplaints({ navigation }) {
         updatePayload.assignedToId = currentUser.id;
       }
 
-      // Update via Supabase
-      const { error } = await supabase
-        .from('Complaint')
-        .update(updatePayload)
-        .eq('id', ticket.id);
+      // Update via API (Server has service permissions bypassing client RLS)
+      const res = await api.put('/api/admin/complaints', {
+        id: ticket.id,
+        ...updatePayload,
+      }).catch(async (apiErr) => {
+        console.warn("API update failed, trying direct Supabase:", apiErr);
+        const { error } = await supabase
+          .from('Complaint')
+          .update(updatePayload)
+          .eq('id', ticket.id);
+        if (error) throw error;
+        return { success: true };
+      });
 
-      if (error) {
-        // Fallback via API
-        const res = await api.put('/api/admin/complaints', {
-          id: ticket.id,
-          ...updatePayload,
-        });
-        if (!res || !res.success) {
-          throw new Error(res?.error || "Failed to update status");
-        }
+      if (!res || !res.success) {
+        throw new Error(res?.error || "Failed to update status");
       }
 
       fetchComplaintsData();
@@ -438,7 +387,7 @@ export default function SubAdminComplaints({ navigation }) {
     }
   };
 
-  const renderTicketItem = ({ item }) => {
+  const renderTicketItem = useCallback(({ item }) => {
     if (item.__sectionHeader) {
       return (
         <View style={styles.sectionHeaderRow}>
@@ -484,7 +433,7 @@ export default function SubAdminComplaints({ navigation }) {
           <Text style={styles.cardSummary}>{item.summary || "Resident Complaint"}</Text>
           <Text style={styles.cardDesc}>{item.rawText}</Text>
           <Text style={styles.metaText}>
-            ID: AQ-{item.id ? item.id.slice(0, 4).toUpperCase() : 'N/A'} | Date: {new Date(item.createdAt).toLocaleDateString(undefined, { timeZone: 'Asia/Manila' })}
+            ID: AQ-{item.id ? item.id.slice(0, 4).toUpperCase() : 'N/A'} | Date: {formatPHT(item.createdAt, 'dateTime')}
           </Text>
         </View>
 
@@ -555,7 +504,7 @@ export default function SubAdminComplaints({ navigation }) {
             ) : (
               <TouchableOpacity
                 style={{
-                  backgroundColor: '#00aeef',
+                  backgroundColor: '#0C4F8B',
                   height: 38,
                   borderRadius: 12,
                   alignItems: 'center',
@@ -564,17 +513,16 @@ export default function SubAdminComplaints({ navigation }) {
                   gap: 6
                 }}
                 onPress={() => {
-                  // Re-trigger en-route alerts
                   api.put('/api/admin/complaints', {
                     id: item.id,
                     status: 'ONGOING',
                     isEnRoute: true
-                  }).catch(err => console.warn("Failed to re-trigger enroute status:", err));
+                  }).catch(err => console.warn("Failed to update enroute status:", err));
                   setSelectedRouteComplaint(item);
                 }}
                 activeOpacity={0.8}
               >
-                <AppIcon name="scan-outline" size={14} color="#FFFFFF" />
+                <NavIcon size={14} color="#FFFFFF" />
                 <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Track Route</Text>
               </TouchableOpacity>
             )}
@@ -598,7 +546,7 @@ export default function SubAdminComplaints({ navigation }) {
         )}
       </View>
     );
-  };
+  }, [currentUser, techProfiles, updatingId]);
 
   // Memoize filtered and grouped listData to eliminate re-allocation overhead during scrolling
   const listData = useMemo(() => {
@@ -633,18 +581,30 @@ export default function SubAdminComplaints({ navigation }) {
         return dateB - dateA;
       });
 
-    const currentUserId = currentUser ? currentUser.id : null;
+    const authStore = useAuthStore.getState();
+    const currentUserId = (currentUser?.id || authStore.session?.user?.id || authStore.profile?.id || '').toLowerCase();
+    const techName = (authStore.profile?.name || currentUser?.name || '').trim().toLowerCase();
+
+    const isAssignedToMe = (c) => {
+      if (!c) return false;
+      const cId = c.assignedToId ? String(c.assignedToId).toLowerCase() : '';
+      const cName = c.assignedToName ? String(c.assignedToName).trim().toLowerCase() : '';
+      return Boolean((currentUserId && cId === currentUserId) || (techName && techName !== 'technician' && cName === techName));
+    };
+
     const activeTickets = filtered.filter((c) => c.status !== 'RESOLVED');
     const resolvedTickets = filtered.filter((c) => c.status === 'RESOLVED');
 
-    const myActive = activeTickets.filter((c) => c.assignedToId === currentUserId);
-    const otherActive = activeTickets.filter((c) => c.assignedToId !== currentUserId);
-    const myResolved = resolvedTickets.filter((c) => c.assignedToId === currentUserId);
+    const myActive = activeTickets.filter((c) => isAssignedToMe(c));
+    const otherActive = activeTickets.filter((c) => !isAssignedToMe(c));
+    const myResolved = resolvedTickets.filter((c) => isAssignedToMe(c));
+    const otherResolved = resolvedTickets.filter((c) => !isAssignedToMe(c));
 
     const sections = [];
     if (myActive.length > 0) sections.push({ label: 'My Active Tickets', items: myActive });
     if (otherActive.length > 0) sections.push({ label: 'Other Active / Unassigned', items: otherActive });
-    if (myResolved.length > 0) sections.push({ label: 'Complaint Audit', items: myResolved });
+    if (myResolved.length > 0) sections.push({ label: 'My Resolved Tickets', items: myResolved });
+    if (otherResolved.length > 0) sections.push({ label: 'Resolved Archive', items: otherResolved });
 
     const result = [];
     sections.forEach((section) => {
@@ -654,12 +614,21 @@ export default function SubAdminComplaints({ navigation }) {
     return result;
   }, [complaints, search, sortBy, currentUser]);
 
+  const metrics = useMemo(() => {
+    const totalLogs = complaints.length;
+    const assigned = complaints.filter(c => c.assignedToId && c.status !== 'RESOLVED').length;
+    const pendingTriage = complaints.filter(c => !c.assignedToId && c.status !== 'RESOLVED').length;
+    const resolved = complaints.filter(c => c.status === 'RESOLVED').length;
+    return { totalLogs, assigned, pendingTriage, resolved };
+  }, [complaints]);
+
   return (
     <View style={[styles.container, { backgroundColor: '#F2F5FA' }]}>
       <TechHeader
         navigation={navigation}
         pageTitle="Complaints Triage"
         pageDesc="Review municipal alerts and dispatch status"
+        metrics={metrics}
         showSwirl={true}
       />
 
@@ -669,7 +638,7 @@ export default function SubAdminComplaints({ navigation }) {
         </View>
       ) : (
         <FlatList
-          style={{ flex: 1, marginTop: 12 }}
+          style={{ flex: 1, marginTop: 4 }}
           data={listData}
           keyExtractor={(item, index) => (item.__sectionHeader ? `section-${item.__sectionHeader}-${index}` : (item.id ? `${item.id}-${index}` : `item-${index}`))}
           renderItem={renderTicketItem}
@@ -1099,123 +1068,13 @@ export default function SubAdminComplaints({ navigation }) {
         </View>
       </Modal>
 
-      {/* Route Tracking Map Overlay */}
-      {selectedRouteComplaint && (
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#090d16', zIndex: 3000 }}>
-          {/* Header */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, paddingTop: 75, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}>
-            <View>
-              <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>Technician Route</Text>
-              <Text style={{ color: '#94a3b8', fontSize: 11, marginTop: 2, fontWeight: '600' }}>
-                Incident: AQ-{selectedRouteComplaint.id.slice(0, 8).toUpperCase()}
-              </Text>
-            </View>
-            <TouchableOpacity 
-              onPress={() => setSelectedRouteComplaint(null)}
-              style={{ width: 36, height: 36, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 18, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <AppIcon name="close" size={16} color="#fff" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Stats Bar */}
-          <View style={{ flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.03)', paddingVertical: 14, paddingHorizontal: 24, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.05)', justifyContent: 'space-around' }}>
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ color: '#94a3b8', fontSize: 9, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>Est. Distance</Text>
-              <Text style={{ color: '#00aeef', fontSize: 15, fontWeight: 'bold', marginTop: 4 }}>{routeStats.distance}</Text>
-            </View>
-            <View style={{ width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.1)' }} />
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ color: '#94a3b8', fontSize: 9, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>Est. Duration</Text>
-              <Text style={{ color: '#00aeef', fontSize: 15, fontWeight: 'bold', marginTop: 4 }}>{routeStats.duration}</Text>
-            </View>
-          </View>
-
-          {/* Route Map Content */}
-          <View style={{ flex: 1 }}>
-            {routeLoading ? (
-              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color="#00aeef" />
-                <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 10, fontWeight: '600' }}>Locating and building route...</Text>
-              </View>
-            ) : techLocation ? (
-              Platform.OS === 'web' ? (
-                /* Web fallback using OpenStreetMap embed / standard view */
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-                  <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold', textAlign: 'center', marginBottom: 12 }}>
-                    Web Routing Simulation Mode
-                  </Text>
-                  <Text style={{ color: '#94a3b8', fontSize: 12, textAlign: 'center', maxWidth: 280, lineHeight: 18 }}>
-                    Route from your location ({techLocation.latitude.toFixed(4)}, {techLocation.longitude.toFixed(4)}) to ticket location ({selectedRouteComplaint.latitude?.toFixed(4)}, {selectedRouteComplaint.longitude?.toFixed(4)}) is established.
-                  </Text>
-                </View>
-              ) : (
-                /* Native Mapbox Map */
-                <MapboxGL.MapView 
-                  style={{ flex: 1 }} 
-                  styleURL={MapboxGL.StyleURL.Street} 
-                  logoEnabled={false} 
-                  attributionEnabled={false}
-                >
-                  <MapboxGL.Camera
-                    zoomLevel={14}
-                    centerCoordinate={[techLocation.longitude, techLocation.latitude]}
-                    animationMode="flyTo"
-                    animationDuration={1000}
-                  />
-
-                  {/* Pulsing blue technician position indicator */}
-                  <MapboxGL.PointAnnotation id="techMarker" coordinate={[techLocation.longitude, techLocation.latitude]}>
-                    <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(0,174,239,0.3)', alignItems: 'center', justifyContent: 'center' }}>
-                      <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#00aeef', borderWidth: 1.5, borderColor: '#fff' }} />
-                    </View>
-                  </MapboxGL.PointAnnotation>
-
-                  {/* Complaint destination red locator marker */}
-                  <MapboxGL.PointAnnotation id="destMarker" coordinate={[selectedRouteComplaint.longitude || 120.6955, selectedRouteComplaint.latitude || 15.0298]}>
-                    <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(239,68,68,0.25)', alignItems: 'center', justifyContent: 'center' }}>
-                      <AppIcon name="location" size={16} color="#ef4444" />
-                    </View>
-                  </MapboxGL.PointAnnotation>
-
-                  {/* Cyan route line shape */}
-                  {routeCoordinates && (
-                    <MapboxGL.ShapeSource
-                      id="routeLineSource"
-                      shape={{
-                        type: "Feature",
-                        geometry: {
-                          type: "LineString",
-                          coordinates: routeCoordinates
-                        }}
-                      }
-                    >
-                      <MapboxGL.LineLayer
-                        id="routeLineLayer"
-                        style={{
-                          lineColor: "#00aeef",
-                          lineWidth: 4.5,
-                          lineCap: "round",
-                          lineJoin: "round",
-                          lineOpacity: 0.85
-                        }}
-                      />
-                    </MapboxGL.ShapeSource>
-                  )}
-                </MapboxGL.MapView>
-              )
-            ) : (
-              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-                <AppIcon name="alert-circle" size={32} color="#ef4444" style={{ marginBottom: 12 }} />
-                <Text style={{ color: '#fff', fontSize: 13, fontWeight: 'bold' }}>Waiting for GPS signal...</Text>
-                <Text style={{ color: '#94a3b8', fontSize: 11, marginTop: 4, textAlign: 'center', maxWidth: 220 }}>
-                  Make sure your location permissions are allowed.
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-      )}
+      {/* Professional Route Tracking Modal */}
+      <TechRouteTrackingModal
+        visible={Boolean(selectedRouteComplaint)}
+        complaint={selectedRouteComplaint}
+        onClose={() => setSelectedRouteComplaint(null)}
+        onOpenScanner={handleOpenScanner}
+      />
     </View>
   );
 }

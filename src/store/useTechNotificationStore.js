@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../config/supabase';
 import { api } from '../config/api';
+import { useAuthStore } from './useAuthStore';
 
 export const useTechNotificationStore = create((set, get) => ({
   notifications: [],
@@ -11,16 +12,18 @@ export const useTechNotificationStore = create((set, get) => ({
   fetchNotifications: async () => {
     set({ loading: true });
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const authStore = useAuthStore.getState();
+      const session = authStore.session || (await supabase.auth.getSession())?.data?.session;
+      const currentUserId = session?.user?.id || authStore.profile?.id;
+      if (!currentUserId) {
         set({ notifications: [], unreadCount: 0, loading: false });
         return;
       }
 
       const list = [];
 
-      // ─── 1, 2 & 3. Fetch Advisories, Assigned Tasks, and Unassigned Complaints concurrently ───
-      const [advisoriesData, { data: assignedComplaints }, { data: newComplaints }] = await Promise.all([
+      // ─── 1, 2 & 3. Fetch Advisories and Complaints concurrently ───
+      const [advisoriesData, complaintsData] = await Promise.all([
         api.get('/api/advisories').catch(async (err) => {
           console.warn('Falling back to Supabase for tech advisories:', err);
           const { data } = await supabase
@@ -29,20 +32,10 @@ export const useTechNotificationStore = create((set, get) => ({
             .order('createdAt', { ascending: false });
           return { success: true, advisories: data || [] };
         }),
-        supabase
-          .from('Complaint')
-          .select('id, status, createdAt, summary, category, rawText, barangay, urgency')
-          .eq('assignedToId', session.user.id)
-          .neq('status', 'RESOLVED')
-          .order('createdAt', { ascending: false })
-          .limit(20),
-        supabase
-          .from('Complaint')
-          .select('id, status, createdAt, summary, category, rawText, barangay, urgency')
-          .is('assignedToId', null)
-          .neq('status', 'RESOLVED')
-          .order('createdAt', { ascending: false })
-          .limit(20)
+        api.get('/api/admin/complaints').catch((err) => {
+          console.warn('Falling back for complaints in tech notifications:', err);
+          return null;
+        }),
       ]);
 
       if (advisoriesData?.success && advisoriesData.advisories) {
@@ -58,14 +51,30 @@ export const useTechNotificationStore = create((set, get) => ({
             type: 'advisory',
             title: ad.title || 'Staff Advisory',
             message: ad.content || ad.text || '',
-            date: new Date(ad.createdAt || ad.date || Date.now()),
+            date: ad.createdAt || ad.date || new Date().toISOString(),
             category: ad.type || 'info',
           });
         });
       }
 
-      if (assignedComplaints) {
-        assignedComplaints.forEach((comp) => {
+      const allComplaints = (complaintsData && complaintsData.success && Array.isArray(complaintsData.complaints))
+        ? complaintsData.complaints
+        : (Array.isArray(complaintsData) ? complaintsData : []);
+
+      const techProfileName = (authStore.profile?.name || '').trim().toLowerCase();
+      const targetUid = String(currentUserId).toLowerCase();
+
+      const assignedComplaints = allComplaints.filter((comp) => {
+        if (!comp || comp.status === 'RESOLVED' || comp.status === 'ARCHIVED') return false;
+        const cAssignedId = comp.assignedToId ? String(comp.assignedToId).toLowerCase() : null;
+        const cAssignedName = comp.assignedToName ? String(comp.assignedToName).trim().toLowerCase() : null;
+        return (cAssignedId === targetUid) || (techProfileName && cAssignedName === techProfileName);
+      });
+
+      const newComplaints = allComplaints.filter((comp) => !comp.assignedToId && comp.status !== 'RESOLVED' && comp.status !== 'ARCHIVED');
+
+      if (assignedComplaints.length > 0) {
+        assignedComplaints.slice(0, 20).forEach((comp) => {
           const shortId = `AQ-${comp.id.slice(0, 8).toUpperCase()}`;
           const urgencyLabel =
             comp.urgency === 'CRITICAL'
@@ -81,15 +90,15 @@ export const useTechNotificationStore = create((set, get) => ({
             type: 'assigned_task',
             title: `📋 Task Assigned (${shortId})`,
             message: `${urgencyLabel} · ${comp.summary || comp.rawText || 'Water Utility Issue'} ${comp.barangay ? `— Brgy. ${comp.barangay}` : ''}`,
-            date: new Date(comp.createdAt || Date.now()),
+            date: comp.createdAt || new Date().toISOString(),
             urgency: comp.urgency,
             complaintId: comp.id,
           });
         });
       }
 
-      if (newComplaints) {
-        newComplaints.forEach((comp) => {
+      if (newComplaints.length > 0) {
+        newComplaints.slice(0, 20).forEach((comp) => {
           const urgencyLabel =
             comp.urgency === 'CRITICAL'
               ? '🔴 Critical'
@@ -104,7 +113,7 @@ export const useTechNotificationStore = create((set, get) => ({
             type: 'new_complaint',
             title: `New Unassigned Complaint`,
             message: `${urgencyLabel} · ${comp.summary || comp.rawText || 'Water Utility Issue'} ${comp.barangay ? `— Brgy. ${comp.barangay}` : ''}`,
-            date: new Date(comp.createdAt || Date.now()),
+            date: comp.createdAt || new Date().toISOString(),
             urgency: comp.urgency,
             complaintId: comp.id,
           });
@@ -112,7 +121,7 @@ export const useTechNotificationStore = create((set, get) => ({
       }
 
       // ─── 4. Sort & Apply Dismiss / Read Persistence ───────────────────────
-      list.sort((a, b) => b.date - a.date);
+      list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       const [readIdsStr, dismissedIdsStr] = await Promise.all([
         AsyncStorage.getItem('tech_read_notifications'),

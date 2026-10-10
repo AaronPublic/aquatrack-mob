@@ -7,6 +7,7 @@ import { MapPin, Clock, Play, CheckCircle2, ChevronRight, Wrench } from 'lucide-
 import AppIcon from '../../components/AppIcon';
 import { LinearGradient } from 'expo-linear-gradient';
 import styles from './SubAdminHomePage.styles';
+import { useAuthStore } from '../../src/store/useAuthStore';
 
 export default function SubAdminHomePage({ navigation }) {
   const [techName, setTechName] = useState('Technician');
@@ -131,11 +132,7 @@ export default function SubAdminHomePage({ navigation }) {
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Login' }],
-      });
+      await useAuthStore.getState().signOut();
     } catch (err) {
       Alert.alert("Logout Error", err.message);
     }

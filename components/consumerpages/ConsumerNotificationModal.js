@@ -3,6 +3,7 @@ import { View, Text, Modal, TouchableOpacity, ScrollView,  StyleSheet } from 're
 import { Image } from 'expo-image';
 import AppIcon from '../AppIcon';
 import { theme } from '../../src/config/theme';
+import { formatPHT } from '../../src/utils/dateUtils';
 
 export default function ConsumerNotificationModal({
   visible,
@@ -135,15 +136,7 @@ export default function ConsumerNotificationModal({
                   }
                 }
 
-                const timeString = item.date
-                  ? new Date(item.date).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      timeZone: 'Asia/Manila',
-                    })
-                  : 'Recent';
+                const timeString = formatPHT(item.date || item.createdAt, 'full');
 
                 return (
                   <TouchableOpacity
