@@ -22,11 +22,26 @@ if (!isExpoGo) {
     const Notifications = getNotificationsModule();
     if (Notifications?.setNotificationHandler) {
       Notifications.setNotificationHandler({
-        handleNotification: async () => ({
-          shouldShowAlert: true,
-          shouldPlaySound: true,
-          shouldSetBadge: false,
-        }),
+        handleNotification: async () => {
+          try {
+            const { useAuthStore } = require('../store/useAuthStore');
+            const session = useAuthStore.getState().session;
+            if (!session) {
+              return {
+                shouldShowAlert: false,
+                shouldPlaySound: false,
+                shouldSetBadge: false,
+              };
+            }
+          } catch (e) {
+            // Ignore store check error
+          }
+          return {
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: false,
+          };
+        },
       });
     }
   } catch (err) {

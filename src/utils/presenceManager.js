@@ -129,5 +129,18 @@ export async function stopTechnicianPresence(userId) {
         console.error('Direct Supabase teardown fallback error:', dbErr.message || dbErr);
       }
     }
+
+    try {
+      await api.post('/api/auth/push-token', { userId: targetId, pushToken: null });
+    } catch (pushErr) {
+      try {
+        await supabase
+          .from('User')
+          .update({ pushToken: null })
+          .eq('id', targetId);
+      } catch (dbErr) {
+        // Ignore fallback error
+      }
+    }
   }
 }

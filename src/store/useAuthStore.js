@@ -48,6 +48,16 @@ export const useAuthStore = create(
             } catch (presenceErr) {
               console.warn("Presence teardown during signOut failed:", presenceErr);
             }
+            try {
+              await api.post('/api/auth/push-token', { userId: currentUserId, pushToken: null });
+            } catch (pushErr) {
+              console.warn("Push token teardown failed via API, trying direct Supabase:", pushErr);
+              try {
+                await supabase.from('User').update({ pushToken: null }).eq('id', currentUserId);
+              } catch (dbErr) {
+                console.error("Direct Supabase push token teardown failed:", dbErr);
+              }
+            }
           }
           await supabase.auth.signOut();
           set({ session: null, profile: null, loading: false });
