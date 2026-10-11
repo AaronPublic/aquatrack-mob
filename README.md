@@ -27,7 +27,7 @@ A production-ready mobile application built for water anomaly reporting and fiel
 - **Database & Auth**: `@supabase/supabase-js` with AsyncStorage session adapter
 - **Realtime**: Supabase Realtime WebSocket subscriptions for live ticket state sync
 - **API Layer**: Fetch client with platform-specific routing to Next.js API endpoints
-- **AI Diagnostics**: Gemini AI integration for complaint classification and urgency scoring
+- **AI Diagnostics**: Google Gemini 3.8 Flash integration via web backend for multi-lingual complaint triage, Kapampangan audio transcription, and urgency scoring
 - **Push Notifications**: `expo-notifications` — FCM token registration and foreground/background alert handling
 
 ---
@@ -256,7 +256,7 @@ Once the custom build is installed on your emulator or phone:
 
 ### 3. AI-Assisted Diagnostics
 - Go to **File a Complaint**, type in Tagalog/English/Kapampangan, tap **Submit**
-- **Expected**: `Running AI diagnostics...` appears, followed by a Gemini diagnosis card with category, translation, and urgency level
+- **Expected**: `Running AI diagnostics...` appears, followed by a Gemini 3.8 Flash diagnosis card with category, translation, and urgency level
 
 ### 4. Photo Upload (Supabase Storage)
 - On the complaint form, tap **Attach Incident Photo** and select an image
