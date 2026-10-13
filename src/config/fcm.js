@@ -121,6 +121,10 @@ export function registerNotificationListeners() {
       const data = response.notification.request.content.data;
       if (data?.type === 'advisory') {
         navigate('Announcements');
+      } else if (data?.type === 'assigned_task') {
+        navigate('SubAdminComplaints');
+      } else if (data?.type === 'ticket_update') {
+        navigate('TrackComplaints');
       }
     });
 
