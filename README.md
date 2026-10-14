@@ -28,7 +28,7 @@ A production-ready mobile application built for water anomaly reporting and fiel
 - **Realtime**: Supabase Realtime WebSocket subscriptions for live ticket state sync
 - **API Layer**: Fetch client with platform-specific routing to Next.js API endpoints
 - **AI Diagnostics**: Google Gemini 3.8 Flash integration via web backend for multi-lingual complaint triage, Kapampangan audio transcription, and urgency scoring
-- **Push Notifications**: `expo-notifications` — FCM token registration and foreground/background alert handling
+- **Push Notifications**: `expo-notifications` — FCM token registration and foreground/background alert handling with automated deep-link routing (`assigned_task` → `SubAdminComplaints`, `ticket_update` → `TrackComplaints`, `advisory` → `Announcements`)
 
 ---
 
@@ -375,3 +375,14 @@ Secondary screens also received the `{ navigation }` prop to enable notification
 ### Technician Presence Lifecycle & Ticket Claiming (`useAuthStore.js` & `SubAdminComplaints.js`)
 - **Explicit Sign-Out Presence Teardown**: Updated `signOut()` in `useAuthStore.js` to dispatch an explicit offline heartbeat (`isOnline: false`) to `/api/auth/location`, immediately removing logged-out technicians from the automated dispatch pool.
 - **Ticket Claiming Workflow**: Standardized `handleAssignToMe` in `SubAdminComplaints.js` to set status `DISPATCHED` and assign tickets to the active technician via `/api/admin/complaints`.
+
+---
+
+## Session Changelog (October 2026)
+
+### Firebase Cloud Messaging (FCM) Deep-Link Navigation Architecture (`src/config/fcm.js`)
+- **Automated Task Assignment Routing (`assigned_task`)**: Configured the native response listener (`Notifications.addNotificationResponseReceivedListener`) to parse remote notification data payloads. Tapping a push alert for a newly dispatched field maintenance assignment (e.g., from an offline IoT node outage or emergency work order) automatically launches the app and deep-links directly to `SubAdminComplaints`.
+- **Citizen Ticket Status Advancement (`ticket_update`)**: Added deep-link routing for consumers/residents so tapping resolution alerts, technician en-route notices, or status changes navigates straight to `TrackComplaints` focused on their ticket.
+- **District Advisory Routing (`advisory`)**: Automatically directs tapped municipal bulletins to the `Announcements` screen.
+- **Dedicated Android Notification Channel**: Configured `setNotificationChannelAsync('aquatrack-alerts')` with `AndroidImportance.MAX`, custom 250ms vibration pattern, dynamic lights (`#00aeef`), and badge counters.
+- **Expo Go Graceful Degradation**: Guarded native push handlers with `Constants.appOwnership === 'expo'` checks to prevent SDK 53+ crashes during Expo Go development while maintaining full native functionality in production development builds.

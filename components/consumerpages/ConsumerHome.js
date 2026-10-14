@@ -15,6 +15,7 @@ import { useNotificationStore } from '../../src/store/useNotificationStore';
 import ConsumerNotificationModal from './ConsumerNotificationModal';
 import { useResponsive } from '../../src/utils/responsive';
 import { formatPHT } from '../../src/utils/dateUtils';
+import { formatCategory } from '../../src/utils/categoryUtils';
 
 const statusConfigs = {
   PENDING: { label: "Pending Review", text: "#b45309", bg: "#fef3c7", dot: "#f59e0b" },
@@ -25,6 +26,12 @@ const statusConfigs = {
 };
 
 const categoryIconConfigs = {
+  PIPELINE_BREACH_PRESSURE_DROP: { name: 'water', color: '#ef4444', bg: '#fee2e2' },
+  HIGH_TURBIDITY: { name: 'flask', color: '#eab308', bg: '#fef9c3' },
+  HIGH_MINERAL_CONTENT_TDS: { name: 'speedometer', color: '#f97316', bg: '#ffedd5' },
+  CHEMICAL_DISCOLORATION_CONTAMINATION: { name: 'flask', color: '#a855f7', bg: '#f3e8ff' },
+  UNCLASSIFIED_INFRASTRUCTURE_ANOMALY: { name: 'build', color: '#3b82f6', bg: '#eff6ff' },
+  IOT_NODE_OFFLINE: { name: 'construct', color: '#e11d48', bg: '#ffe4e6' },
   WATER_QUALITY: { name: 'flask', color: '#0284c7', bg: '#e0f2fe' },
   LEAKAGE: { name: 'water', color: '#0ea5e9', bg: '#e0f2fe' },
   PIPE_BURST: { name: 'build', color: '#ef4444', bg: '#fee2e2' },
@@ -40,14 +47,6 @@ const statusIconConfigs = {
   DISPATCHED: { name: 'paper-plane-outline' },
   ONGOING: { name: 'build-outline' },
   RESOLVED: { name: 'checkmark-circle-outline' },
-};
-
-const formatCategory = (cat) => {
-  if (!cat) return 'Unclassified';
-  return cat
-    .toLowerCase()
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, c => c.toUpperCase());
 };
 
 const calculateWQI = (reading) => {
@@ -920,7 +919,7 @@ return (
               activeOpacity={0.9}
             >
               <Text style={styles.trackerTitle} numberOfLines={1}>
-                {recentComplaints[0].summary || recentComplaints[0].category?.replace(/_/g, ' ') || 'Utility Issue'}
+                {recentComplaints[0].summary || formatCategory(recentComplaints[0].category) || 'Utility Issue'}
               </Text>
               <View style={{ marginTop: 12 }}>
                 {renderStepper(recentComplaints[0].status)}
@@ -1124,7 +1123,7 @@ return (
                   </Text>
                   
                   <Text className="text-[#0B2240] font-black text-sm leading-snug">
-                    {item.summary || item.category?.replace(/_/g, ' ') || 'Water Utility Report'}
+                    {item.summary || formatCategory(item.category) || 'Water Utility Report'}
                   </Text>
                   <Text className="text-[#627D98] font-semibold text-xs mt-1.5 leading-relaxed italic" numberOfLines={2} ellipsizeMode="tail">
                     {item.rawText}

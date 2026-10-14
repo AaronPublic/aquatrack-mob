@@ -5,6 +5,7 @@ import AppIcon from '../../components/AppIcon';
 import styles from './ComplaintHistory.styles';
 import TechHeader from '../subadminpages/TechHeader';
 import { formatPHT } from '../../src/utils/dateUtils';
+import { formatCategory } from '../../src/utils/categoryUtils';
 
 export default function ComplaintHistory({ navigation }) {
   const [resolvedComplaints, setResolvedComplaints] = useState([]);
@@ -62,7 +63,7 @@ export default function ComplaintHistory({ navigation }) {
 
         <View style={styles.cardBody}>
           <Text style={styles.cardTitle}>
-            {item.summary || item.category?.replace(/_/g, ' ') || 'Water Issue'}
+            {item.summary || formatCategory(item.category) || 'Water Issue'}
           </Text>
           <Text style={styles.cardDesc}>{item.rawText}</Text>
         </View>

@@ -13,6 +13,7 @@ import { useNotificationStore } from '../../src/store/useNotificationStore';
 import ConsumerNotificationModal from './ConsumerNotificationModal';
 import { useResponsive } from '../../src/utils/responsive';
 import { formatPHT } from '../../src/utils/dateUtils';
+import { formatCategory } from '../../src/utils/categoryUtils';
 
 if (
   Platform.OS === 'android' && 
@@ -301,7 +302,7 @@ export default function TrackComplaints({ navigation }) {
         </View>
 
         <Text style={styles.ticketSummary}>
-          {item.summary || item.category?.replace(/_/g, ' ') || "Resident Reported Complaint"}
+          {item.summary || formatCategory(item.category) || "Resident Reported Complaint"}
         </Text>
         
         <Text 
@@ -352,18 +353,25 @@ export default function TrackComplaints({ navigation }) {
               </View>
             </View>
 
+            <View style={styles.metaRow}>
+              <View style={styles.metaItem}>
+                <Text style={styles.metaLabel}>Category</Text>
+                <Text style={styles.metaValue}>{formatCategory(item.category)}</Text>
+              </View>
+              {item.urgency ? (
+                <View style={styles.metaItem}>
+                  <Text style={styles.metaLabel}>Urgency</Text>
+                  <Text style={[styles.metaValue, { fontWeight: 'bold' }]}>{item.urgency}</Text>
+                </View>
+              ) : null}
+            </View>
+
             {item.latitude && item.longitude && (
               <View style={styles.metaRow}>
                 <View style={styles.metaItem}>
                   <Text style={styles.metaLabel}>Coordinates</Text>
                   <Text style={styles.metaValue}>{item.latitude.toFixed(5)}, {item.longitude.toFixed(5)}</Text>
                 </View>
-                {item.urgency && (
-                  <View style={styles.metaItem}>
-                    <Text style={styles.metaLabel}>Urgency</Text>
-                    <Text style={[styles.metaValue, { fontWeight: 'bold' }]}>{item.urgency}</Text>
-                  </View>
-                )}
               </View>
             )}
 

@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../config/supabase';
 import { api } from '../config/api';
 import { useAuthStore } from './useAuthStore';
+import { formatCategory } from '../utils/categoryUtils';
 
 export const useTechNotificationStore = create((set, get) => ({
   notifications: [],
@@ -75,7 +76,10 @@ export const useTechNotificationStore = create((set, get) => ({
 
       if (assignedComplaints.length > 0) {
         assignedComplaints.slice(0, 20).forEach((comp) => {
-          const shortId = `AQ-${comp.id.slice(0, 8).toUpperCase()}`;
+          const isOfflineNode = comp.category === 'IOT_NODE_OFFLINE';
+          const shortId = isOfflineNode
+            ? `AQ-NODE-${comp.id.slice(0, 8).toUpperCase()}`
+            : `AQ-${comp.id.slice(0, 8).toUpperCase()}`;
           const urgencyLabel =
             comp.urgency === 'CRITICAL'
               ? '🔴 Critical'
@@ -88,11 +92,12 @@ export const useTechNotificationStore = create((set, get) => ({
           list.push({
             id: `tech-assigned-${comp.id}`,
             type: 'assigned_task',
-            title: `📋 Task Assigned (${shortId})`,
-            message: `${urgencyLabel} · ${comp.summary || comp.rawText || 'Water Utility Issue'} ${comp.barangay ? `— Brgy. ${comp.barangay}` : ''}`,
+            title: isOfflineNode ? `Hardware Dispatch (${shortId})` : `📋 Task Assigned (${shortId})`,
+            message: `${urgencyLabel} · ${comp.summary || formatCategory(comp.category) || comp.rawText || 'Water Utility Issue'} ${comp.barangay ? `— Brgy. ${comp.barangay}` : ''}`,
             date: comp.createdAt || new Date().toISOString(),
             urgency: comp.urgency,
             complaintId: comp.id,
+            category: comp.category,
           });
         });
       }
@@ -112,7 +117,7 @@ export const useTechNotificationStore = create((set, get) => ({
             id: `tech-comp-${comp.id}`,
             type: 'new_complaint',
             title: `New Unassigned Complaint`,
-            message: `${urgencyLabel} · ${comp.summary || comp.rawText || 'Water Utility Issue'} ${comp.barangay ? `— Brgy. ${comp.barangay}` : ''}`,
+            message: `${urgencyLabel} · ${comp.summary || formatCategory(comp.category) || comp.rawText || 'Water Utility Issue'} ${comp.barangay ? `— Brgy. ${comp.barangay}` : ''}`,
             date: comp.createdAt || new Date().toISOString(),
             urgency: comp.urgency,
             complaintId: comp.id,

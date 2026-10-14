@@ -13,6 +13,7 @@ import TechHeader from './TechHeader';
 import TechRouteTrackingModal from './TechRouteTrackingModal';
 import * as Location from 'expo-location';
 import { pingTechnicianPresence } from '../../src/utils/presenceManager';
+import { formatCategory } from '../../src/utils/categoryUtils';
 
 const haversineMeters = (lat1, lng1, lat2, lng2) => {
   const toRad = (deg) => (deg * Math.PI) / 180;
@@ -270,7 +271,7 @@ export default function SubAdminHome({ navigation }) {
           id: complaint.id,
           sourceType: 'Complaint',
           location: complaint.barangay ? (complaint.barangay.toLowerCase().startsWith('brgy') ? complaint.barangay : `Brgy. ${complaint.barangay}`) : "Municipal Field Site",
-          description: complaint.summary || complaint.translatedText || complaint.rawText || "Assigned Resident Water Complaint",
+          description: complaint.summary || complaint.translatedText || formatCategory(complaint.category) || complaint.rawText || "Assigned Resident Water Complaint",
           recommendedAction,
           imageUrl: complaint.photoUrl || complaint.imageUrl || null,
           latitude: complaint.latitude,
@@ -510,15 +511,22 @@ export default function SubAdminHome({ navigation }) {
     }
 
     const normalizedScanned = cleanId.replace(/^AQ-/i, '').trim().toLowerCase();
+    const cleanLower = cleanId.toLowerCase();
     const normalizedJobId = jobDetails?.id ? jobDetails.id.trim().toLowerCase() : '';
     const shortJobId = jobDetails?.id ? jobDetails.id.slice(0, 8).toLowerCase() : '';
+    const jobRawText = (jobDetails?.rawText || jobDetails?.description || '').toLowerCase();
+    const jobSummary = (jobDetails?.summary || '').toLowerCase();
 
     const isCurrentJob = normalizedJobId && (
       normalizedScanned === normalizedJobId ||
       normalizedScanned === shortJobId ||
       normalizedJobId.startsWith(normalizedScanned) ||
       normalizedScanned.includes(normalizedJobId) ||
-      normalizedScanned.includes(shortJobId)
+      normalizedScanned.includes(shortJobId) ||
+      jobRawText.includes(normalizedScanned) ||
+      jobRawText.includes(cleanLower) ||
+      jobSummary.includes(normalizedScanned) ||
+      jobSummary.includes(cleanLower)
     );
 
     if (isCurrentJob && jobDetails) {
@@ -544,11 +552,17 @@ export default function SubAdminHome({ navigation }) {
         if (!c.id) return false;
         const cId = c.id.toLowerCase();
         const short = cId.slice(0, 8);
+        const rawText = (c.rawText || '').toLowerCase();
+        const summary = (c.summary || '').toLowerCase();
         return (
-          cId === cleanId.toLowerCase() ||
+          cId === cleanLower ||
           cId.startsWith(normalizedScanned) ||
           normalizedScanned.includes(short) ||
-          normalizedScanned.includes(cId)
+          normalizedScanned.includes(cId) ||
+          rawText.includes(normalizedScanned) ||
+          rawText.includes(cleanLower) ||
+          summary.includes(normalizedScanned) ||
+          summary.includes(cleanLower)
         );
       });
 
@@ -566,7 +580,7 @@ export default function SubAdminHome({ navigation }) {
           id: target.id,
           sourceType: 'Complaint',
           barangay: target.barangay ? (target.barangay.toLowerCase().startsWith('brgy') ? target.barangay : `Brgy. ${target.barangay}`) : 'San Fernando Field Site',
-          summary: target.summary || target.category || target.rawText || 'Water Quality / Infrastructure Incident',
+          summary: target.summary || formatCategory(target.category) || target.rawText || 'Water Quality / Infrastructure Incident',
           status: target.status || 'PENDING',
           photoUrl: target.photoUrl || target.imageUrl || null,
           urgency: target.urgency || 'MEDIUM',
@@ -688,8 +702,13 @@ export default function SubAdminHome({ navigation }) {
               <View className="flex-row items-start justify-between mb-1">
                 <View className="flex-1 mr-2">
                   <View className="flex-1">
-                    <Text className="text-[#8E8E93] font-bold text-[9px] uppercase tracking-wider">Incident ID</Text>
-                    <Text className="text-[#0B2240] font-extrabold text-sm mt-0.5">AQ-{jobDetails.id ? jobDetails.id.slice(0, 4).toUpperCase() : 'N/A'}</Text>
+                    <Text className="text-[#8E8E93] font-bold text-[9px] uppercase tracking-wider">
+                      {jobDetails.category === 'IOT_NODE_OFFLINE' ? 'Hardware Incident' : 'Incident ID'}
+                    </Text>
+                    <Text className="text-[#0B2240] font-extrabold text-sm mt-0.5">
+                      {jobDetails.category === 'IOT_NODE_OFFLINE' ? 'AQ-NODE-' : 'AQ-'}
+                      {jobDetails.id ? jobDetails.id.slice(0, 4).toUpperCase() : 'N/A'}
+                    </Text>
                   </View>
                 </View>
 
@@ -711,6 +730,17 @@ export default function SubAdminHome({ navigation }) {
                   <View className="flex-1">
                     <Text className="text-[#8E8E93] font-bold text-[9px] uppercase tracking-wider">Location</Text>
                     <Text className="text-[#0B2240] font-extrabold text-[13px] mt-0.5 leading-[18px]">{jobDetails.location}</Text>
+                  </View>
+                </View>
+
+                <View className="flex-row items-center justify-between mb-3 bg-[#F8FAFC] border border-[#E2E8F5] rounded-xl px-3 py-2">
+                  <View>
+                    <Text className="text-[#8E8E93] font-bold text-[9px] uppercase tracking-wider">Category</Text>
+                    <Text className="text-[#0B2240] font-extrabold text-xs mt-0.5">{formatCategory(jobDetails.category)}</Text>
+                  </View>
+                  <View className="items-end">
+                    <Text className="text-[#8E8E93] font-bold text-[9px] uppercase tracking-wider">Priority</Text>
+                    <Text className="text-xs font-black uppercase mt-0.5" style={{ color: jobDetails.urgency === 'CRITICAL' ? '#EF4444' : jobDetails.urgency === 'HIGH' ? '#F97316' : '#0B2240' }}>{jobDetails.urgency || 'MEDIUM'}</Text>
                   </View>
                 </View>
 

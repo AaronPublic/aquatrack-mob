@@ -11,6 +11,7 @@ import TechHeader from './TechHeader';
 import TechRouteTrackingModal from './TechRouteTrackingModal';
 import { Navigation as NavIcon } from 'lucide-react-native';
 import { formatPHT } from '../../src/utils/dateUtils';
+import { formatCategory } from '../../src/utils/categoryUtils';
 
 export default function SubAdminComplaints({ navigation }) {
   const [complaints, setComplaints] = useState([]);
@@ -202,15 +203,22 @@ export default function SubAdminComplaints({ navigation }) {
     }
 
     const normalizedScanned = cleanId.replace(/^AQ-/i, '').trim().toLowerCase();
+    const cleanLower = cleanId.toLowerCase();
     let found = complaints.find(c => {
-      const cId = c.id.toLowerCase();
-      const shortId = c.id.slice(0, 8).toLowerCase();
+      const cId = (c.id || '').toLowerCase();
+      const shortId = cId.slice(0, 8);
+      const rawText = (c.rawText || '').toLowerCase();
+      const summary = (c.summary || '').toLowerCase();
       return (
         cId === normalizedScanned ||
         shortId === normalizedScanned ||
         cId.startsWith(normalizedScanned) ||
         normalizedScanned.includes(cId) ||
-        normalizedScanned.includes(shortId)
+        normalizedScanned.includes(shortId) ||
+        rawText.includes(normalizedScanned) ||
+        rawText.includes(cleanLower) ||
+        summary.includes(normalizedScanned) ||
+        summary.includes(cleanLower)
       );
     });
 
@@ -245,7 +253,7 @@ export default function SubAdminComplaints({ navigation }) {
         id: found.id,
         sourceType: 'Complaint',
         barangay: found.barangay ? `Brgy. ${found.barangay}` : 'San Fernando Field Site',
-        summary: found.summary || found.category || found.rawText || 'Water Quality / Infrastructure Incident',
+        summary: found.summary || formatCategory(found.category) || found.rawText || 'Water Quality / Infrastructure Incident',
         status: found.status || 'PENDING',
         photoUrl: found.photoUrl || found.imageUrl || null,
         urgency: found.urgency || 'MEDIUM',
@@ -421,8 +429,15 @@ export default function SubAdminComplaints({ navigation }) {
         ]}
       >
         <View style={styles.cardHeader}>
-          <View style={styles.barangayBadge}>
-            <Text style={styles.barangayText}>Brgy. {item.barangay || 'Out of Boundary'}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', flex: 1, marginRight: 8 }}>
+            <View style={styles.barangayBadge}>
+              <Text style={styles.barangayText}>Brgy. {item.barangay || 'Out of Boundary'}</Text>
+            </View>
+            {item.category === 'IOT_NODE_OFFLINE' && (
+              <View style={{ backgroundColor: '#FFE4E6', borderColor: '#FECDD3', borderWidth: 1, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8 }}>
+                <Text style={{ color: '#E11D48', fontSize: 9, fontWeight: '800', textTransform: 'uppercase' }}>Hardware Node</Text>
+              </View>
+            )}
           </View>
           <View style={[styles.urgencyBadge, { backgroundColor: urgencyCfg.bg, borderColor: urgencyCfg.border }]}>
             <Text style={[styles.urgencyText, { color: urgencyCfg.text }]}>{item.urgency}</Text>
@@ -430,10 +445,10 @@ export default function SubAdminComplaints({ navigation }) {
         </View>
 
         <View style={styles.cardBody}>
-          <Text style={styles.cardSummary}>{item.summary || "Resident Complaint"}</Text>
+          <Text style={styles.cardSummary}>{item.summary || formatCategory(item.category) || "Resident Complaint"}</Text>
           <Text style={styles.cardDesc}>{item.rawText}</Text>
           <Text style={styles.metaText}>
-            ID: AQ-{item.id ? item.id.slice(0, 4).toUpperCase() : 'N/A'} | Date: {formatPHT(item.createdAt, 'dateTime')}
+            ID: AQ-{item.id ? item.id.slice(0, 4).toUpperCase() : 'N/A'} · {formatCategory(item.category)} · {formatPHT(item.createdAt, 'dateTime')}
           </Text>
         </View>
 

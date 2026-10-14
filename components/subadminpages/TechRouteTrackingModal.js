@@ -16,6 +16,7 @@ import { MAPBOX_ACCESS_TOKEN, MAPBOX_STYLE_URL } from '../../src/config/mapbox';
 import AppIcon from '../AppIcon';
 import styles from './TechRouteTrackingModal.styles';
 import { useResponsive } from '../../src/utils/responsive';
+import { formatCategory } from '../../src/utils/categoryUtils';
 import {
   Navigation,
   MapPin,
@@ -25,6 +26,7 @@ import {
   QrCode,
   X,
   Droplets,
+  Cpu,
 } from 'lucide-react-native';
 
 // Set Mapbox native access token on module load
@@ -37,6 +39,12 @@ if (Platform.OS !== 'web') {
 }
 
 const CATEGORY_MAP = {
+  PIPELINE_BREACH_PRESSURE_DROP: { label: 'Pipeline Breach / Pressure Drop', color: '#EF4444', bg: '#FEE2E2' },
+  HIGH_TURBIDITY: { label: 'High Turbidity', color: '#EAB308', bg: '#FEF9C3' },
+  HIGH_MINERAL_CONTENT_TDS: { label: 'High Mineral Content/TDS', color: '#F97316', bg: '#FFEDD5' },
+  CHEMICAL_DISCOLORATION_CONTAMINATION: { label: 'Chemical Discoloration / Contamination', color: '#A855F7', bg: '#F3E8FF' },
+  UNCLASSIFIED_INFRASTRUCTURE_ANOMALY: { label: 'Infrastructure Anomaly', color: '#3B82F6', bg: '#EFF6FF' },
+  IOT_NODE_OFFLINE: { label: 'IoT Node Offline', color: '#E11D48', bg: '#FFE4E6' },
   WATER_QUALITY: { label: 'Water Quality', color: '#0284C7', bg: '#E0F2FE' },
   LEAKAGE: { label: 'Pipe Leakage', color: '#0EA5E9', bg: '#E0F2FE' },
   PIPE_BURST: { label: 'Main Burst', color: '#EF4444', bg: '#FEE2E2' },
@@ -211,7 +219,7 @@ export default function TechRouteTrackingModal({
     : 'City of San Fernando';
 
   const categoryCfg = CATEGORY_MAP[complaint.category] || {
-    label: complaint.category || 'Water Incident',
+    label: formatCategory(complaint.category),
     color: '#0284C7',
     bg: '#EFF6FF',
   };
@@ -413,8 +421,12 @@ export default function TechRouteTrackingModal({
           {/* Incident Details Capsule */}
           <View style={styles.incidentInfoCard}>
             <View style={styles.incidentHeaderRow}>
-              <View style={styles.categoryBadge}>
-                <Droplets size={12} color={categoryCfg.color} />
+              <View style={[styles.categoryBadge, categoryCfg.bg ? { backgroundColor: categoryCfg.bg, borderColor: categoryCfg.color + '40' } : null]}>
+                {complaint.category === 'IOT_NODE_OFFLINE' ? (
+                  <Cpu size={12} color={categoryCfg.color} />
+                ) : (
+                  <Droplets size={12} color={categoryCfg.color} />
+                )}
                 <Text style={[styles.categoryText, { color: categoryCfg.color }]}>
                   {categoryCfg.label}
                 </Text>
