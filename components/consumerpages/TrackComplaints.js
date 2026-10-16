@@ -13,7 +13,7 @@ import { useNotificationStore } from '../../src/store/useNotificationStore';
 import ConsumerNotificationModal from './ConsumerNotificationModal';
 import { useResponsive } from '../../src/utils/responsive';
 import { formatPHT } from '../../src/utils/dateUtils';
-import { formatCategory } from '../../src/utils/categoryUtils';
+import { formatCategory, getCategoryFamiliarKeywords } from '../../src/utils/categoryUtils';
 
 if (
   Platform.OS === 'android' && 
@@ -357,6 +357,9 @@ export default function TrackComplaints({ navigation }) {
               <View style={styles.metaItem}>
                 <Text style={styles.metaLabel}>Category</Text>
                 <Text style={styles.metaValue}>{formatCategory(item.category)}</Text>
+                <Text style={{ fontSize: 10, color: '#0072a3', fontWeight: '700', marginTop: 2 }}>
+                  {getCategoryFamiliarKeywords(item.category)[0]}
+                </Text>
               </View>
               {item.urgency ? (
                 <View style={styles.metaItem}>

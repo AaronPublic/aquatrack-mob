@@ -18,6 +18,7 @@ import homeStyles from './ConsumerHome.styles';
 import { useNotificationStore } from '../../src/store/useNotificationStore';
 import ConsumerNotificationModal from './ConsumerNotificationModal';
 import { useResponsive } from '../../src/utils/responsive';
+import { formatCategory, getCategoryFamiliarKeywords } from '../../src/utils/categoryUtils';
 
 // Mapbox native access token — set at module load (web build uses the OSM iframe below instead)
 if (Platform.OS !== 'web') {
@@ -101,7 +102,8 @@ export default function FileComplaint({ navigation }) {
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [successTicketDetails, setSuccessTicketDetails] = useState({
     ticketId: '',
-    barangay: ''
+    barangay: '',
+    category: ''
   });
   const [userName, setUserName] = useState('Pedro');
   const [notificationsModalVisible, setNotificationsModalVisible] = useState(false);
@@ -562,7 +564,8 @@ export default function FileComplaint({ navigation }) {
       if (result && result.success) {
         setSuccessTicketDetails({
           ticketId: `AQ-${result.id?.slice(0, 4).toUpperCase() || 'RESOLVED'}`,
-          barangay: result.barangay || resolvedLocation.barangay || 'City Center'
+          barangay: result.barangay || resolvedLocation.barangay || 'City Center',
+          category: result.category || triageResult?.category || category
         });
         setSuccessModalVisible(true);
         // Clear form
@@ -853,7 +856,20 @@ export default function FileComplaint({ navigation }) {
                 </View>
                 <View className="flex-row items-start mt-2">
                   <Text className="text-[#627D98] font-bold text-xs w-24">Category:</Text>
-                  <Text className="text-[#0B2240] font-bold text-xs flex-1 uppercase">{aiTriage.category?.replace(/_/g, ' ')}</Text>
+                  <View className="flex-1">
+                    <Text className="text-[#0B2240] font-bold text-xs uppercase">{formatCategory(aiTriage.category)}</Text>
+                    <View className="flex-row flex-wrap items-center mt-1.5">
+                      {getCategoryFamiliarKeywords(aiTriage.category).map((kw, idx) => (
+                        <View 
+                          key={idx} 
+                          className="bg-sky-50 border border-sky-200/80 rounded-md px-2 py-0.5"
+                          style={{ marginRight: 4, marginBottom: 4 }}
+                        >
+                          <Text className="text-[#0072a3] font-bold text-[10px]">{kw}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
                 </View>
                 <View className="flex-row items-start mt-2">
                   <Text className="text-[#627D98] font-bold text-xs w-24">Urgency:</Text>
@@ -1027,6 +1043,28 @@ export default function FileComplaint({ navigation }) {
                 <Text className="text-[#627D98] font-bold text-[9px] uppercase tracking-wider">Service Area</Text>
                 <Text className="text-[#0B2240] font-black text-xs">{successTicketDetails.barangay}</Text>
               </View>
+              {successTicketDetails.category ? (
+                <>
+                  <View className="w-full h-px bg-[#E2E8F5] my-2" />
+                  <View className="mt-1">
+                    <View className="flex-row justify-between items-center mb-1">
+                      <Text className="text-[#627D98] font-bold text-[9px] uppercase tracking-wider">Classification</Text>
+                      <Text className="text-[#0B2240] font-black text-xs">{formatCategory(successTicketDetails.category)}</Text>
+                    </View>
+                    <View className="flex-row flex-wrap items-center mt-1">
+                      {getCategoryFamiliarKeywords(successTicketDetails.category).map((kw, idx) => (
+                        <View 
+                          key={idx} 
+                          className="bg-sky-50 border border-sky-200/80 rounded-md px-1.5 py-0.5"
+                          style={{ marginRight: 4, marginTop: 2 }}
+                        >
+                          <Text className="text-[#0072a3] font-bold text-[9.5px]">{kw}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                </>
+              ) : null}
             </View>
 
             <View className="w-full">
