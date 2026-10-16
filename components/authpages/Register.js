@@ -21,6 +21,7 @@ import { api } from '../../src/config/api';
 import styles from './Login.styles';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import AppIcon from '../../components/AppIcon';
+import MobileDataPrivacyModal from '../../components/MobileDataPrivacyModal';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -39,6 +40,7 @@ export default function Register({ navigation }) {
   const [focusedField, setFocusedField] = useState(null);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [supportModalVisible, setSupportModalVisible] = useState(false);
+  const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
 
   const handleDial = (phoneNumber) => {
     const cleanNum = phoneNumber.replace(/[^0-9+]/g, '');
@@ -76,7 +78,7 @@ export default function Register({ navigation }) {
     return hasUpper && hasLower && hasNumber && hasAsterisk && pwd.length >= 8;
   };
 
-  const handleRegisterSubmit = async () => {
+  const handleRegisterSubmit = () => {
     if (!name.trim() || !email.trim() || !phone.trim() || !address.trim() || !password || !confirmPassword) {
       setError("All fields are mandatory. Please fill in all details.");
       return;
@@ -91,6 +93,11 @@ export default function Register({ navigation }) {
     }
 
     setError(null);
+    setPrivacyModalVisible(true);
+  };
+
+  const handleConfirmedRegister = async () => {
+    setPrivacyModalVisible(false);
     setLoading(true);
 
     try {
@@ -620,6 +627,14 @@ export default function Register({ navigation }) {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      {/* Data Privacy Terms Modal */}
+      <MobileDataPrivacyModal
+        visible={privacyModalVisible}
+        onClose={() => setPrivacyModalVisible(false)}
+        onAgree={handleConfirmedRegister}
+        userRoleLabel="Resident Concessionaire"
+      />
     </View>
   );
 }

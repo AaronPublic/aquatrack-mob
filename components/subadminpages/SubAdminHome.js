@@ -53,6 +53,8 @@ export default function SubAdminHome({ navigation }) {
   const [torchOn, setTorchOn] = useState(false);
   const [confirmingTicket, setConfirmingTicket] = useState(null);
   const [isResolving, setIsResolving] = useState(false);
+  const [unassignedModalVisible, setUnassignedModalVisible] = useState(false);
+  const [unassignedTicket, setUnassignedTicket] = useState(null);
 
   const profileSlideAnim = useRef(new Animated.Value(280)).current;
   const profileFadeAnim = useRef(new Animated.Value(0)).current;
@@ -571,6 +573,25 @@ export default function SubAdminHome({ navigation }) {
           Alert.alert("Already Resolved", `Complaint ticket AQ-${target.id.slice(0, 8).toUpperCase()} is already marked as resolved.`, [
             { text: "OK", onPress: () => setScanned(false) }
           ]);
+          return;
+        }
+
+        // Reinforce validation: check if the logged in technician/subadmin is assigned
+        const authStore = useAuthStore.getState();
+        const currentTechId = authStore.session?.user?.id || authStore.profile?.id;
+        const currentTechName = authStore.profile?.name || techName || '';
+        
+        const isAssigned = (target.assignedToId && currentTechId && target.assignedToId === currentTechId) ||
+          (target.assignedToName && currentTechName && target.assignedToName.toLowerCase() === currentTechName.toLowerCase());
+
+        if (!isAssigned) {
+          setIsScannerOpen(false);
+          setScanned(false);
+          setUnassignedTicket({
+            id: target.id,
+            assignedToName: target.assignedToName || null
+          });
+          setUnassignedModalVisible(true);
           return;
         }
 
@@ -1366,6 +1387,79 @@ export default function SubAdminHome({ navigation }) {
         onClose={() => setTrackingComplaint(null)}
         onOpenScanner={handleOpenScanner}
       />
+
+      {/* Unauthorized Ticket Resolution Modal */}
+      <Modal
+        visible={unassignedModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setUnassignedModalVisible(false);
+          setUnassignedTicket(null);
+        }}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(9, 13, 22, 0.85)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ width: '100%', maxWidth: 380, backgroundColor: '#0f172a', borderRadius: 24, borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.3)', padding: 22, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 20, elevation: 10 }}>
+            {/* Warning Icon Badge */}
+            <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(239, 68, 68, 0.15)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.3)', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+              <AppIcon name="shield-outline" size={26} color="#ef4444" />
+            </View>
+
+            <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, marginBottom: 8 }}>
+              <Text style={{ color: '#f87171', fontSize: 10, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                Verification Restricted
+              </Text>
+            </View>
+
+            <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '900', textAlign: 'center', marginBottom: 8, letterSpacing: -0.2 }}>
+              Unauthorized Resolution
+            </Text>
+
+            <Text style={{ color: '#cbd5e1', fontSize: 12, lineHeight: 18, textAlign: 'center', marginBottom: 16, fontWeight: '500' }}>
+              Only the subadmin/technician assigned or dispatched to this complaint can verify and resolve this complaint.
+            </Text>
+
+            {unassignedTicket && (
+              <View style={{ width: '100%', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', marginBottom: 18 }}>
+                <Text style={{ color: '#94a3b8', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', marginBottom: 2 }}>
+                  Ticket Reference
+                </Text>
+                <Text style={{ color: '#00aeef', fontSize: 13, fontWeight: '900' }}>
+                  AQ-{unassignedTicket.id.slice(0, 8).toUpperCase()}
+                </Text>
+                {unassignedTicket.assignedToName ? (
+                  <Text style={{ color: '#64748b', fontSize: 10, marginTop: 4 }}>
+                    Assigned Field Tech: <Text style={{ color: '#cbd5e1', fontWeight: '700' }}>{unassignedTicket.assignedToName}</Text>
+                  </Text>
+                ) : (
+                  <Text style={{ color: '#eab308', fontSize: 10, marginTop: 4, fontWeight: '600' }}>
+                    Currently awaiting technician dispatch
+                  </Text>
+                )}
+              </View>
+            )}
+
+            <TouchableOpacity
+              onPress={() => {
+                setUnassignedModalVisible(false);
+                setUnassignedTicket(null);
+              }}
+              style={{
+                width: '100%',
+                paddingVertical: 13,
+                backgroundColor: '#0C4F8B',
+                borderRadius: 14,
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '800' }}>
+                I Understand
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

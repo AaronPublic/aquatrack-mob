@@ -21,6 +21,7 @@ import { api } from '../../src/config/api';
 import styles from './Login.styles';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import AppIcon from '../../components/AppIcon';
+import MobileDataPrivacyModal from '../../components/MobileDataPrivacyModal';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -38,6 +39,7 @@ export default function Login({ navigation, route }) {
 
   // Track keyboard visibility for dynamic scrolling
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
 
   useEffect(() => {
     const showSub = Keyboard.addListener(
@@ -206,7 +208,7 @@ export default function Login({ navigation, route }) {
     }
   };
 
-  const handleRegisterSubmit = async () => {
+  const handleRegisterSubmit = () => {
     if (!regName.trim() || !regEmail.trim() || !regPhone.trim() || !regAddress.trim() || !regPassword || !regConfirmPassword) {
       setError("All fields are mandatory. Please fill in all details.");
       return;
@@ -221,6 +223,11 @@ export default function Login({ navigation, route }) {
     }
 
     setError(null);
+    setPrivacyModalVisible(true);
+  };
+
+  const handleConfirmedRegisterSubmit = async () => {
+    setPrivacyModalVisible(false);
     setRegLoading(true);
 
     try {
@@ -1088,6 +1095,14 @@ export default function Login({ navigation, route }) {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      {/* Data Privacy Terms Modal */}
+      <MobileDataPrivacyModal
+        visible={privacyModalVisible}
+        onClose={() => setPrivacyModalVisible(false)}
+        onAgree={handleConfirmedRegisterSubmit}
+        userRoleLabel="Resident Concessionaire"
+      />
     </View>
   );
 }
