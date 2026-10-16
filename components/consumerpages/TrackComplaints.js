@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, FlatList, ActivityIndicator, RefreshControl, Alert, TouchableOpacity, LayoutAnimation, Platform, UIManager, Modal, ScrollView } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, RefreshControl, Alert, TouchableOpacity, LayoutAnimation, Platform, UIManager, Modal, ScrollView, Linking } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../src/config/supabase';
@@ -50,6 +50,10 @@ export default function TrackComplaints({ navigation }) {
   const [metrics, setMetrics] = useState({ total: 25, pending: 9, active: 8, resolved: 8 });
   const [notificationsModalVisible, setNotificationsModalVisible] = useState(false);
   const [selectedQrId, setSelectedQrId] = useState(null);
+  const [cancellingTicket, setCancellingTicket] = useState(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [selectedTechContact, setSelectedTechContact] = useState(null);
+
   const notifications = useNotificationStore(s => s.notifications);
   const unreadCount = useNotificationStore(s => s.unreadCount);
   const fetchNotifications = useNotificationStore(s => s.fetchNotifications);
@@ -68,6 +72,30 @@ export default function TrackComplaints({ navigation }) {
       navigation.navigate('Announcements');
     } else if (item.type === 'complaint_status') {
       navigation.navigate('TrackComplaints');
+    }
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancellingTicket) return;
+    try {
+      setIsCancelling(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await api.post('/api/complaints/cancel', {
+        id: cancellingTicket.id,
+        userId: session?.user?.id
+      });
+      if (res?.success) {
+        setCancellingTicket(null);
+        await fetchComplaints();
+        Alert.alert("Ticket Cancelled", "Your complaint ticket has been successfully cancelled and removed from the dispatch queue.");
+      } else {
+        throw new Error(res?.error || "Failed to cancel complaint ticket.");
+      }
+    } catch (err) {
+      console.error("Cancel ticket error:", err);
+      Alert.alert("Cancellation Failed", err.message || "Could not cancel ticket. Please try again.");
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -108,7 +136,7 @@ export default function TrackComplaints({ navigation }) {
         setMetrics({ total, pending, active, resolved });
       }
 
-      // Proactively fetch profiles of technicians assigned to these complaints
+      // Proactively fetch profiles and contact numbers of technicians assigned to these complaints
       const uniqueTechIds = [...new Set((data || []).map(c => c.assignedToId).filter(Boolean))];
       const uncachedIds = uniqueTechIds.filter(id => !techProfileCache[id]);
 
@@ -119,14 +147,15 @@ export default function TrackComplaints({ navigation }) {
         try {
           const { data: profiles, error: profileErr } = await supabase
             .from('User')
-            .select('id, name')
+            .select('id, name, phone')
             .in('id', uncachedIds);
 
           if (!profileErr && profiles && profiles.length > 0) {
             profiles.forEach(p => {
               if (p.id && p.name) {
-                mapping[p.id] = p.name;
-                techProfileCache[p.id] = p.name;
+                const info = { name: p.name, phone: p.phone || null };
+                mapping[p.id] = info;
+                techProfileCache[p.id] = info;
               }
             });
           }
@@ -142,11 +171,12 @@ export default function TrackComplaints({ navigation }) {
               try {
                 const res = await api.post('/api/auth/profile', { userId: techId });
                 if (res?.name) {
-                  mapping[techId] = res.name;
-                  techProfileCache[techId] = res.name;
+                  const info = { name: res.name, phone: res.phone || null };
+                  mapping[techId] = info;
+                  techProfileCache[techId] = info;
                 }
               } catch (apiErr) {
-                console.warn(`Could not resolve technician name for ${techId}:`, apiErr?.message);
+                console.warn(`Could not resolve technician profile for ${techId}:`, apiErr?.message);
               }
             })
           );
@@ -270,7 +300,9 @@ export default function TrackComplaints({ navigation }) {
     const isExpanded = expandedId === item.id;
     const formattedDate = formatPHT(item.createdAt, 'dateTime');
 
-    const techName = item.assignedToId ? (techProfiles[item.assignedToId] || "Assigned Technician") : null;
+    const techData = item.assignedToId ? techProfiles[item.assignedToId] : null;
+    const techName = typeof techData === 'object' && techData !== null ? techData.name : (typeof techData === 'string' ? techData : (item.assignedToId ? "Assigned Technician" : null));
+    const techPhone = typeof techData === 'object' && techData !== null ? techData.phone : null;
 
     return (
       <TouchableOpacity 
@@ -326,25 +358,27 @@ export default function TrackComplaints({ navigation }) {
                 <Text style={styles.metaLabel}>Ticket ID</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Text style={styles.metaValueMono}>AQ-{item.id ? item.id.slice(0, 4).toUpperCase() : 'N/A'}</Text>
-                  <TouchableOpacity
-                    onPress={() => setSelectedQrId(item.id)}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 4,
-                      paddingHorizontal: 8,
-                      paddingVertical: 4,
-                      backgroundColor: '#EFF6FF',
-                      borderRadius: 8,
-                      borderWidth: 1,
-                      borderColor: '#BFDBFE'
-                    }}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    activeOpacity={0.7}
-                  >
-                    <AppIcon name="qr-code" size={13} color="#008CE3" />
-                    <Text style={{ fontSize: 10, fontFamily: theme.fonts.bold, color: '#008CE3' }}>View QR</Text>
-                  </TouchableOpacity>
+                  {item.status !== 'RESOLVED' && (
+                    <TouchableOpacity
+                      onPress={() => setSelectedQrId(item.id)}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 4,
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        backgroundColor: '#EFF6FF',
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderColor: '#BFDBFE'
+                      }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      activeOpacity={0.7}
+                    >
+                      <AppIcon name="qr-code" size={13} color="#008CE3" />
+                      <Text style={{ fontSize: 10, fontFamily: theme.fonts.bold, color: '#008CE3' }}>View QR</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
               <View style={styles.metaItem}>
@@ -385,9 +419,17 @@ export default function TrackComplaints({ navigation }) {
               </View>
             )}
 
-            {/* Technician dispatch notice if assigned */}
+            {/* Technician dispatch notice if assigned (Clickable to view contact details) */}
             {(item.assignedToId || item.status === 'DISPATCHED' || item.status === 'ONGOING' || item.status === 'RESOLVED') && (
-              <View style={styles.assignmentBlock}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => setSelectedTechContact({
+                  name: techName || "Field Technician Assigned",
+                  phone: techPhone || null,
+                  ticketId: item.id
+                })}
+                style={[styles.assignmentBlock, { paddingRight: 10 }]}
+              >
                 <View style={styles.assignmentAvatar}>
                   <Text style={styles.assignmentAvatarText}>
                     {techName ? techName.substring(0, 2).toUpperCase() : 'FT'}
@@ -410,11 +452,43 @@ export default function TrackComplaints({ navigation }) {
                       </View>
                     ) : null}
                   </View>
-                  <Text style={styles.assignmentName}>
-                    {techName || "Field Technician Assigned"}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                    <Text style={[styles.assignmentName, { flex: 1 }]} numberOfLines={1}>
+                      {techName || "Field Technician Assigned"}
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#EFF6FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: '#BFDBFE' }}>
+                      <AppIcon name="call" size={10} color="#008CE3" />
+                      <Text style={{ fontSize: 9, fontFamily: theme.fonts.bold, color: '#008CE3' }}>Contact</Text>
+                    </View>
+                  </View>
                 </View>
-              </View>
+              </TouchableOpacity>
+            )}
+
+            {/* Cancel ticket action for unassigned active complaints */}
+            {!item.assignedToId && item.status !== 'RESOLVED' && (
+              <TouchableOpacity
+                onPress={() => setCancellingTicket(item)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  marginTop: 12,
+                  paddingVertical: 10,
+                  paddingHorizontal: 16,
+                  backgroundColor: '#FEF2F2',
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: '#FECACA'
+                }}
+                activeOpacity={0.8}
+              >
+                <AppIcon name="trash-outline" size={14} color="#DC2626" />
+                <Text style={{ fontSize: 12, fontFamily: theme.fonts.bold, color: '#DC2626' }}>
+                  Cancel Complaint Ticket
+                </Text>
+              </TouchableOpacity>
             )}
 
             <View style={styles.expandToggle}>
@@ -774,6 +848,440 @@ export default function TrackComplaints({ navigation }) {
                 fontFamily: theme.fonts.bold, 
                 textTransform: 'uppercase', 
                 letterSpacing: 0.8 
+              }}>
+                Close
+              </Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Cancellation Confirmation Modal */}
+      <Modal
+        visible={!!cancellingTicket}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          if (!isCancelling) setCancellingTicket(null);
+        }}
+      >
+        <TouchableOpacity 
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(11, 34, 64, 0.65)',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 24
+          }}
+          activeOpacity={1}
+          onPress={() => {
+            if (!isCancelling) setCancellingTicket(null);
+          }}
+        >
+          <TouchableOpacity 
+            activeOpacity={1} 
+            style={{
+              width: '100%',
+              maxWidth: 360,
+              backgroundColor: '#FFFFFF',
+              borderRadius: 28,
+              padding: 24,
+              shadowColor: '#0B2240',
+              shadowOffset: { width: 0, height: 12 },
+              shadowOpacity: 0.18,
+              shadowRadius: 24,
+              elevation: 12,
+            }}
+          >
+            {/* Header Icon */}
+            <View style={{ alignItems: 'center', marginBottom: 14 }}>
+              <View style={{
+                width: 56,
+                height: 56,
+                borderRadius: 20,
+                backgroundColor: '#FEF2F2',
+                borderWidth: 1,
+                borderColor: '#FEE2E2',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 12
+              }}>
+                <AppIcon name="warning" size={28} color="#DC2626" />
+              </View>
+              <Text style={{
+                fontSize: 18,
+                fontFamily: theme.fonts.bold,
+                color: '#0B2240',
+                textAlign: 'center'
+              }}>
+                Cancel Ticket?
+              </Text>
+              <View style={{
+                backgroundColor: '#F1F5F9',
+                paddingHorizontal: 10,
+                paddingVertical: 3,
+                borderRadius: 8,
+                marginTop: 6
+              }}>
+                <Text style={{
+                  fontSize: 11,
+                  fontFamily: theme.fonts.monoBold,
+                  color: '#475569'
+                }}>
+                  AQ-{cancellingTicket?.id ? cancellingTicket.id.slice(0, 8).toUpperCase() : ''}
+                </Text>
+              </View>
+            </View>
+
+            {/* Explanation */}
+            <View style={{
+              backgroundColor: '#F8FAFC',
+              borderRadius: 14,
+              padding: 12,
+              borderWidth: 1,
+              borderColor: '#E2E8F0',
+              marginBottom: 16
+            }}>
+              <Text style={{
+                fontSize: 11,
+                fontFamily: theme.fonts.bold,
+                color: '#334155',
+                marginBottom: 4
+              }}>
+                {cancellingTicket?.summary || "Reported Issue"}
+              </Text>
+              <Text style={{
+                fontSize: 11,
+                fontFamily: theme.fonts.regular,
+                color: '#64748B',
+                lineHeight: 16
+              }} numberOfLines={2}>
+                "{cancellingTicket?.rawText}"
+              </Text>
+            </View>
+
+            <Text style={{
+              fontSize: 12,
+              fontFamily: theme.fonts.regular,
+              color: '#64748B',
+              textAlign: 'center',
+              lineHeight: 18,
+              marginBottom: 20,
+              paddingHorizontal: 8
+            }}>
+              Since no field crew has been dispatched yet, cancelling will withdraw this ticket from municipal dispatch.
+            </Text>
+
+            {/* Actions */}
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity
+                disabled={isCancelling}
+                onPress={() => setCancellingTicket(null)}
+                style={{
+                  flex: 1,
+                  height: 46,
+                  borderRadius: 14,
+                  backgroundColor: '#F1F5F9',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 1,
+                  borderColor: '#E2E8F0'
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={{
+                  fontSize: 13,
+                  fontFamily: theme.fonts.bold,
+                  color: '#475569'
+                }}>
+                  Keep Ticket
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                disabled={isCancelling}
+                onPress={handleConfirmCancel}
+                style={{
+                  flex: 1,
+                  height: 46,
+                  borderRadius: 14,
+                  backgroundColor: '#DC2626',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  shadowColor: '#DC2626',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 8,
+                  elevation: 4
+                }}
+                activeOpacity={0.8}
+              >
+                {isCancelling ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={{
+                    fontSize: 13,
+                    fontFamily: theme.fonts.bold,
+                    color: '#FFFFFF'
+                  }}>
+                    Yes, Cancel
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Technician Contact Modal */}
+      <Modal
+        visible={!!selectedTechContact}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setSelectedTechContact(null)}
+      >
+        <TouchableOpacity 
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(11, 34, 64, 0.65)',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 24
+          }}
+          activeOpacity={1}
+          onPress={() => setSelectedTechContact(null)}
+        >
+          <TouchableOpacity 
+            activeOpacity={1} 
+            style={{
+              width: '100%',
+              maxWidth: 360,
+              backgroundColor: '#FFFFFF',
+              borderRadius: 28,
+              padding: 24,
+              shadowColor: '#0B2240',
+              shadowOffset: { width: 0, height: 12 },
+              shadowOpacity: 0.18,
+              shadowRadius: 24,
+              elevation: 12,
+            }}
+          >
+            {/* Close X */}
+            <TouchableOpacity
+              onPress={() => setSelectedTechContact(null)}
+              style={{
+                position: 'absolute',
+                top: 16,
+                right: 16,
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: '#F1F5F9',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 10
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <AppIcon name="close" size={16} color="#64748B" />
+            </TouchableOpacity>
+
+            {/* Avatar & Info */}
+            <View style={{ alignItems: 'center', marginTop: 8, marginBottom: 16 }}>
+              <LinearGradient
+                colors={['#0C4F8B', '#008CE3']}
+                style={{
+                  width: 60,
+                  height: 60,
+                  borderRadius: 22,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 12,
+                  shadowColor: '#008CE3',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 8,
+                  elevation: 4
+                }}
+              >
+                <Text style={{
+                  fontSize: 20,
+                  fontFamily: theme.fonts.bold,
+                  color: '#FFFFFF'
+                }}>
+                  {selectedTechContact?.name ? selectedTechContact.name.substring(0, 2).toUpperCase() : 'FT'}
+                </Text>
+              </LinearGradient>
+              <Text style={{
+                fontSize: 17,
+                fontFamily: theme.fonts.bold,
+                color: '#0B2240',
+                textAlign: 'center'
+              }}>
+                {selectedTechContact?.name}
+              </Text>
+              <View style={{
+                backgroundColor: '#EFF6FF',
+                paddingHorizontal: 10,
+                paddingVertical: 3,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: '#BFDBFE',
+                marginTop: 6
+              }}>
+                <Text style={{
+                  fontSize: 10,
+                  fontFamily: theme.fonts.bold,
+                  color: '#008CE3',
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5
+                }}>
+                  Sub-Admin / Field Technician
+                </Text>
+              </View>
+              <Text style={{
+                fontSize: 11,
+                fontFamily: theme.fonts.monoBold,
+                color: '#94A3B8',
+                marginTop: 4
+              }}>
+                Ticket AQ-{selectedTechContact?.ticketId ? selectedTechContact.ticketId.slice(0, 8).toUpperCase() : ''}
+              </Text>
+            </View>
+
+            {/* Contact Card */}
+            <View style={{
+              backgroundColor: '#F8FAFC',
+              borderRadius: 16,
+              padding: 14,
+              borderWidth: 1,
+              borderColor: '#E2E8F0',
+              marginBottom: 18
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <AppIcon name="call" size={14} color="#008CE3" />
+                <Text style={{
+                  fontSize: 11,
+                  fontFamily: theme.fonts.bold,
+                  color: '#475569',
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5
+                }}>
+                  Contact Number
+                </Text>
+              </View>
+
+              {selectedTechContact?.phone ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 2 }}>
+                  <Text style={{
+                    fontSize: 15,
+                    fontFamily: theme.fonts.monoBold,
+                    color: '#0B2240',
+                    letterSpacing: 0.5
+                  }}>
+                    {selectedTechContact.phone}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => Linking.openURL(`tel:${selectedTechContact.phone}`)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                      backgroundColor: '#10B981',
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 10,
+                      shadowColor: '#10B981',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.2,
+                      shadowRadius: 4,
+                      elevation: 2
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <AppIcon name="call" size={12} color="#FFFFFF" />
+                    <Text style={{
+                      fontSize: 11,
+                      fontFamily: theme.fonts.bold,
+                      color: '#FFFFFF'
+                    }}>
+                      Call
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={{ paddingTop: 2 }}>
+                  <Text style={{
+                    fontSize: 12,
+                    fontFamily: theme.fonts.regular,
+                    color: '#64748B',
+                    fontStyle: 'italic',
+                    marginBottom: 6
+                  }}>
+                    Direct mobile number not registered.
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => Linking.openURL('tel:0459612345')}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      backgroundColor: '#EFF6FF',
+                      padding: 8,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: '#BFDBFE'
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <View>
+                      <Text style={{ fontSize: 10, fontFamily: theme.fonts.bold, color: '#008CE3' }}>
+                        Dispatch Hotline
+                      </Text>
+                      <Text style={{ fontSize: 12, fontFamily: theme.fonts.monoBold, color: '#0B2240' }}>
+                        (045) 961-2345
+                      </Text>
+                    </View>
+                    <View style={{ backgroundColor: '#008CE3', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
+                      <Text style={{ fontSize: 10, fontFamily: theme.fonts.bold, color: '#FFFFFF' }}>Call</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* Note */}
+            <Text style={{
+              fontSize: 11,
+              fontFamily: theme.fonts.regular,
+              color: '#94A3B8',
+              textAlign: 'center',
+              lineHeight: 16,
+              marginBottom: 16,
+              paddingHorizontal: 8
+            }}>
+              Available for service and inspection updates during municipal district operating hours.
+            </Text>
+
+            {/* Bottom Close */}
+            <TouchableOpacity
+              onPress={() => setSelectedTechContact(null)}
+              style={{
+                width: '100%',
+                height: 44,
+                backgroundColor: '#0B2240',
+                borderRadius: 14,
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              activeOpacity={0.85}
+            >
+              <Text style={{
+                color: '#FFFFFF',
+                fontSize: 12,
+                fontFamily: theme.fonts.bold,
+                textTransform: 'uppercase',
+                letterSpacing: 0.8
               }}>
                 Close
               </Text>

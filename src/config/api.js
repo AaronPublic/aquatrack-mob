@@ -78,5 +78,27 @@ export const api = {
       console.error(`API postFormData ${endpoint} failed:`, err);
       throw err;
     }
+  },
+  delete: async (endpoint, body) => {
+    try {
+      const options = {
+        method: 'DELETE',
+        headers: {
+          'Accept': 'application/json',
+        },
+      };
+      if (body) {
+        options.headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(body);
+      }
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, options);
+      if (!res.ok) {
+        throw new Error(`HTTP Error: ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error(`API DELETE ${endpoint} failed:`, err);
+      throw err;
+    }
   }
 };

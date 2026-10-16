@@ -733,7 +733,7 @@ export default function FileComplaint({ navigation }) {
               >
                 <AppIcon name="mic" size={16} color="#0284C7" style={{ marginRight: 6 }} />
                 <Text style={{ color: '#0369A1', fontWeight: '700', fontSize: 12 }}>
-                  Voice Record
+                  Speak to Text
                 </Text>
               </TouchableOpacity>
             )}
